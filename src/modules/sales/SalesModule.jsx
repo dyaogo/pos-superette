@@ -235,7 +235,6 @@ const SalesModule = () => {
           data={receipt}
           onClose={() => setReceipt(null)}
           appSettings={appSettings}
-          isDark={isDark}
         />
       )}
     </div>
