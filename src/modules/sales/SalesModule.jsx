@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, CreditCard } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { useResponsive, getResponsiveStyles, ProductGrid, ResponsiveModal } from '../../components/ResponsiveComponents';
+import { useResponsive, ProductGrid, ResponsiveModal } from '../../components/ResponsiveComponents';
 
 
 const SalesModule = () => {
@@ -17,29 +17,7 @@ const SalesModule = () => {
   
   const products = globalProducts;
   const isDark = appSettings.darkMode;
-  const SalesModule = () => {
   const { deviceType, isMobile } = useResponsive();
-  const styles = getResponsiveStyles(deviceType, isDark);
-  
-  return (
-    <div style={{
-      display: 'grid',
-      gridTemplateColumns: isMobile ? '1fr' : deviceType === 'tablet' ? '1fr 300px' : '1fr 400px',
-      gap: '20px',
-      padding: styles.container.padding
-    }}>
-      {/* Section produits avec grille responsive */}
-      <ProductGrid 
-        products={filteredProducts}
-        onProductClick={addToCart}
-        isDark={isDark}
-      />
-      
-      {/* Panier - drawer mobile ou sidebar */}
-      {/* Code adapté selon deviceType */}
-    </div>
-  );
-};
 
   // Montants fréquents pour les paiements rapides
   const frequentAmounts = [500, 1000, 2000, 5000, 10000, 20000];
@@ -99,7 +77,11 @@ const SalesModule = () => {
   const styles = {
     container: {
       display: 'grid',
-      gridTemplateColumns: quickMode ? '2fr 1fr' : '1fr 400px',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : deviceType === 'tablet'
+          ? '1fr 300px'
+          : quickMode ? '2fr 1fr' : '1fr 400px',
       gap: '20px',
       padding: '20px',
       minHeight: 'calc(100vh - 80px)',
