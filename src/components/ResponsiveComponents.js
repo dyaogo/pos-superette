@@ -211,7 +211,9 @@ export const MobileNavigation = ({ activeModule, setActiveModule, isDark }) => {
     { id: 'sales', icon: '🛒', label: 'Ventes' },
     { id: 'stocks', icon: '📦', label: 'Stocks' },
     { id: 'credits', icon: '💳', label: 'Crédits' },
-    { id: 'cash', icon: '🧮', label: 'Caisse' }
+    { id: 'cash', icon: '🧮', label: 'Caisse' },
+    { id: 'employees', icon: '👥', label: 'Employés' },
+    { id: 'returns', icon: '↩️', label: 'Retours' }
   ];
 
   return (

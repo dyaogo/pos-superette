@@ -38,6 +38,8 @@ export const AppProvider = ({ children }) => {
     { id: 1, name: 'Client Comptant', phone: '', email: '', totalPurchases: 0, points: 0 }
   ]);
   const [credits, setCredits] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [returnsHistory, setReturnsHistory] = useState([]);
   const [appSettings, setAppSettings] = useState({
     storeName: 'Alimentation Wend-Kuuni',
     currency: 'FCFA',
@@ -131,6 +133,30 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Traiter un retour produit
+  const processReturn = (productId, quantity, reason = 'Retour client') => {
+    try {
+      const product = (globalProducts || []).find(p => p.id === productId);
+      if (!product || !quantity || quantity <= 0) return false;
+
+      const returnEntry = {
+        id: Date.now(),
+        productId,
+        productName: product.name,
+        quantity,
+        reason,
+        date: new Date().toISOString()
+      };
+
+      addStock(productId, quantity, reason);
+      setReturnsHistory([returnEntry, ...(returnsHistory || [])]);
+      return true;
+    } catch (error) {
+      console.error('Erreur lors du traitement du retour:', error);
+      return false;
+    }
+  };
+
   // Ajouter un crédit
   const addCredit = (customerId, amount, description) => {
     try {
@@ -217,6 +243,8 @@ export const AppProvider = ({ children }) => {
       const savedCustomers = localStorage.getItem(`${storeKey}_customers`);
       const savedCredits = localStorage.getItem(`${storeKey}_credits`);
       const savedSettings = localStorage.getItem(`${storeKey}_settings`);
+      const savedEmployees = localStorage.getItem(`${storeKey}_employees`);
+      const savedReturns = localStorage.getItem(`${storeKey}_returns`);
       
       if (savedProducts) {
         try {
@@ -255,6 +283,22 @@ export const AppProvider = ({ children }) => {
           setAppSettings(JSON.parse(savedSettings));
         } catch (e) {
           console.warn('Erreur de parsing settings:', e);
+        }
+      }
+
+      if (savedEmployees) {
+        try {
+          setEmployees(JSON.parse(savedEmployees));
+        } catch (e) {
+          console.warn('Erreur de parsing employees:', e);
+        }
+      }
+
+      if (savedReturns) {
+        try {
+          setReturnsHistory(JSON.parse(savedReturns));
+        } catch (e) {
+          console.warn('Erreur de parsing returns:', e);
         }
       }
     } catch (error) {
@@ -304,6 +348,26 @@ export const AppProvider = ({ children }) => {
   }, [credits, currentStoreId]);
 
   useEffect(() => {
+    if (Array.isArray(employees) && employees.length >= 0) {
+      try {
+        localStorage.setItem(`pos_${currentStoreId}_employees`, JSON.stringify(employees));
+      } catch (error) {
+        console.warn('Erreur de sauvegarde employees:', error);
+      }
+    }
+  }, [employees, currentStoreId]);
+
+  useEffect(() => {
+    if (Array.isArray(returnsHistory) && returnsHistory.length >= 0) {
+      try {
+        localStorage.setItem(`pos_${currentStoreId}_returns`, JSON.stringify(returnsHistory));
+      } catch (error) {
+        console.warn('Erreur de sauvegarde returns:', error);
+      }
+    }
+  }, [returnsHistory, currentStoreId]);
+
+  useEffect(() => {
     if (appSettings && typeof appSettings === 'object') {
       try {
         localStorage.setItem(`pos_${currentStoreId}_settings`, JSON.stringify(appSettings));
@@ -326,10 +390,15 @@ export const AppProvider = ({ children }) => {
     setAppSettings,
     credits: credits || [],
     setCredits,
-    
+    employees: employees || [],
+    setEmployees,
+    returnsHistory: returnsHistory || [],
+    setReturnsHistory,
+
     // Fonctions sécurisées
     processSale,
     addStock,
+    processReturn,
     getStats,
     clearAllData,
     addCredit,

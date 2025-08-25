@@ -8,8 +8,10 @@ import CashRegisterModule from './modules/cash/CashRegisterModule';
 import CreditManagementModule from './modules/credits/CreditManagementModule';
 import DashboardModule from './modules/dashboard/DashboardModule';
 import ReportsModule from './modules/reports/ReportsModule';
+import EmployeesModule from './modules/employees/EmployeesModule';
+import ReturnsModule from './modules/returns/ReturnsModule';
 import { MobileNavigation, useResponsive } from './components/ResponsiveComponents';
-import { ShoppingCart, Package, Users, Home, BarChart3, Settings, Calculator, CreditCard } from 'lucide-react';
+import { ShoppingCart, Package, Users, Home, BarChart3, Settings, Calculator, CreditCard, UserCog, RotateCcw } from 'lucide-react';
 
 // Composant principal avec le Provider
 function App() {
@@ -148,6 +150,10 @@ function AppContent() {
         return <CashRegisterModule />;
       case 'credits':
         return <CreditManagementModule />;
+      case 'employees':
+        return <EmployeesModule />;
+      case 'returns':
+        return <ReturnsModule />;
       default:
         return <DashboardModule />;
     }
@@ -321,7 +327,29 @@ function AppContent() {
             <Users size={18} />
             Clients
           </button>
-          
+
+          <button
+            style={{
+              ...styles.navButton,
+              ...(activeModule === 'employees' ? styles.navButtonActive : {})
+            }}
+            onClick={() => setActiveModule('employees')}
+          >
+            <UserCog size={18} />
+            Employés
+          </button>
+
+          <button
+            style={{
+              ...styles.navButton,
+              ...(activeModule === 'returns' ? styles.navButtonActive : {})
+            }}
+            onClick={() => setActiveModule('returns')}
+          >
+            <RotateCcw size={18} />
+            Retours
+          </button>
+
           <button
             style={{
               ...styles.navButton,
