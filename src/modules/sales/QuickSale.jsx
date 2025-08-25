@@ -1,0 +1,115 @@
+import React from 'react';
+import { Search } from 'lucide-react';
+import ProductGrid from './ProductGrid';
+
+const QuickSale = ({
+  products,
+  addToCart,
+  searchQuery,
+  setSearchQuery,
+  quickMode,
+  setQuickMode,
+  cart,
+  setCart,
+  isDark,
+  appSettings
+}) => {
+  const styles = {
+    productSection: {
+      background: isDark ? '#2d3748' : 'white',
+      borderRadius: '8px',
+      padding: quickMode ? '15px' : '20px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+    },
+    quickActions: {
+      display: 'flex',
+      gap: '10px',
+      marginBottom: '15px',
+      padding: '10px',
+      background: isDark ? '#374151' : '#f8fafc',
+      borderRadius: '6px'
+    },
+    searchBar: {
+      width: '100%',
+      padding: '12px 40px 12px 15px',
+      border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+      borderRadius: '8px',
+      fontSize: '16px',
+      marginBottom: '15px',
+      background: isDark ? '#374151' : 'white',
+      color: isDark ? '#f7fafc' : '#2d3748'
+    }
+  };
+
+  const QuickActions = () => (
+    <div style={styles.quickActions}>
+      <button
+        onClick={() => setQuickMode(!quickMode)}
+        style={{
+          padding: '6px 12px',
+          background: quickMode ? '#3b82f6' : '#64748b',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          fontSize: '12px',
+          cursor: 'pointer'
+        }}
+      >
+        {quickMode ? 'Mode Détaillé' : 'Mode Rapide'}
+      </button>
+
+      <button
+        onClick={() => setCart([])}
+        disabled={cart.length === 0}
+        style={{
+          padding: '6px 12px',
+          background: cart.length > 0 ? '#ef4444' : '#94a3b8',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          fontSize: '12px',
+          cursor: cart.length > 0 ? 'pointer' : 'not-allowed'
+        }}
+      >
+        Vider (F1)
+      </button>
+
+      <span style={{
+        fontSize: '12px',
+        color: isDark ? '#a0aec0' : '#64748b',
+        alignSelf: 'center'
+      }}>
+        F2: Recherche | F3: Payer | Entrée: Ajouter
+      </span>
+    </div>
+  );
+
+  return (
+    <div style={styles.productSection}>
+      <QuickActions />
+
+      <div style={{ position: 'relative' }}>
+        <Search style={{ position: 'absolute', left: '15px', top: '12px' }} size={20} color="#94a3b8" />
+        <input
+          id="product-search"
+          type="text"
+          placeholder="Rechercher... (F2 pour focus, Entrée pour ajouter)"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          style={styles.searchBar}
+          autoFocus
+        />
+      </div>
+
+      <ProductGrid
+        products={products}
+        addToCart={addToCart}
+        quickMode={quickMode}
+        isDark={isDark}
+        appSettings={appSettings}
+      />
+    </div>
+  );
+};
+
+export default QuickSale;
