@@ -31,3 +31,6 @@ Thumbs.db
 # Backup
 *_backup/
 *.backup
+
+# Archives
+archives/
