@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, CreditCard } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useResponsive, ProductGrid, ResponsiveModal } from '../../components/ResponsiveComponents';
-
-
 const SalesModule = () => {
   const { globalProducts, processSale, customers, appSettings, addCredit } = useApp();
   const [cart, setCart] = useState([]);
@@ -14,9 +12,10 @@ const SalesModule = () => {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountReceived, setAmountReceived] = useState('');
   const [quickMode, setQuickMode] = useState(true); // Mode rapide par défaut
-  
+
   const products = globalProducts;
   const isDark = appSettings.darkMode;
+
   const { deviceType, isMobile } = useResponsive();
 
   // Montants fréquents pour les paiements rapides
