@@ -10,7 +10,10 @@
     "react-hot-toast": "^2.4.0",
     "react-scripts": "5.0.1",
     "web-vitals": "^2.1.4",
-    "xlsx": "^0.18.5"
+    "xlsx": "^0.18.5",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^14.0.0",
+    "@testing-library/user-event": "^14.4.3"
   },
   "scripts": {
     "start": "react-scripts start",
