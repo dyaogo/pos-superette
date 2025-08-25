@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ShoppingCart, CreditCard } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-
+import { useResponsive, ProductGrid, ResponsiveModal } from '../../components/ResponsiveComponents';
 const SalesModule = () => {
   const { globalProducts, processSale, customers, appSettings, addCredit } = useApp();
   const [cart, setCart] = useState([]);
@@ -15,6 +15,8 @@ const SalesModule = () => {
 
   const products = globalProducts;
   const isDark = appSettings.darkMode;
+
+  const { deviceType, isMobile } = useResponsive();
 
   // Montants fréquents pour les paiements rapides
   const frequentAmounts = [500, 1000, 2000, 5000, 10000, 20000];
@@ -74,7 +76,11 @@ const SalesModule = () => {
   const styles = {
     container: {
       display: 'grid',
-      gridTemplateColumns: quickMode ? '2fr 1fr' : '1fr 400px',
+      gridTemplateColumns: isMobile
+        ? '1fr'
+        : deviceType === 'tablet'
+          ? '1fr 300px'
+          : quickMode ? '2fr 1fr' : '1fr 400px',
       gap: '20px',
       padding: '20px',
       minHeight: 'calc(100vh - 80px)',
