@@ -201,11 +201,11 @@ export const getResponsiveStyles = (deviceType, isDark) => {
 };
 
 // Navigation mobile avec bottom tabs
-export const MobileNavigation = ({ activeModule, setActiveModule, isDark }) => {
+export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowedModules = [] }) => {
   const { deviceType } = useResponsive();
-  
+
   if (deviceType === 'desktop') return null;
-  
+
   const navItems = [
     { id: 'dashboard', icon: '🏠', label: 'Accueil' },
     { id: 'sales', icon: '🛒', label: 'Ventes' },
@@ -214,7 +214,7 @@ export const MobileNavigation = ({ activeModule, setActiveModule, isDark }) => {
     { id: 'cash', icon: '🧮', label: 'Caisse' },
     { id: 'employees', icon: '👥', label: 'Employés' },
     { id: 'returns', icon: '↩️', label: 'Retours' }
-  ];
+  ].filter(item => allowedModules.includes(item.id));
 
   return (
     <div style={{
