@@ -5,6 +5,7 @@ import Cart from './Cart';
 import PaymentModal from './PaymentModal';
 import QuickSale from './QuickSale';
 import Receipt from './Receipt';
+import BarcodeScanner from './BarcodeScanner';
 
 const SalesModule = () => {
   const { globalProducts, processSale, customers, appSettings, addCredit } = useApp();
@@ -17,6 +18,7 @@ const SalesModule = () => {
   const [amountReceived, setAmountReceived] = useState('');
   const [quickMode, setQuickMode] = useState(true);
   const [receipt, setReceipt] = useState(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   const products = globalProducts;
   const isDark = appSettings.darkMode;
@@ -45,6 +47,10 @@ const SalesModule = () => {
       if (e.key === 'F3' && cart.length > 0) {
         e.preventDefault();
         setShowPaymentModal(true);
+      }
+      if (e.key === 'F4') {
+        e.preventDefault();
+        setShowScanner(true);
       }
       if (e.key === 'Escape') {
         if (showPaymentModal) {
@@ -162,8 +168,19 @@ const SalesModule = () => {
 
   const filteredProducts = products.filter(product =>
     product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+    product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    product.barcode?.includes(searchQuery)
   ).slice(0, quickMode ? 12 : 20);
+
+  const handleBarcodeDetected = (code) => {
+    const found = products.find(p => p.barcode === code || p.sku === code);
+    if (found) {
+      addToCart(found);
+      setShowScanner(false);
+    } else {
+      alert('Produit non trouvé');
+    }
+  };
 
   return (
     <div>
@@ -179,6 +196,7 @@ const SalesModule = () => {
           setCart={setCart}
           isDark={isDark}
           appSettings={appSettings}
+          openScanner={() => setShowScanner(true)}
         />
         <Cart
           cart={cart}
@@ -235,6 +253,13 @@ const SalesModule = () => {
           data={receipt}
           onClose={() => setReceipt(null)}
           appSettings={appSettings}
+        />
+      )}
+
+      {showScanner && (
+        <BarcodeScanner
+          onDetected={handleBarcodeDetected}
+          onClose={() => setShowScanner(false)}
         />
       )}
     </div>

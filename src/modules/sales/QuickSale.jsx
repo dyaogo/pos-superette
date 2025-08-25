@@ -12,7 +12,8 @@ const QuickSale = ({
   cart,
   setCart,
   isDark,
-  appSettings
+  appSettings,
+  openScanner
 }) => {
   const styles = {
     productSection: {
@@ -74,12 +75,27 @@ const QuickSale = ({
         Vider (F1)
       </button>
 
+      <button
+        onClick={openScanner}
+        style={{
+          padding: '6px 12px',
+          background: '#10b981',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          fontSize: '12px',
+          cursor: 'pointer'
+        }}
+      >
+        Scanner (F4)
+      </button>
+
       <span style={{
         fontSize: '12px',
         color: isDark ? '#a0aec0' : '#64748b',
         alignSelf: 'center'
       }}>
-        F2: Recherche | F3: Payer | Entrée: Ajouter
+        F2: Recherche | F3: Payer | F4: Scanner | Entrée: Ajouter
       </span>
     </div>
   );
