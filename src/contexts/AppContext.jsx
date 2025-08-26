@@ -29,7 +29,14 @@ export const AppProvider = ({ children }) => {
   ];
 
   // ==================== ÉTATS GLOBAUX ====================
-  const [currentStoreId, setCurrentStoreId] = useState('wend-kuuni');
+  // Charger l'identifiant du magasin depuis le localStorage si disponible
+  const [currentStoreId, setCurrentStoreId] = useState(() => {
+    try {
+      return localStorage.getItem('pos_current_store') || null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [viewMode, setViewMode] = useState('single');
   
   // Inventaire par magasin { [storeId]: Product[] }
@@ -59,8 +66,8 @@ export const AppProvider = ({ children }) => {
   
   // Obtenir le magasin actuel
   const getCurrentStore = () => {
-    if (viewMode === 'consolidated') return null;
-    return stores.find(store => store.id === currentStoreId) || stores[0];
+    if (viewMode === 'consolidated' || !currentStoreId) return null;
+    return stores.find(store => store.id === currentStoreId) || null;
   };
 
   // Changer de magasin
