@@ -1,9 +1,9 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  TrendingUp, TrendingDown, DollarSign, Package, Users, ShoppingCart, 
-  AlertTriangle, BarChart3, Clock, Target, Eye, Bell, Calendar, 
-  ArrowUp, ArrowDown, Activity, Settings, Sun, Moon, Database
-} from 'lucide-react';
+import { DollarSign, Package, Users, ShoppingCart, BarChart3 } from 'lucide-react';
+import MetricCard from './components/MetricCard';
+import AlertsWidget from './components/AlertsWidget';
+import TopProductsWidget from './components/TopProductsWidget';
+import DataManagerWidget from './components/DataManagerWidget';
 import { useApp } from '../../contexts/AppContext'; // ✅ CORRECTION CRITIQUE
 
 const DashboardModule = () => {
@@ -12,7 +12,6 @@ const DashboardModule = () => {
     customers,
     salesHistory,
     appSettings,
-    setAppSettings,
     getStats,
     clearAllData,
     credits,
@@ -127,16 +126,6 @@ const DashboardModule = () => {
       boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
       border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
     },
-    alertCard: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: '12px',
-      padding: '16px',
-      background: isDark ? '#2d3748' : 'white',
-      borderRadius: '8px',
-      marginBottom: '12px',
-      border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-    },
     chartsGrid: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
@@ -144,413 +133,6 @@ const DashboardModule = () => {
       marginBottom: '30px'
     }
   };
-
-  // Composant MetricCard avec protection
-  const MetricCard = ({ title, value, change, icon: Icon, color, format = 'number' }) => {
-    const formatValue = (val) => {
-      if (format === 'currency') {
-        return `${safeToLocaleString(val)} ${appSettings?.currency || 'FCFA'}`;
-      }
-      return safeToLocaleString(val);
-    };
-
-    const changeColor = change > 0 ? '#10b981' : change < 0 ? '#ef4444' : '#6b7280';
-    const ChangeIcon = change > 0 ? ArrowUp : change < 0 ? ArrowDown : Activity;
-
-    return (
-      <div style={styles.metricCard}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-          <Icon size={24} color={color} />
-          <h3 style={{ 
-            fontSize: '16px', 
-            fontWeight: '600', 
-            color: isDark ? '#f7fafc' : '#2d3748',
-            margin: 0
-          }}>
-            {title}
-          </h3>
-        </div>
-        
-        <div style={{ marginBottom: '12px' }}>
-          <div style={{ 
-            fontSize: '28px', 
-            fontWeight: 'bold', 
-            color: isDark ? '#f7fafc' : '#2d3748',
-            marginBottom: '4px'
-          }}>
-            {formatValue(value)}
-          </div>
-        </div>
-        
-        {change !== 0 && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '4px',
-            fontSize: '14px',
-            color: changeColor
-          }}>
-            <ChangeIcon size={16} />
-            <span>{Math.abs(change)}% vs période précédente</span>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Widget des alertes avec protection
-  const AlertsWidget = () => {
-    const safeProducts = globalProducts || [];
-    const safeCredits = credits || [];
-    
-    const lowStockProducts = safeProducts.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5));
-    const outOfStockProducts = safeProducts.filter(p => (p.stock || 0) === 0);
-    const overdueCredits = safeCredits.filter(c => {
-      if (!c.dueDate) return false;
-      const dueDate = new Date(c.dueDate);
-      return (c.status === 'pending' || c.status === 'partial') && dueDate < new Date();
-    });
-
-    const alerts = [];
-    
-    if (outOfStockProducts.length > 0) {
-      alerts.push({
-        type: 'error',
-        icon: AlertTriangle,
-        title: 'Ruptures de Stock',
-        message: `${outOfStockProducts.length} produit(s) en rupture`,
-        action: 'Voir Stocks'
-      });
-    }
-    
-    if (lowStockProducts.length > 0) {
-      alerts.push({
-        type: 'warning',
-        icon: Package,
-        title: 'Stock Faible',
-        message: `${lowStockProducts.length} produit(s) en stock faible`,
-        action: 'Réapprovisionner'
-      });
-    }
-    
-    if (overdueCredits.length > 0) {
-      alerts.push({
-        type: 'error',
-        icon: Clock,
-        title: 'Crédits en Retard',
-        message: `${overdueCredits.length} crédit(s) en retard`,
-        action: 'Voir Crédits'
-      });
-    }
-
-    if (!showAlerts || alerts.length === 0) return null;
-
-    return (
-      <div style={{ marginBottom: '25px' }}>
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'space-between', 
-          marginBottom: '15px' 
-        }}>
-          <h3 style={{ 
-            fontSize: '18px', 
-            fontWeight: 'bold', 
-            color: isDark ? '#f7fafc' : '#2d3748', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px',
-            margin: 0
-          }}>
-            <Bell size={20} />
-            Alertes Importantes
-          </h3>
-          <button
-            onClick={() => setShowAlerts(false)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: isDark ? '#a0aec0' : '#64748b',
-              cursor: 'pointer',
-              padding: '4px'
-            }}
-          >
-            Masquer
-          </button>
-        </div>
-        
-        {alerts.map((alert, index) => (
-          <div key={index} style={styles.alertCard}>
-            <alert.icon size={20} color={alert.type === 'error' ? '#ef4444' : '#f59e0b'} />
-            <div style={{ flex: 1 }}>
-              <div style={{ 
-                fontWeight: '600', 
-                color: isDark ? '#f7fafc' : '#2d3748',
-                marginBottom: '2px'
-              }}>
-                {alert.title}
-              </div>
-              <div style={{ 
-                fontSize: '14px', 
-                color: isDark ? '#a0aec0' : '#64748b'
-              }}>
-                {alert.message}
-              </div>
-            </div>
-            <button style={{
-              padding: '6px 12px',
-              background: alert.type === 'error' ? '#ef4444' : '#f59e0b',
-              color: 'white',
-              border: 'none',
-              borderRadius: '4px',
-              fontSize: '12px',
-              cursor: 'pointer'
-            }}>
-              {alert.action}
-            </button>
-          </div>
-        ))}
-      </div>
-    );
-  };
-
-  // Widget des produits populaires avec protection
-  const TopProductsWidget = () => {
-    const safeProducts = globalProducts || [];
-    const safeSales = salesHistory || [];
-    
-    const topProducts = safeProducts.map(product => {
-      const totalSold = safeSales.reduce((sum, sale) => {
-        const item = (sale.items || []).find(i => i.id === product.id);
-        return sum + (item ? (item.quantity || 0) : 0);
-      }, 0);
-      
-      const totalRevenue = totalSold * (product.price || 0);
-      
-      return {
-        ...product,
-        totalSold,
-        totalRevenue
-      };
-    })
-    .filter(p => p.totalSold > 0)
-    .sort((a, b) => b.totalRevenue - a.totalRevenue)
-    .slice(0, 5);
-
-    return (
-      <div style={styles.metricCard}>
-        <h3 style={{ 
-          fontSize: '18px', 
-          fontWeight: 'bold', 
-          color: isDark ? '#f7fafc' : '#2d3748',
-          marginBottom: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px'
-        }}>
-          <Target size={20} />
-          Produits Populaires
-        </h3>
-        
-        {topProducts.length === 0 ? (
-          <div style={{
-            textAlign: 'center',
-            color: isDark ? '#a0aec0' : '#64748b',
-            fontSize: '14px',
-            padding: '20px'
-          }}>
-            Aucune vente enregistrée
-          </div>
-        ) : (
-          <div>
-            {topProducts.map((product, index) => (
-              <div 
-                key={product.id} 
-                style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  padding: '12px 0',
-                  borderBottom: index < topProducts.length - 1 
-                    ? `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}` 
-                    : 'none'
-                }}
-              >
-                <div>
-                  <div style={{ 
-                    fontWeight: '600', 
-                    color: isDark ? '#f7fafc' : '#2d3748', 
-                    fontSize: '14px' 
-                  }}>
-                    {product.name}
-                  </div>
-                  <div style={{ 
-                    fontSize: '12px', 
-                    color: isDark ? '#a0aec0' : '#64748b' 
-                  }}>
-                    {product.totalSold} vendus
-                  </div>
-                </div>
-                
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ 
-                    fontWeight: 'bold', 
-                    color: '#3b82f6', 
-                    fontSize: '14px' 
-                  }}>
-                    {safeToLocaleString(product.totalRevenue)} {appSettings?.currency || 'FCFA'}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // Widget gestionnaire de données avec protection
-  const DataManagerWidget = () => (
-    <div style={styles.metricCard}>
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        marginBottom: '15px' 
-      }}>
-        <h3 style={{ 
-          fontSize: '18px', 
-          fontWeight: 'bold', 
-          color: isDark ? '#f7fafc' : '#2d3748',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          margin: 0
-        }}>
-          <Database size={20} />
-          Sauvegarde & Synchronisation Cloud
-        </h3>
-        <button
-          onClick={() => setShowDataManager(!showDataManager)}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: isDark ? '#a0aec0' : '#64748b',
-            cursor: 'pointer',
-            padding: '4px'
-          }}
-        >
-          <Settings size={16} />
-        </button>
-      </div>
-
-      {showDataManager && (
-        <div>
-          <div style={{ 
-            display: 'flex', 
-            gap: '8px', 
-            marginBottom: '10px',
-            flexWrap: 'wrap'
-          }}>
-            <button
-              onClick={() => {
-                const dataToExport = {
-                  timestamp: new Date().toISOString(),
-                  products: globalProducts || [],
-                  sales: salesHistory || [],
-                  customers: customers || [],
-                  credits: credits || [],
-                  settings: appSettings || {}
-                };
-                
-                const blob = new Blob([JSON.stringify(dataToExport, null, 2)], {
-                  type: 'application/json'
-                });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `pos-backup-${new Date().toISOString().split('T')[0]}.json`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              💾 Télécharger Sauvegarde
-            </button>
-
-            <button
-              onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json';
-                input.onchange = (e) => {
-                  const file = e.target.files[0];
-                  if (!file) return;
-                  
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    try {
-                      JSON.parse(reader.result);
-                      alert('📄 Fichier valide ! Fonctionnalité d\'import en cours de développement...');
-                    } catch (error) {
-                      alert('❌ Fichier de sauvegarde invalide');
-                    }
-                  };
-                  reader.readAsText(file);
-                };
-                input.click();
-              }}
-              style={{
-                padding: '8px 16px',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              📤 Importer Sauvegarde
-            </button>
-
-            <button
-              onClick={clearAllData}
-              style={{
-                padding: '8px 16px',
-                background: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              🗑️ Effacer Toutes les Données
-            </button>
-          </div>
-          <p style={{ 
-            fontSize: '12px', 
-            color: isDark ? '#a0aec0' : '#718096', 
-            marginTop: '10px',
-            margin: 0
-          }}>
-            💡 Les données sont automatiquement sauvegardées localement dans votre navigateur
-          </p>
-        </div>
-      )}
-    </div>
-  );
-
   return (
     <div style={styles.container}>
       {/* En-tête avec sélecteur de période */}
@@ -593,10 +175,26 @@ const DashboardModule = () => {
       </div>
 
       {/* Widget gestionnaire de données */}
-      <DataManagerWidget />
+      <DataManagerWidget
+        showDataManager={showDataManager}
+        setShowDataManager={setShowDataManager}
+        globalProducts={globalProducts}
+        salesHistory={salesHistory}
+        customers={customers}
+        credits={credits}
+        appSettings={appSettings}
+        clearAllData={clearAllData}
+        isDark={isDark}
+      />
 
       {/* Alertes */}
-      <AlertsWidget />
+      <AlertsWidget
+        globalProducts={globalProducts}
+        credits={credits}
+        showAlerts={showAlerts}
+        setShowAlerts={setShowAlerts}
+        isDark={isDark}
+      />
 
       {/* Métriques principales avec comparaison */}
       <div style={styles.metricsGrid}>
@@ -607,36 +205,49 @@ const DashboardModule = () => {
           icon={DollarSign}
           color="#10b981"
           format="currency"
+          isDark={isDark}
+          currency={appSettings?.currency}
         />
-        
+
         <MetricCard
           title={`Nombre de Ventes - ${dashboardMetrics.periodLabel}`}
           value={dashboardMetrics.currentTransactions}
           change={dashboardMetrics.transactionGrowth}
           icon={ShoppingCart}
           color="#3b82f6"
+          isDark={isDark}
+          currency={appSettings?.currency}
         />
-        
+
         <MetricCard
           title="Produits en Stock"
           value={stats?.totalProducts || 0}
           change={0}
           icon={Package}
           color="#8b5cf6"
+          isDark={isDark}
+          currency={appSettings?.currency}
         />
-        
+
         <MetricCard
           title="Clients Fidèles"
           value={stats?.totalCustomers || 0}
           change={0}
           icon={Users}
           color="#f59e0b"
+          isDark={isDark}
+          currency={appSettings?.currency}
         />
       </div>
 
       {/* Widgets d'analyse */}
       <div style={styles.chartsGrid}>
-        <TopProductsWidget />
+        <TopProductsWidget
+          globalProducts={globalProducts}
+          salesHistory={salesHistory}
+          isDark={isDark}
+          currency={appSettings?.currency}
+        />
         
         {/* Statistiques détaillées */}
         <div style={styles.metricCard}>
