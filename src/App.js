@@ -12,6 +12,7 @@ import ReportsModule from './modules/reports/ReportsModule';
 import EmployeesModule from './modules/employees/EmployeesModule';
 import ReturnsModule from './modules/returns/ReturnsModule';
 import { MobileNavigation, useResponsive } from './components/ResponsiveComponents';
+import StoreSelector from './components/StoreSelector';
 import { ShoppingCart, Package, Users, Home, BarChart3, Settings, Calculator, CreditCard, UserCog, RotateCcw } from 'lucide-react';
 import styles from './App.module.css';
 
@@ -145,6 +146,7 @@ function AppContent() {
           <h1 className={styles.headerTitle}>
             {appSettings.storeName || 'POS Superette'}
           </h1>
+          <StoreSelector />
         </div>
 
         <div className={styles.headerRight}>
