@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Users, CreditCard, AlertTriangle, Clock, Check, Phone, Plus, Eye, FileText } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { saveCredits } from '../../services/sales.service';
+import { useResponsive, getResponsiveStyles } from '../../components/ResponsiveComponents';
 
 const CreditManagementModule = () => {
   const { customers, setCustomers, appSettings, credits, setCredits } = useApp();
@@ -17,10 +19,12 @@ const CreditManagementModule = () => {
   const [activeTab, setActiveTab] = useState('pending');
 
   const isDark = appSettings.darkMode;
+  const { deviceType } = useResponsive();
+  const sharedStyles = getResponsiveStyles(deviceType, isDark);
 
-  // Sauvegarder automatiquement
+  // Sauvegarder automatiquement via le service
   useEffect(() => {
-    localStorage.setItem('pos_credits', JSON.stringify(credits));
+    saveCredits(credits);
   }, [credits]);
 
   // Calculer la date d'échéance par défaut (30 jours)
@@ -141,24 +145,6 @@ const CreditManagementModule = () => {
   const filteredCredits = getFilteredCredits();
 
   const styles = {
-    container: {
-      padding: '20px',
-      background: isDark ? '#1a202c' : '#f7fafc',
-      minHeight: 'calc(100vh - 120px)'
-    },
-    card: {
-      background: isDark ? '#2d3748' : 'white',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      marginBottom: '20px'
-    },
-    header: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '20px'
-    },
     tabs: {
       display: 'flex',
       gap: '10px',
@@ -197,12 +183,12 @@ const CreditManagementModule = () => {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={sharedStyles.container}>
       {/* En-tête */}
-      <div style={styles.header}>
-        <h1 style={{ 
-          fontSize: '24px', 
-          fontWeight: 'bold', 
+      <div style={sharedStyles.header}>
+        <h1 style={{
+          fontSize: '24px',
+          fontWeight: 'bold',
           color: isDark ? '#f7fafc' : '#2d3748' 
         }}>
           Gestion des Crédits Clients
@@ -210,18 +196,7 @@ const CreditManagementModule = () => {
         
         <button
           onClick={() => setShowAddCreditModal(true)}
-          style={{
-            padding: '10px 20px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
+          style={{ ...sharedStyles.button, background: '#3b82f6', color: 'white' }}
         >
           <Plus size={18} />
           Nouveau Crédit
@@ -314,7 +289,7 @@ const CreditManagementModule = () => {
       </div>
 
       {/* Liste des crédits */}
-      <div style={styles.card}>
+      <div style={sharedStyles.card}>
         {filteredCredits.length === 0 ? (
           <div style={{ 
             textAlign: 'center', 

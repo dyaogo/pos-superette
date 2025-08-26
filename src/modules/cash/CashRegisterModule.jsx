@@ -2,6 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Calculator, Clock, DollarSign, FileText, Printer, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 
+import {
+  getCashSession,
+  saveCashSession,
+  getCashOperations,
+  saveCashOperations,
+  addCashReport,
+  clearCashData,
+} from '../../services/cash.service';
+import { useResponsive, getResponsiveStyles } from '../../components/ResponsiveComponents';
+
 const CashRegisterModule = () => {
   const { salesHistory, appSettings } = useApp();
   const [cashSession, setCashSession] = useState(null);
@@ -13,26 +23,25 @@ const CashRegisterModule = () => {
   const [notes, setNotes] = useState('');
 
   const isDark = appSettings.darkMode;
+  const { deviceType } = useResponsive();
+  const sharedStyles = getResponsiveStyles(deviceType, isDark);
 
   // Charger la session de caisse actuelle
   useEffect(() => {
-    const savedSession = localStorage.getItem('pos_cash_session');
-    const savedOperations = localStorage.getItem('pos_cash_operations');
-    
-    if (savedSession) {
-      setCashSession(JSON.parse(savedSession));
+    const session = getCashSession();
+    const operations = getCashOperations();
+    if (session) {
+      setCashSession(session);
     }
-    if (savedOperations) {
-      setCashOperations(JSON.parse(savedOperations));
+    if (operations.length) {
+      setCashOperations(operations);
     }
   }, []);
 
-  // Sauvegarder automatiquement
+  // Sauvegarder automatiquement via le service
   useEffect(() => {
-    if (cashSession) {
-      localStorage.setItem('pos_cash_session', JSON.stringify(cashSession));
-    }
-    localStorage.setItem('pos_cash_operations', JSON.stringify(cashOperations));
+    saveCashSession(cashSession);
+    saveCashOperations(cashOperations);
   }, [cashSession, cashOperations]);
 
   // Calculer les ventes de la session actuelle
@@ -111,15 +120,12 @@ const CashRegisterModule = () => {
     };
     
     // Sauvegarder le rapport
-    const reports = JSON.parse(localStorage.getItem('pos_cash_reports') || '[]');
-    reports.push(closingReport);
-    localStorage.setItem('pos_cash_reports', JSON.stringify(reports));
+    addCashReport(closingReport);
     
     // Fermer la session
     setCashSession(null);
     setCashOperations([]);
-    localStorage.removeItem('pos_cash_session');
-    localStorage.removeItem('pos_cash_operations');
+    clearCashData();
     
     setShowCloseModal(false);
     setClosingCash('');
@@ -147,34 +153,6 @@ const CashRegisterModule = () => {
   const expectedCash = cashSession ? cashSession.openingAmount + (totals?.cashSales || 0) : 0;
 
   const styles = {
-    container: {
-      padding: '20px',
-      background: isDark ? '#1a202c' : '#f7fafc',
-      minHeight: 'calc(100vh - 120px)'
-    },
-    card: {
-      background: isDark ? '#2d3748' : 'white',
-      padding: '20px',
-      borderRadius: '8px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      marginBottom: '20px'
-    },
-    header: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '20px'
-    },
-    button: {
-      padding: '10px 20px',
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer',
-      fontWeight: '600',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px'
-    },
     grid: {
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
@@ -183,9 +161,9 @@ const CashRegisterModule = () => {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={sharedStyles.container}>
       {/* En-tête */}
-      <div style={styles.header}>
+      <div style={sharedStyles.header}>
         <h1 style={{ 
           fontSize: '24px', 
           fontWeight: 'bold', 
@@ -198,11 +176,7 @@ const CashRegisterModule = () => {
           {!cashSession ? (
             <button
               onClick={() => setShowOpenModal(true)}
-              style={{
-                ...styles.button,
-                background: '#10b981',
-                color: 'white'
-              }}
+              style={{ ...sharedStyles.button, background: '#10b981', color: 'white' }}
             >
               <CheckCircle size={18} />
               Ouvrir la caisse
@@ -210,11 +184,7 @@ const CashRegisterModule = () => {
           ) : (
             <button
               onClick={() => setShowCloseModal(true)}
-              style={{
-                ...styles.button,
-                background: '#ef4444',
-                color: 'white'
-              }}
+              style={{ ...sharedStyles.button, background: '#ef4444', color: 'white' }}
             >
               <XCircle size={18} />
               Fermer la caisse
@@ -225,7 +195,7 @@ const CashRegisterModule = () => {
 
       {!cashSession ? (
         // Caisse fermée
-        <div style={styles.card}>
+        <div style={sharedStyles.card}>
           <div style={{ textAlign: 'center', padding: '40px' }}>
             <XCircle size={64} color="#ef4444" style={{ margin: '0 auto 20px' }} />
             <h2 style={{ 
@@ -240,11 +210,7 @@ const CashRegisterModule = () => {
             </p>
             <button
               onClick={() => setShowOpenModal(true)}
-              style={{
-                ...styles.button,
-                background: '#10b981',
-                color: 'white'
-              }}
+              style={{ ...sharedStyles.button, background: '#10b981', color: 'white' }}
             >
               <CheckCircle size={18} />
               Ouvrir la caisse
@@ -255,7 +221,7 @@ const CashRegisterModule = () => {
         // Caisse ouverte - Tableau de bord
         <>
           {/* Statut de la session */}
-          <div style={styles.card}>
+          <div style={sharedStyles.card}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '15px' }}>
               <CheckCircle size={24} color="#10b981" />
               <div>
@@ -300,7 +266,7 @@ const CashRegisterModule = () => {
 
           {/* Résumé des ventes */}
           {totals && (
-            <div style={styles.card}>
+            <div style={sharedStyles.card}>
               <h3 style={{ 
                 fontSize: '18px', 
                 fontWeight: '600', 
@@ -372,7 +338,7 @@ const CashRegisterModule = () => {
           )}
 
           {/* Opérations de caisse */}
-          <div style={styles.card}>
+          <div style={sharedStyles.card}>
             <h3 style={{ 
               fontSize: '18px', 
               fontWeight: '600', 

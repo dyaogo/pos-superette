@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ClipboardList, Save, AlertTriangle, Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { addInventoryRecord } from '../../services/inventory.service';
 
 const PhysicalInventory = () => {
   const { globalProducts, setGlobalProducts, appSettings } = useApp();
@@ -60,10 +61,8 @@ const PhysicalInventory = () => {
         differences,
         appliedAt: new Date().toISOString()
       };
-      
-      const inventoryHistory = JSON.parse(localStorage.getItem('pos_inventory_history') || '[]');
-      inventoryHistory.push(inventoryRecord);
-      localStorage.setItem('pos_inventory_history', JSON.stringify(inventoryHistory));
+
+      addInventoryRecord(inventoryRecord);
       
       alert('Inventaire appliqué avec succès!');
       setShowSummary(true);
