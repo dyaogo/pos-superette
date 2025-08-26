@@ -7,15 +7,17 @@ import {
 import { useApp } from '../../contexts/AppContext'; // ✅ CORRECTION CRITIQUE
 
 const DashboardModule = () => {
-  const { 
-    globalProducts, 
-    customers, 
-    salesHistory, 
-    appSettings, 
-    setAppSettings, 
-    getStats, 
-    clearAllData, 
-    credits 
+  const {
+    globalProducts,
+    customers,
+    salesHistory,
+    appSettings,
+    setAppSettings,
+    getStats,
+    clearAllData,
+    credits,
+    viewMode,
+    getCurrentStore
   } = useApp(); // ✅ CORRECTION CRITIQUE
   
   const [selectedPeriod, setSelectedPeriod] = useState('today');
@@ -23,7 +25,7 @@ const DashboardModule = () => {
   const [showAlerts, setShowAlerts] = useState(true);
   
   const isDark = appSettings?.darkMode || false;
-  const stats = getStats(); // Utilise la fonction existante
+  const stats = useMemo(() => getStats(), [viewMode, globalProducts, salesHistory, customers]);
 
   // Protection contre les valeurs undefined
   const safeToLocaleString = (value) => {
@@ -72,7 +74,7 @@ const DashboardModule = () => {
       previousTransactions,
       transactionGrowth: parseFloat(transactionGrowth.toFixed(1))
     };
-  }, [salesHistory, selectedPeriod]);
+  }, [salesHistory, selectedPeriod, viewMode]);
 
   // Styles
   const styles = {
@@ -552,7 +554,9 @@ const DashboardModule = () => {
       {/* En-tête avec sélecteur de période */}
       <div style={styles.header}>
         <div>
-          <h1 style={styles.title}>📊 Tableau de Bord</h1>
+          <h1 style={styles.title}>
+            📊 Tableau de Bord - {viewMode === 'consolidated' ? 'Vue consolidée' : getCurrentStore()?.code}
+          </h1>
           <p style={{ 
             color: isDark ? '#a0aec0' : '#64748b', 
             margin: '8px 0 0 0',

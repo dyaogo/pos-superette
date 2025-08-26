@@ -187,16 +187,58 @@ export const AppProvider = ({ children }) => {
   const getStats = () => {
     try {
       const today = new Date().toDateString();
-      const safeSales = salesHistory || [];
-      const safeProducts = globalProducts || [];
-      const safeCustomers = customers || [];
-      
-      const todaySales = safeSales.filter(sale => 
+
+      // Données par défaut (vue magasin)
+      let safeSales = salesHistory || [];
+      let safeProducts = globalProducts || [];
+      let safeCustomers = customers || [];
+
+      // Agrégation multi-magasins si nécessaire
+      if (viewMode === 'consolidated') {
+        safeSales = [];
+        safeProducts = [];
+        const customerMap = new Map();
+
+        stores.forEach(store => {
+          const storeKey = `pos_${store.id}`;
+
+          const storeSales = localStorage.getItem(`${storeKey}_sales`);
+          if (storeSales) {
+            try {
+              safeSales = safeSales.concat(JSON.parse(storeSales));
+            } catch (e) {
+              console.warn('Erreur de parsing sales:', e);
+            }
+          }
+
+          const storeProducts = localStorage.getItem(`${storeKey}_products`);
+          if (storeProducts) {
+            try {
+              safeProducts = safeProducts.concat(JSON.parse(storeProducts));
+            } catch (e) {
+              console.warn('Erreur de parsing products:', e);
+            }
+          }
+
+          const storeCustomers = localStorage.getItem(`${storeKey}_customers`);
+          if (storeCustomers) {
+            try {
+              JSON.parse(storeCustomers).forEach(c => customerMap.set(c.id, c));
+            } catch (e) {
+              console.warn('Erreur de parsing customers:', e);
+            }
+          }
+        });
+
+        safeCustomers = Array.from(customerMap.values());
+      }
+
+      const todaySales = safeSales.filter(sale =>
         new Date(sale.date).toDateString() === today
       );
-      
+
       const thisMonth = new Date().getMonth();
-      const monthSales = safeSales.filter(sale => 
+      const monthSales = safeSales.filter(sale =>
         new Date(sale.date).getMonth() === thisMonth
       );
 
