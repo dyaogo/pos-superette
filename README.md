@@ -2,6 +2,21 @@
 
 Application web de point de vente pour superettes multi-magasins. Elle permet de gérer les ventes, l’inventaire et les clients depuis le navigateur. L’application est construite avec React, s’appuie sur Firebase pour l’authentification et les données, utilise **lucide-react** pour les icônes et enregistre un **service worker** pour la mise en cache hors‑ligne.
 
+## Project Structure
+The project is organized into feature-oriented modules within the `src/` directory:
+
+- **assets/** – static images and other asset files.
+- **components/** – reusable UI components and layout elements.
+- **config/** – configuration files such as `firebase.js`.
+- **contexts/** – React context providers for global state.
+- **hooks/** – custom React hooks like `useAuth` and `useInventory`.
+- **modules/** – domain modules (cash, credits, customers, dashboard, inventory, sales, etc.).
+- **services/** – API clients and services.
+- **utils/** – helper functions, constants, and formatters.
+
+Static files like `index.html` reside in the `public/` directory.
+
+## Available Scripts
 ## Modules
 
 - Tableau de bord
