@@ -7,7 +7,7 @@ import DataManagerWidget from './components/DataManagerWidget';
 import { useApp } from '../../contexts/AppContext'; // ✅ CORRECTION CRITIQUE
 import styles from './DashboardModule.module.css';
 
-const DashboardModule = () => {
+const DashboardModule = ({ onNavigate }) => {
   const {
     globalProducts,
     customers,
@@ -127,6 +127,7 @@ const DashboardModule = () => {
         showAlerts={showAlerts}
         setShowAlerts={setShowAlerts}
         isDark={isDark}
+        onNavigate={onNavigate}
       />
 
       {/* Métriques principales avec comparaison */}

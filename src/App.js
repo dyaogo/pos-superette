@@ -77,7 +77,7 @@ function AppContent() {
     }
     switch(activeModule) {
       case 'dashboard':
-        return <DashboardModule />;
+        return <DashboardModule onNavigate={setActiveModule} />;
       case 'sales':
         return <SalesModule />;
       case 'stocks':
@@ -97,7 +97,7 @@ function AppContent() {
       case 'returns':
         return <ReturnsModule />;
       default:
-        return <DashboardModule />;
+        return <DashboardModule onNavigate={setActiveModule} />;
     }
   };
 

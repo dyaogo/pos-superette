@@ -1,7 +1,7 @@
 import React from 'react';
 import { AlertTriangle, Package, Clock, Bell } from 'lucide-react';
 
-const AlertsWidget = ({ globalProducts = [], credits = [], showAlerts, setShowAlerts, isDark }) => {
+const AlertsWidget = ({ globalProducts = [], credits = [], showAlerts, setShowAlerts, isDark, onNavigate = () => {} }) => {
   const lowStockProducts = globalProducts.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5));
   const outOfStockProducts = globalProducts.filter(p => (p.stock || 0) === 0);
   const overdueCredits = credits.filter(c => {
@@ -18,7 +18,8 @@ const AlertsWidget = ({ globalProducts = [], credits = [], showAlerts, setShowAl
       icon: AlertTriangle,
       title: 'Ruptures de Stock',
       message: `${outOfStockProducts.length} produit(s) en rupture`,
-      action: 'Voir Stocks'
+      action: 'Voir Stocks',
+      onClick: () => onNavigate('stocks')
     });
   }
 
@@ -28,7 +29,8 @@ const AlertsWidget = ({ globalProducts = [], credits = [], showAlerts, setShowAl
       icon: Package,
       title: 'Stock Faible',
       message: `${lowStockProducts.length} produit(s) en stock faible`,
-      action: 'Réapprovisionner'
+      action: 'Réapprovisionner',
+      onClick: () => onNavigate('stocks')
     });
   }
 
@@ -38,7 +40,8 @@ const AlertsWidget = ({ globalProducts = [], credits = [], showAlerts, setShowAl
       icon: Clock,
       title: 'Crédits en Retard',
       message: `${overdueCredits.length} crédit(s) en retard`,
-      action: 'Voir Crédits'
+      action: 'Voir Crédits',
+      onClick: () => onNavigate('credits')
     });
   }
 
@@ -105,7 +108,7 @@ const AlertsWidget = ({ globalProducts = [], credits = [], showAlerts, setShowAl
               {alert.message}
             </div>
           </div>
-          <button style={{
+          <button onClick={alert.onClick} style={{
             padding: '6px 12px',
             background: alert.type === 'error' ? '#ef4444' : '#f59e0b',
             color: 'white',
