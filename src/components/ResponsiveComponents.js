@@ -133,11 +133,18 @@ export const getResponsiveStyles = (deviceType, isDark) => {
     grid: {
       display: 'grid',
       gap: deviceType === 'mobile' ? '12px' : '15px',
-      gridTemplateColumns: deviceType === 'mobile' ? 
+      gridTemplateColumns: deviceType === 'mobile' ?
         'repeat(auto-fit, minmax(140px, 1fr))' :
         deviceType === 'tablet' ?
         'repeat(auto-fit, minmax(160px, 1fr))' :
         'repeat(auto-fit, minmax(180px, 1fr))'
+    },
+
+    header: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: deviceType === 'mobile' ? '15px' : '20px'
     },
 
     modal: {
