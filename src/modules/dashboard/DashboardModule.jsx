@@ -35,10 +35,12 @@ const DashboardModule = () => {
   // Calculs avancés pour les métriques comparatives
   const dashboardMetrics = useMemo(() => {
     const now = new Date();
-    
+    const startOfToday = new Date(now);
+    startOfToday.setHours(0, 0, 0, 0);
+
     // Définir les périodes
     const periods = {
-      today: { start: new Date(now.setHours(0,0,0,0)), label: "Aujourd'hui" },
+      today: { start: startOfToday, label: "Aujourd'hui" },
       week: { start: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), label: "7 derniers jours" },
       month: { start: new Date(now.getFullYear(), now.getMonth(), 1), label: "Ce mois" },
       year: { start: new Date(now.getFullYear(), 0, 1), label: "Cette année" }
