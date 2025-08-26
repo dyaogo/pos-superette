@@ -2,11 +2,11 @@ import React, { useState } from 'react';
 import { Store, ChevronDown, Eye, Grid } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
 
-const StoreSelector = () => {
-  const { 
-    stores, 
-    currentStoreId, 
-    setCurrentStoreId, 
+const StoreSelector = ({ modal = false }) => {
+  const {
+    stores,
+    currentStoreId,
+    setCurrentStoreId,
     viewMode, 
     setViewMode, 
     getCurrentStore,
@@ -15,7 +15,7 @@ const StoreSelector = () => {
   
   const [isOpen, setIsOpen] = useState(false);
   const isDark = appSettings.darkMode;
-  
+
   const currentStore = getCurrentStore();
 
   const handleStoreChange = (storeId) => {
@@ -31,6 +31,83 @@ const StoreSelector = () => {
     setIsOpen(false);
   };
 
+  // ----- Mode modal -----
+  if (modal) {
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}
+      >
+        <div
+          style={{
+            background: isDark ? '#2d3748' : 'white',
+            borderRadius: '8px',
+            padding: '20px',
+            minWidth: '280px'
+          }}
+        >
+          <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
+            Sélection du magasin
+          </div>
+          {stores.map(store => (
+            <button
+              key={store.id}
+              onClick={() => handleStoreChange(store.id)}
+              style={{
+                width: '100%',
+                padding: '12px 16px',
+                border: 'none',
+                background: currentStoreId === store.id && viewMode === 'single'
+                  ? (isDark ? '#4a5568' : '#edf2f7')
+                  : 'transparent',
+                color: isDark ? '#f7fafc' : '#2d3748',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                fontSize: '14px',
+                textAlign: 'left'
+              }}
+            >
+              <div
+                style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  background: store.color,
+                  flexShrink: 0
+                }}
+              />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: '500' }}>{store.name}</div>
+                <div
+                  style={{
+                    fontSize: '12px',
+                    color: isDark ? '#a0aec0' : '#718096',
+                    marginTop: '2px'
+                  }}
+                >
+                  {store.code} • {store.manager}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // ----- Mode dropdown par défaut -----
   return (
     <div style={{ position: 'relative' }}>
       {/* Bouton principal */}
@@ -52,7 +129,7 @@ const StoreSelector = () => {
         }}
       >
         <Store size={16} />
-        
+
         {viewMode === 'single' ? (
           <>
             <div
@@ -71,13 +148,13 @@ const StoreSelector = () => {
             <span>Tous les magasins</span>
           </>
         )}
-        
-        <ChevronDown 
-          size={16} 
-          style={{ 
+
+        <ChevronDown
+          size={16}
+          style={{
             transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
             transition: 'transform 0.2s'
-          }} 
+          }}
         />
       </button>
 
@@ -96,7 +173,7 @@ const StoreSelector = () => {
             }}
             onClick={() => setIsOpen(false)}
           />
-          
+
           {/* Menu */}
           <div
             style={{
@@ -141,8 +218,8 @@ const StoreSelector = () => {
                 width: '100%',
                 padding: '12px 16px',
                 border: 'none',
-                background: viewMode === 'consolidated' 
-                  ? (isDark ? '#4a5568' : '#edf2f7') 
+                background: viewMode === 'consolidated'
+                  ? (isDark ? '#4a5568' : '#edf2f7')
                   : 'transparent',
                 color: isDark ? '#f7fafc' : '#2d3748',
                 cursor: 'pointer',
@@ -166,8 +243,8 @@ const StoreSelector = () => {
               <Eye size={16} />
               <div>
                 <div style={{ fontWeight: '500' }}>Vue consolidée</div>
-                <div style={{ 
-                  fontSize: '12px', 
+                <div style={{
+                  fontSize: '12px',
                   color: isDark ? '#a0aec0' : '#718096',
                   marginTop: '2px'
                 }}>
@@ -236,11 +313,11 @@ const StoreSelector = () => {
                     flexShrink: 0
                   }}
                 />
-                
+
                 <div style={{ flex: 1, textAlign: 'left' }}>
                   <div style={{ fontWeight: '500' }}>{store.name}</div>
-                  <div style={{ 
-                    fontSize: '12px', 
+                  <div style={{
+                    fontSize: '12px',
                     color: isDark ? '#a0aec0' : '#718096',
                     marginTop: '2px'
                   }}>

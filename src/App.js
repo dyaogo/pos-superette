@@ -36,7 +36,8 @@ function AppContent() {
     globalProducts,
     salesHistory,
     customers,
-    credits
+    credits,
+    currentStoreId
   } = useApp();
 
   const { user, role, login, logout, loading } = useAuth();
@@ -136,6 +137,11 @@ function AppContent() {
         </div>
       </div>
     );
+  }
+
+  // Si l'utilisateur est connecté mais n'a pas encore sélectionné de magasin
+  if (!currentStoreId) {
+    return <StoreSelector modal />;
   }
 
   // Application principale avec navigation
