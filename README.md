@@ -77,3 +77,15 @@ Le fichier `.env.example` répertorie toutes les variables d’environnement uti
 - [lucide-react](https://lucide.dev/) : bibliothèque d’icônes.
 - Service worker (`src/serviceWorkerRegistration.js`) : support hors‑ligne et cache.
 
+## Vider le cache du service worker
+
+En cas de besoin, vous pouvez supprimer le cache depuis la console du navigateur :
+
+```js
+navigator.serviceWorker
+  .getRegistrations()
+  .then((regs) => regs.forEach((reg) => reg.unregister()));
+```
+
+Rechargez ensuite la page pour réinstaller un service worker propre.
+
