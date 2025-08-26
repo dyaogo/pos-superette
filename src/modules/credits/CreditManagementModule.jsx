@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, CreditCard, AlertTriangle, Clock, Check, Phone, Plus, Eye, FileText } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { saveCredits } from '../../services/sales.service';
 import { useResponsive, getResponsiveStyles } from '../../components/ResponsiveComponents';
 
 const CreditManagementModule = () => {
@@ -21,9 +22,9 @@ const CreditManagementModule = () => {
   const { deviceType } = useResponsive();
   const sharedStyles = getResponsiveStyles(deviceType, isDark);
 
-  // Sauvegarder automatiquement
+  // Sauvegarder automatiquement via le service
   useEffect(() => {
-    localStorage.setItem('pos_credits', JSON.stringify(credits));
+    saveCredits(credits);
   }, [credits]);
 
   // Calculer la date d'échéance par défaut (30 jours)

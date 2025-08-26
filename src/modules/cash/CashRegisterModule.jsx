@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Calculator, Clock, DollarSign, FileText, Printer, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+
+import {
+  getCashSession,
+  saveCashSession,
+  getCashOperations,
+  saveCashOperations,
+  addCashReport,
+  clearCashData,
+} from '../../services/cash.service';
 import { useResponsive, getResponsiveStyles } from '../../components/ResponsiveComponents';
 
 const CashRegisterModule = () => {
@@ -19,23 +28,20 @@ const CashRegisterModule = () => {
 
   // Charger la session de caisse actuelle
   useEffect(() => {
-    const savedSession = localStorage.getItem('pos_cash_session');
-    const savedOperations = localStorage.getItem('pos_cash_operations');
-    
-    if (savedSession) {
-      setCashSession(JSON.parse(savedSession));
+    const session = getCashSession();
+    const operations = getCashOperations();
+    if (session) {
+      setCashSession(session);
     }
-    if (savedOperations) {
-      setCashOperations(JSON.parse(savedOperations));
+    if (operations.length) {
+      setCashOperations(operations);
     }
   }, []);
 
-  // Sauvegarder automatiquement
+  // Sauvegarder automatiquement via le service
   useEffect(() => {
-    if (cashSession) {
-      localStorage.setItem('pos_cash_session', JSON.stringify(cashSession));
-    }
-    localStorage.setItem('pos_cash_operations', JSON.stringify(cashOperations));
+    saveCashSession(cashSession);
+    saveCashOperations(cashOperations);
   }, [cashSession, cashOperations]);
 
   // Calculer les ventes de la session actuelle
@@ -114,15 +120,12 @@ const CashRegisterModule = () => {
     };
     
     // Sauvegarder le rapport
-    const reports = JSON.parse(localStorage.getItem('pos_cash_reports') || '[]');
-    reports.push(closingReport);
-    localStorage.setItem('pos_cash_reports', JSON.stringify(reports));
+    addCashReport(closingReport);
     
     // Fermer la session
     setCashSession(null);
     setCashOperations([]);
-    localStorage.removeItem('pos_cash_session');
-    localStorage.removeItem('pos_cash_operations');
+    clearCashData();
     
     setShowCloseModal(false);
     setClosingCash('');
