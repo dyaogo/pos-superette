@@ -3,8 +3,8 @@ import { Plus } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 
 const EmployeeForm = () => {
-  const { employees, setEmployees, appSettings } = useApp();
-  const [form, setForm] = useState({ name: '', role: '', phone: '' });
+  const { employees, setEmployees, appSettings, stores, currentStoreId } = useApp();
+  const [form, setForm] = useState({ name: '', role: '', phone: '', storeId: currentStoreId });
   const isDark = appSettings.darkMode;
 
   const handleChange = (e) => {
@@ -18,10 +18,11 @@ const EmployeeForm = () => {
       name: form.name.trim(),
       role: form.role.trim(),
       phone: form.phone.trim(),
+      storeId: form.storeId,
       shifts: []
     };
     setEmployees([...(employees || []), newEmployee]);
-    setForm({ name: '', role: '', phone: '' });
+    setForm({ name: '', role: '', phone: '', storeId: currentStoreId });
   };
 
   const styles = {
@@ -75,6 +76,18 @@ const EmployeeForm = () => {
         onChange={handleChange}
         style={styles.input}
       />
+      <select
+        name="storeId"
+        value={form.storeId}
+        onChange={handleChange}
+        style={styles.input}
+      >
+        {(stores || []).map(store => (
+          <option key={store.id} value={store.id}>
+            {store.name}
+          </option>
+        ))}
+      </select>
       <button onClick={addEmployee} style={styles.addButton}>
         <Plus size={16} /> Ajouter
       </button>

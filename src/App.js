@@ -19,11 +19,11 @@ import styles from './App.module.css';
 // Composant principal avec les Providers
 function App() {
   return (
-    <AuthProvider>
-      <AppProvider>
+    <AppProvider>
+      <AuthProvider>
         <AppContent />
-      </AppProvider>
-    </AuthProvider>
+      </AuthProvider>
+    </AppProvider>
   );
 }
 
