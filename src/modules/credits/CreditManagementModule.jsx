@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Users, CreditCard, AlertTriangle, Clock, Check, Phone, Plus, Eye, FileText } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { saveCredits } from '../../services/sales.service';
 
 const CreditManagementModule = () => {
   const { customers, setCustomers, appSettings, credits, setCredits } = useApp();
@@ -18,9 +19,9 @@ const CreditManagementModule = () => {
 
   const isDark = appSettings.darkMode;
 
-  // Sauvegarder automatiquement
+  // Sauvegarder automatiquement via le service
   useEffect(() => {
-    localStorage.setItem('pos_credits', JSON.stringify(credits));
+    saveCredits(credits);
   }, [credits]);
 
   // Calculer la date d'échéance par défaut (30 jours)
