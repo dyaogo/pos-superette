@@ -6,6 +6,29 @@ const isLocalhost = Boolean(
     )
 );
 
+function showUpdateButton(registration) {
+  const id = 'sw-update-button';
+  if (document.getElementById(id)) {
+    return;
+  }
+  const button = document.createElement('button');
+  button.id = id;
+  button.textContent = 'Nouvelle version disponible';
+  Object.assign(button.style, {
+    position: 'fixed',
+    bottom: '1rem',
+    right: '1rem',
+    zIndex: 1000,
+  });
+  button.addEventListener('click', () => {
+    if (registration.waiting) {
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+    window.location.reload();
+  });
+  document.body.appendChild(button);
+}
+
 export function register(config) {
   if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
     const publicUrl = new URL(process.env.PUBLIC_URL, window.location.href);
@@ -43,6 +66,7 @@ function registerValidSW(swUrl, config) {
           if (installingWorker.state === 'installed') {
             if (navigator.serviceWorker.controller) {
               console.log('New content is available; please refresh.');
+              showUpdateButton(registration);
               if (config && config.onUpdate) {
                 config.onUpdate(registration);
               }
