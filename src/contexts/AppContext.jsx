@@ -54,12 +54,33 @@ export const AppProvider = ({ children }) => {
   const [credits, setCredits] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [returnsHistory, setReturnsHistory] = useState([]);
-  const [appSettings, setAppSettings] = useState({
-    storeName: 'Alimentation Wend-Kuuni',
-    currency: 'FCFA',
-    taxRate: 18,
-    pointsPerPurchase: 1,
-    darkMode: false
+  const [appSettings, setAppSettings] = useState(() => {
+    try {
+      const storeKey = currentStoreId ? `pos_${currentStoreId}_settings` : null;
+      if (storeKey) {
+        const saved = localStorage.getItem(storeKey);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return {
+            currency: 'FCFA',
+            taxRate: 18,
+            pointsPerPurchase: 1,
+            darkMode: false,
+            ...parsed,
+            storeName: stores.find(s => s.id === currentStoreId)?.name || parsed.storeName
+          };
+        }
+      }
+    } catch (e) {
+      console.warn('Erreur de chargement des paramètres:', e);
+    }
+    return {
+      storeName: stores.find(s => s.id === currentStoreId)?.name || 'Alimentation Wend-Kuuni',
+      currency: 'FCFA',
+      taxRate: 18,
+      pointsPerPurchase: 1,
+      darkMode: false
+    };
   });
 
   // ==================== FONCTIONS UTILITAIRES ====================
@@ -75,6 +96,8 @@ export const AppProvider = ({ children }) => {
     if (newStoreId === currentStoreId) return;
     setCurrentStoreId(newStoreId);
     localStorage.setItem('pos_current_store', newStoreId);
+    const storeName = stores.find(store => store.id === newStoreId)?.name;
+    setAppSettings(prev => ({ ...prev, storeName }));
   };
 
   // ==================== FONCTIONS MÉTIER ====================
@@ -363,12 +386,17 @@ export const AppProvider = ({ children }) => {
         }
       }
       
+      const storeName = stores.find(s => s.id === currentStoreId)?.name;
       if (savedSettings) {
         try {
-          setAppSettings(JSON.parse(savedSettings));
+          const parsed = JSON.parse(savedSettings);
+          setAppSettings({ ...parsed, storeName: storeName || parsed.storeName });
         } catch (e) {
           console.warn('Erreur de parsing settings:', e);
+          setAppSettings(prev => ({ ...prev, storeName }));
         }
+      } else {
+        setAppSettings(prev => ({ ...prev, storeName }));
       }
 
       if (savedEmployees) {
