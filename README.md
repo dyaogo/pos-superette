@@ -64,6 +64,13 @@ Static files like `index.html` reside in the `public/` directory.
 
 Le fichier `.env.example` répertorie toutes les variables d’environnement utilisées par l’application. Remplacez les valeurs par celles de votre projet avant de lancer l’application.
 
+## Déploiement sur Vercel
+
+1. Importez ce dépôt dans [Vercel](https://vercel.com/) via **New Project** et sélectionnez la source GitHub correspondante.
+2. Dans l’onglet **Settings > Environment Variables**, créez les variables listées dans `.env.example` (`REACT_APP_FIREBASE_API_KEY`, `REACT_APP_FIREBASE_AUTH_DOMAIN`, etc.) pour les environnements **Production** et **Preview**.
+3. Conservez la commande de build par défaut `npm run build` et le dossier de sortie `build` (valeurs par défaut de Create React App).
+4. Déployez le projet. Vercel utilisera ces variables lors du build et à l’exécution.
+
 ## Dépendances clés
 
 - [Firebase](https://firebase.google.com/) : authentification et base de données.
