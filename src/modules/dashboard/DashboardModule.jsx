@@ -5,6 +5,7 @@ import AlertsWidget from './components/AlertsWidget';
 import TopProductsWidget from './components/TopProductsWidget';
 import DataManagerWidget from './components/DataManagerWidget';
 import { useApp } from '../../contexts/AppContext'; // ✅ CORRECTION CRITIQUE
+import styles from './DashboardModule.module.css';
 
 const DashboardModule = () => {
   const {
@@ -77,93 +78,25 @@ const DashboardModule = () => {
     };
   }, [salesHistory, selectedPeriod, viewMode]);
 
-  // Styles
-  const styles = {
-    container: {
-      padding: '20px',
-      background: isDark ? '#1a202c' : '#f7fafc',
-      minHeight: 'calc(100vh - 100px)'
-    },
-    header: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: '30px'
-    },
-    title: {
-      fontSize: '32px',
-      fontWeight: 'bold',
-      color: isDark ? '#f7fafc' : '#2d3748',
-      margin: 0
-    },
-    periodSelector: {
-      display: 'flex',
-      gap: '8px',
-      background: isDark ? '#2d3748' : 'white',
-      padding: '4px',
-      borderRadius: '8px',
-      border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-    },
-    periodButton: {
-      padding: '8px 16px',
-      border: 'none',
-      borderRadius: '6px',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '500',
-      transition: 'all 0.2s'
-    },
-    metricsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-      gap: '20px',
-      marginBottom: '30px'
-    },
-    metricCard: {
-      background: isDark ? '#2d3748' : 'white',
-      padding: '24px',
-      borderRadius: '12px',
-      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-      border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-    },
-    chartsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-      gap: '20px',
-      marginBottom: '30px'
-    }
-  };
   return (
-    <div style={styles.container}>
+    <div className={`${styles.container} ${isDark ? styles.dark : ''}`}>
       {/* En-tête avec sélecteur de période */}
-      <div style={styles.header}>
+      <div className={styles.header}>
         <div>
-          <h1 style={styles.title}>
+          <h1 className={styles.title}>
             📊 Tableau de Bord - {viewMode === 'consolidated' ? 'Vue consolidée' : getCurrentStore()?.code}
           </h1>
-          <p style={{ 
-            color: isDark ? '#a0aec0' : '#64748b', 
-            margin: '8px 0 0 0',
-            fontSize: '16px'
-          }}>
+          <p className={styles.subtitle}>
             Vue d'ensemble de votre activité - {dashboardMetrics.periodLabel}
           </p>
         </div>
-        
-        <div style={styles.periodSelector}>
+
+        <div className={styles.periodSelector}>
           {['today', 'week', 'month', 'year'].map(period => (
             <button
               key={period}
               onClick={() => setSelectedPeriod(period)}
-              style={{
-                ...styles.periodButton,
-                background: selectedPeriod === period 
-                  ? (isDark ? '#4a5568' : '#edf2f7') 
-                  : 'transparent',
-                color: selectedPeriod === period
-                  ? (isDark ? '#f7fafc' : '#2d3748')
-                  : (isDark ? '#a0aec0' : '#64748b')
-              }}
+              className={`${styles.periodButton} ${selectedPeriod === period ? styles.active : ''}`}
             >
               {period === 'today' && 'Aujourd\'hui'}
               {period === 'week' && '7 jours'}
@@ -197,7 +130,7 @@ const DashboardModule = () => {
       />
 
       {/* Métriques principales avec comparaison */}
-      <div style={styles.metricsGrid}>
+      <div className={styles.metricsGrid}>
         <MetricCard
           title={`Chiffre d'Affaires - ${dashboardMetrics.periodLabel}`}
           value={dashboardMetrics.currentRevenue}
@@ -241,76 +174,45 @@ const DashboardModule = () => {
       </div>
 
       {/* Widgets d'analyse */}
-      <div style={styles.chartsGrid}>
+      <div className={styles.chartsGrid}>
         <TopProductsWidget
           globalProducts={globalProducts}
           salesHistory={salesHistory}
           isDark={isDark}
           currency={appSettings?.currency}
         />
-        
+
         {/* Statistiques détaillées */}
-        <div style={styles.metricCard}>
-          <h3 style={{ 
-            fontSize: '18px', 
-            fontWeight: 'bold', 
-            color: isDark ? '#f7fafc' : '#2d3748',
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}>
+        <div className={styles.metricCard}>
+          <h3 className={styles.detailTitle}>
             <BarChart3 size={20} />
             Statistiques Détaillées
           </h3>
-          
-          <div style={{ display: 'grid', gap: '12px' }}>
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              padding: '8px 0',
-              borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-            }}>
-              <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>
+
+          <div className={styles.detailList}>
+            <div className={styles.detailItem}>
+              <span className={styles.detailItemLabel}>
                 Valeur de l'inventaire
               </span>
-              <span style={{ 
-                fontWeight: 'bold', 
-                color: isDark ? '#f7fafc' : '#2d3748' 
-              }}>
+              <span className={styles.detailItemValue}>
                 {safeToLocaleString(stats?.inventoryValue)} {appSettings?.currency || 'FCFA'}
               </span>
             </div>
-            
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              padding: '8px 0',
-              borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-            }}>
-              <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>
+
+            <div className={styles.detailItem}>
+              <span className={styles.detailItemLabel}>
                 Stock faible
               </span>
-              <span style={{ 
-                fontWeight: 'bold', 
-                color: stats?.lowStockCount > 0 ? '#f59e0b' : '#10b981'
-              }}>
+              <span className={`${styles.detailItemValue} ${stats?.lowStockCount > 0 ? styles.warning : styles.success}`}>
                 {stats?.lowStockCount || 0} produits
               </span>
             </div>
-            
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between',
-              padding: '8px 0'
-            }}>
-              <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>
+
+            <div className={styles.detailItem}>
+              <span className={styles.detailItemLabel}>
                 Ruptures de stock
               </span>
-              <span style={{ 
-                fontWeight: 'bold', 
-                color: stats?.outOfStockCount > 0 ? '#ef4444' : '#10b981'
-              }}>
+              <span className={`${styles.detailItemValue} ${stats?.outOfStockCount > 0 ? styles.error : styles.success}`}>
                 {stats?.outOfStockCount || 0} produits
               </span>
             </div>
