@@ -1,5 +1,6 @@
 import React from 'react';
 import Navigation from './Navigation';
+import { CloudSyncPanel } from '../CloudSyncPanel';
 
 /**
  * Simple header component with optional title and navigation links.
@@ -8,8 +9,11 @@ const Header = ({ title = '', links = [], children }) => {
   return (
     <header style={styles.header}>
       {title && <h1 style={styles.title}>{title}</h1>}
-      {links.length > 0 && <Navigation links={links} />}
-      {children}
+      <div style={styles.right}>
+        {links.length > 0 && <Navigation links={links} />}
+        {children}
+        <CloudSyncPanel />
+      </div>
     </header>
   );
 };
@@ -26,6 +30,11 @@ const styles = {
   title: {
     margin: 0,
     fontSize: '1.25rem'
+  },
+  right: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '1rem'
   }
 };
 

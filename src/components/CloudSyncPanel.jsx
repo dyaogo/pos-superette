@@ -18,6 +18,7 @@ export const CloudSyncPanel = () => {
   const [showCloudSetup, setShowCloudSetup] = useState(false);
   const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [isNewAccount, setIsNewAccount] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const handleEnableCloud = async () => {
     const result = await enableCloud(credentials.email, credentials.password, isNewAccount);
@@ -48,9 +49,21 @@ export const CloudSyncPanel = () => {
     }
   };
 
+  if (isCollapsed) {
+    return (
+      <div className={styles.collapsed} onClick={() => setIsCollapsed(false)}>
+        <span className={styles.statusIcon}>☁️</span>
+        <span className={styles.toggle}>⬇️</span>
+      </div>
+    );
+  }
+
   return (
-    <div className={styles.panel}>
-      <h3 className={styles.title}>Sauvegarde & Synchronisation Cloud</h3>
+    <div className={styles.expanded}>
+      <div className={styles.header}>
+        <h3 className={styles.title}>Sauvegarde & Synchronisation Cloud</h3>
+        <span className={styles.toggle} onClick={() => setIsCollapsed(true)}>⬆️</span>
+      </div>
 
       {/* Status */}
       <div className={styles.status}>
