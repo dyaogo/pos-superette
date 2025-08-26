@@ -15,6 +15,7 @@ import { MobileNavigation, useResponsive } from './components/ResponsiveComponen
 import StoreSelector from './components/StoreSelector';
 import { ShoppingCart, Package, Users, Home, BarChart3, Settings, Calculator, CreditCard, UserCog, RotateCcw } from 'lucide-react';
 import styles from './App.module.css';
+import LoadingSpinner from './components/common/LoadingSpinner';
 
 // Composant principal avec les Providers
 function App() {
@@ -39,14 +40,19 @@ function AppContent() {
     credits,
     currentStoreId
   } = useApp();
-
-  const { user, role, login, logout, loading } = useAuth();
+  let auth;
+  try {
+    auth = useAuth();
+    getStats();
+  } catch (error) {
+    console.error('Firebase initialization failed:', error);
+    return <div>Erreur d\'initialisation de Firebase</div>;
+  }
+  const { user, role, login, logout, loading } = auth;
   const [activeModule, setActiveModule] = useState('dashboard');
   const { isMobile } = useResponsive();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
-  const stats = getStats();
 
   // Effet pour le mode sombre
   useEffect(() => {
@@ -94,7 +100,7 @@ function AppContent() {
 
   // Page de connexion
   if (loading) {
-    return null;
+    return <LoadingSpinner />;
   }
 
   if (!user) {
