@@ -10,8 +10,87 @@ const DataManagerWidget = ({
   credits = [],
   appSettings = {},
   clearAllData,
-  isDark
-}) => (
+  isDark,
+  setGlobalProducts,
+  setSalesHistory,
+  setCustomers,
+  setCredits,
+  setAppSettings
+}) => {
+  const handleImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const data = JSON.parse(reader.result);
+          const {
+            products,
+            sales,
+            customers: importedCustomers,
+            credits: importedCredits,
+            settings
+          } = data || {};
+
+          if (
+            !Array.isArray(products) ||
+            !Array.isArray(sales) ||
+            !Array.isArray(importedCustomers) ||
+            !Array.isArray(importedCredits) ||
+            typeof settings !== 'object'
+          ) {
+            alert('❌ Structure de sauvegarde invalide');
+            return;
+          }
+
+          const currentData = {
+            timestamp: new Date().toISOString(),
+            products: globalProducts,
+            sales: salesHistory,
+            customers,
+            credits,
+            settings: appSettings
+          };
+
+          try {
+            localStorage.setItem(`pos_backup_${Date.now()}`, JSON.stringify(currentData));
+          } catch (err) {
+            console.warn('Erreur lors de la sauvegarde locale:', err);
+          }
+
+          const blob = new Blob([JSON.stringify(currentData, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `pos-backup-before-import-${new Date().toISOString().split('T')[0]}.json`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          setGlobalProducts(products);
+          setSalesHistory(sales);
+          setCustomers(importedCustomers);
+          setCredits(importedCredits);
+          setAppSettings(prev => ({ ...prev, ...settings }));
+
+          alert('✅ Sauvegarde importée avec succès');
+        } catch (error) {
+          console.error('Erreur lors de l\'importation:', error);
+          alert('❌ Fichier de sauvegarde invalide');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  };
+
+  return (
   <div style={{
     background: isDark ? '#2d3748' : 'white',
     padding: '24px',
@@ -89,27 +168,7 @@ const DataManagerWidget = ({
           </button>
 
           <button
-            onClick={() => {
-              const input = document.createElement('input');
-              input.type = 'file';
-              input.accept = '.json';
-              input.onchange = (e) => {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = () => {
-                  try {
-                    JSON.parse(reader.result);
-                    alert("📄 Fichier valide ! Fonctionnalité d'import en cours de développement...");
-                  } catch (error) {
-                    alert('❌ Fichier de sauvegarde invalide');
-                  }
-                };
-                reader.readAsText(file);
-              };
-              input.click();
-            }}
+            onClick={handleImport}
             style={{
               padding: '8px 16px',
               background: '#3b82f6',
@@ -144,6 +203,7 @@ const DataManagerWidget = ({
       </div>
     )}
   </div>
-);
+  );
+};
 
 export default DataManagerWidget;

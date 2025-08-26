@@ -17,7 +17,12 @@ const DashboardModule = ({ onNavigate }) => {
     clearAllData,
     credits,
     viewMode,
-    getCurrentStore
+    getCurrentStore,
+    setGlobalProducts,
+    setSalesHistory,
+    setCustomers,
+    setCredits,
+    setAppSettings
   } = useApp(); // ✅ CORRECTION CRITIQUE
   
   const [selectedPeriod, setSelectedPeriod] = useState('today');
@@ -118,6 +123,11 @@ const DashboardModule = ({ onNavigate }) => {
         appSettings={appSettings}
         clearAllData={clearAllData}
         isDark={isDark}
+        setGlobalProducts={setGlobalProducts}
+        setSalesHistory={setSalesHistory}
+        setCustomers={setCustomers}
+        setCredits={setCredits}
+        setAppSettings={setAppSettings}
       />
 
       {/* Alertes */}

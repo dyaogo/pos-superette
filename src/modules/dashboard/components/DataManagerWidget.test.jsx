@@ -14,6 +14,11 @@ test('renders data manager widget heading', () => {
       appSettings={{}}
       clearAllData={() => {}}
       isDark={false}
+      setGlobalProducts={() => {}}
+      setSalesHistory={() => {}}
+      setCustomers={() => {}}
+      setCredits={() => {}}
+      setAppSettings={() => {}}
     />
   );
   expect(screen.getByText(/Sauvegarde/)).toBeInTheDocument();
