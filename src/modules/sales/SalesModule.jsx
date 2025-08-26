@@ -27,6 +27,12 @@ const SalesModule = () => {
 
   const frequentAmounts = [500, 1000, 2000, 5000, 10000, 20000];
 
+  const filteredProducts = products.filter(product =>
+    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    product.barcode?.includes(searchQuery)
+  ).slice(0, quickMode ? 12 : 20);
+
   useEffect(() => {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
     const tax = subtotal * (appSettings.taxRate / 100);
@@ -165,12 +171,6 @@ const SalesModule = () => {
     setSearchQuery('');
     document.getElementById('product-search')?.focus();
   };
-
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.barcode?.includes(searchQuery)
-  ).slice(0, quickMode ? 12 : 20);
 
   const handleBarcodeDetected = (code) => {
     const found = products.find(p => p.barcode === code || p.sku === code);
