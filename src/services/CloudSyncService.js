@@ -133,7 +133,8 @@ export class CloudSyncService {
         throw new Error('Format de sauvegarde invalide');
       }
       
-      const confirmMessage = `Restaurer la sauvegarde de "${backup.storeName}" du ${new Date(backup.createdAt).toLocaleDateString('fr-FR')} ?\n\nCeci remplacera toutes les données actuelles.`;
+      const confirmMessage =
+        `Restaurer la sauvegarde de "${backup.storeName}" du ${new Date(backup.createdAt).toLocaleDateString('fr-FR')} ?\n\nCeci remplacera toutes les données actuelles.`;
       
       if (!window.confirm(confirmMessage)) {
         return { success: false, message: 'Restauration annulée' };
