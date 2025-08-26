@@ -22,3 +22,22 @@ export async function addInventoryRecord(record) {
   return record;
 }
 
+export const loadInventory = (storeId) => {
+  if (!storeId) return [];
+  try {
+    const data = localStorage.getItem(`pos_${storeId}_products`);
+    return data ? JSON.parse(data) : [];
+  } catch (err) {
+    console.warn('Erreur de chargement de l\'inventaire:', err);
+    return [];
+  }
+};
+
+export const saveInventory = (storeId, products) => {
+  if (!storeId) return;
+  try {
+    localStorage.setItem(`pos_${storeId}_products`, JSON.stringify(products));
+  } catch (err) {
+    console.warn('Erreur de sauvegarde de l\'inventaire:', err);
+  }
+};

@@ -4,16 +4,18 @@ import InventoryModule from './InventoryModule';
 
 jest.mock('../../contexts/AppContext', () => ({
   useApp: () => ({
-    globalProducts: [{ id: 1, name: 'Produit', category: 'A', stock: 10, costPrice: 5, price: 10 }],
+    inventories: { store1: [{ id: 1, name: 'Produit', category: 'A', stock: 10, costPrice: 5, price: 10 }] },
     setGlobalProducts: jest.fn(),
     addStock: jest.fn(),
     appSettings: { darkMode: false },
-    salesHistory: []
+    salesHistory: [],
+    currentStoreId: 'store1'
   })
 }));
 
 jest.mock('./BarcodeSystem', () => () => <div>BarcodeSystem</div>);
 jest.mock('./PhysicalInventory', () => () => <div>PhysicalInventory</div>);
+jest.mock('./TransferStock', () => () => <div>TransferStock</div>);
 
 test("affiche l'inventaire et change d'onglet", () => {
   render(<InventoryModule />);

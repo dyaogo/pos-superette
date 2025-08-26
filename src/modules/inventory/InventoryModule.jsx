@@ -7,9 +7,10 @@ import {
 import { useApp } from '../../contexts/AppContext'; // ✅ Correction critique
 import BarcodeSystem from './BarcodeSystem';
 import PhysicalInventory from './PhysicalInventory';
+import TransferStock from './TransferStock';
 
 const InventoryModule = () => {
-  const { globalProducts, setGlobalProducts, addStock, appSettings, salesHistory } = useApp(); // ✅ Utilise useApp
+  const { inventories, setGlobalProducts, addStock, appSettings, salesHistory, currentStoreId } = useApp(); // ✅ Utilise useApp
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -22,8 +23,8 @@ const InventoryModule = () => {
 
   const isDark = appSettings.darkMode;
 
-  // Utiliser globalProducts directement
-  const products = globalProducts || [];
+  // Produits du magasin courant
+  const products = (inventories[currentStoreId] || []);
 
   // Calculs statistiques mis à jour
   const stats = {
@@ -534,7 +535,7 @@ const InventoryModule = () => {
     const handleRestock = () => {
       const quantity = parseInt(restockQuantity);
       if (quantity > 0) {
-        addStock(restockingProduct.id, quantity, 'Réapprovisionnement manuel');
+        addStock(currentStoreId, restockingProduct.id, quantity, 'Réapprovisionnement manuel');
         setShowRestockModal(false);
         setRestockingProduct(null);
         setRestockQuantity('');
@@ -665,7 +666,7 @@ const InventoryModule = () => {
         createdAt: new Date().toISOString()
       };
 
-      setGlobalProducts([...globalProducts, product]);
+      setGlobalProducts([...products, product]);
       setShowAddModal(false);
       setNewProduct({
         name: '',
@@ -950,6 +951,12 @@ const InventoryModule = () => {
         >
           Inventaire
         </button>
+        <button
+          style={{ ...styles.tab, ...(activeTab === 'transfer' ? styles.activeTab : {}) }}
+          onClick={() => setActiveTab('transfer')}
+        >
+          Transfert
+        </button>
       </div>
 
       {/* Contenu des onglets */}
@@ -958,6 +965,7 @@ const InventoryModule = () => {
         {activeTab === 'products' && <ProductsTab />}
         {activeTab === 'barcodes' && <BarcodeSystem />}
         {activeTab === 'inventory' && <PhysicalInventory />}
+        {activeTab === 'transfer' && <TransferStock />}
       </div>
 
       {/* Modals */}
