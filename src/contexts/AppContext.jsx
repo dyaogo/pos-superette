@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { loadInventory, saveInventory } from '../services/inventory.service';
 
 // Créer le contexte
 const AppContext = createContext();
@@ -31,8 +32,14 @@ export const AppProvider = ({ children }) => {
   const [currentStoreId, setCurrentStoreId] = useState('wend-kuuni');
   const [viewMode, setViewMode] = useState('single');
   
-  // États existants avec initialisation sécurisée
-  const [globalProducts, setGlobalProducts] = useState([]);
+  // Inventaire par magasin { [storeId]: Product[] }
+  const [inventories, setInventories] = useState({});
+  const setProductsForStore = (storeId, products) => {
+    setInventories(prev => ({ ...prev, [storeId]: products }));
+    saveInventory(storeId, products);
+  };
+  const globalProducts = inventories[currentStoreId] || [];
+  const setGlobalProducts = (products) => setProductsForStore(currentStoreId, products);
   const [salesHistory, setSalesHistory] = useState([]);
   const [customers, setCustomers] = useState([
     { id: 1, name: 'Client Comptant', phone: '', email: '', totalPurchases: 0, points: 0 }
@@ -115,18 +122,19 @@ export const AppProvider = ({ children }) => {
     }
   };
 
-  // Ajouter du stock
-  const addStock = (productId, quantity, reason = 'Réapprovisionnement') => {
+  // Ajouter du stock à un magasin spécifique
+  const addStock = (storeId, productId, quantity, reason = 'Réapprovisionnement') => {
     try {
-      if (!productId || !quantity || quantity <= 0) return false;
+      if (!storeId || !productId || !quantity || quantity <= 0) return false;
 
-      const updatedProducts = (globalProducts || []).map(product =>
+      const storeProducts = inventories[storeId] || [];
+      const updatedProducts = storeProducts.map(product =>
         product.id === productId
           ? { ...product, stock: (product.stock || 0) + quantity }
           : product
       );
 
-      setGlobalProducts(updatedProducts);
+      setProductsForStore(storeId, updatedProducts);
       return true;
     } catch (error) {
       console.error('Erreur lors de l\'ajout de stock:', error);
@@ -134,10 +142,43 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  // Transférer du stock entre magasins
+  const transferStock = (fromStoreId, toStoreId, productId, quantity) => {
+    try {
+      if (!fromStoreId || !toStoreId || !productId || quantity <= 0) return false;
+      const fromProducts = inventories[fromStoreId] || [];
+      const toProducts = inventories[toStoreId] || [];
+
+      const product = fromProducts.find(p => p.id === productId);
+      if (!product || (product.stock || 0) < quantity) return false;
+
+      const updatedFrom = fromProducts.map(p =>
+        p.id === productId ? { ...p, stock: (p.stock || 0) - quantity } : p
+      );
+
+      let updatedTo;
+      const target = toProducts.find(p => p.id === productId);
+      if (target) {
+        updatedTo = toProducts.map(p =>
+          p.id === productId ? { ...p, stock: (p.stock || 0) + quantity } : p
+        );
+      } else {
+        updatedTo = [...toProducts, { ...product, stock: quantity }];
+      }
+
+      setProductsForStore(fromStoreId, updatedFrom);
+      setProductsForStore(toStoreId, updatedTo);
+      return true;
+    } catch (error) {
+      console.error('Erreur lors du transfert de stock:', error);
+      return false;
+    }
+  };
+
   // Traiter un retour produit
   const processReturn = (productId, quantity, reason = 'Retour client') => {
     try {
-      const product = (globalProducts || []).find(p => p.id === productId);
+      const product = (inventories[currentStoreId] || []).find(p => p.id === productId);
       if (!product || !quantity || quantity <= 0) return false;
 
       const returnEntry = {
@@ -149,7 +190,7 @@ export const AppProvider = ({ children }) => {
         date: new Date().toISOString()
       };
 
-      addStock(productId, quantity, reason);
+      addStock(currentStoreId, productId, quantity, reason);
       setReturnsHistory([returnEntry, ...(returnsHistory || [])]);
       return true;
     } catch (error) {
@@ -280,22 +321,16 @@ export const AppProvider = ({ children }) => {
   useEffect(() => {
     try {
       const storeKey = `pos_${currentStoreId}`;
-      
-      const savedProducts = localStorage.getItem(`${storeKey}_products`);
+
+      const savedProducts = loadInventory(currentStoreId);
       const savedSales = localStorage.getItem(`${storeKey}_sales`);
       const savedCustomers = localStorage.getItem(`${storeKey}_customers`);
       const savedCredits = localStorage.getItem(`${storeKey}_credits`);
       const savedSettings = localStorage.getItem(`${storeKey}_settings`);
       const savedEmployees = localStorage.getItem(`${storeKey}_employees`);
       const savedReturns = localStorage.getItem(`${storeKey}_returns`);
-      
-      if (savedProducts) {
-        try {
-          setGlobalProducts(JSON.parse(savedProducts));
-        } catch (e) {
-          console.warn('Erreur de parsing products:', e);
-        }
-      }
+
+      setProductsForStore(currentStoreId, savedProducts);
       
       if (savedSales) {
         try {
@@ -431,17 +466,6 @@ export const AppProvider = ({ children }) => {
     }
   }, [viewMode]);
 
-  // Sauvegarde automatique avec protection
-  useEffect(() => {
-    if (Array.isArray(globalProducts) && globalProducts.length > 0) {
-      try {
-        localStorage.setItem(`pos_${currentStoreId}_products`, JSON.stringify(globalProducts));
-      } catch (error) {
-        console.warn('Erreur de sauvegarde products:', error);
-      }
-    }
-  }, [globalProducts, currentStoreId]);
-
   useEffect(() => {
     if (Array.isArray(salesHistory) && salesHistory.length > 0) {
       try {
@@ -505,6 +529,7 @@ export const AppProvider = ({ children }) => {
   // ==================== VALEUR DU CONTEXTE ====================
   const value = {
     // États existants
+    inventories,
     globalProducts: globalProducts || [],
     setGlobalProducts,
     salesHistory: salesHistory || [],
@@ -523,6 +548,7 @@ export const AppProvider = ({ children }) => {
     // Fonctions sécurisées
     processSale,
     addStock,
+    transferStock,
     processReturn,
     getStats,
     clearAllData,
