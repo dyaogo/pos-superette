@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Users, UserPlus, Clock } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { useResponsive, getResponsiveStyles } from '../../components/ResponsiveComponents';
 import EmployeeForm from './EmployeeForm';
 import EmployeeList from './EmployeeList';
 import ShiftManagement from './ShiftManagement';
@@ -9,13 +10,10 @@ const EmployeesModule = () => {
   const { appSettings } = useApp();
   const [activeTab, setActiveTab] = useState('list');
   const isDark = appSettings.darkMode;
+  const { deviceType } = useResponsive();
+  const sharedStyles = getResponsiveStyles(deviceType, isDark);
 
   const styles = {
-    container: {
-      padding: '20px',
-      background: isDark ? '#1a202c' : '#f7fafc',
-      minHeight: 'calc(100vh - 120px)'
-    },
     tabs: {
       display: 'flex',
       gap: '10px',
@@ -45,7 +43,7 @@ const EmployeesModule = () => {
   };
 
   return (
-    <div style={styles.container}>
+    <div style={sharedStyles.container}>
       <div style={styles.tabs}>
         <button
           style={{ ...styles.tabButton, ...(activeTab === 'list' ? styles.activeTab : {}) }}
