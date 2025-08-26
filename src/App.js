@@ -16,15 +16,18 @@ import StoreSelector from './components/StoreSelector';
 import { ShoppingCart, Package, Users, Home, BarChart3, Settings, Calculator, CreditCard, UserCog, RotateCcw } from 'lucide-react';
 import styles from './App.module.css';
 import LoadingSpinner from './components/common/LoadingSpinner';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Composant principal avec les Providers
 function App() {
   return (
-    <AppProvider>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </AppProvider>
+    <ErrorBoundary fallback={<div>Une erreur est survenue.</div>}>
+      <AppProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </AppProvider>
+    </ErrorBoundary>
   );
 }
 
