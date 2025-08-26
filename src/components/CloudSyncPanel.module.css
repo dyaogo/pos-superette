@@ -1,4 +1,15 @@
-.panel {
+.collapsed {
+  background: var(--color-surface);
+  padding: 8px;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.expanded {
   background: var(--color-surface);
   padding: 20px;
   border-radius: 8px;
@@ -36,6 +47,18 @@
 .statusSub {
   font-size: 12px;
   color: var(--color-text-secondary);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+.toggle {
+  cursor: pointer;
+  font-size: 18px;
 }
 
 .button {
