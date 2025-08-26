@@ -64,19 +64,33 @@ const DashboardModule = ({ onNavigate }) => {
     // Calculs avec protection
     const currentRevenue = currentSales.reduce((sum, s) => sum + (s.total || 0), 0);
     const previousRevenue = previousSales.reduce((sum, s) => sum + (s.total || 0), 0);
-    const revenueGrowth = previousRevenue > 0 ? 
+    const revenueGrowth = previousRevenue > 0 ?
       ((currentRevenue - previousRevenue) / previousRevenue * 100) : 0;
-    
+
+    const marginFromSale = (sale) =>
+      (sale.items || []).reduce(
+        (mSum, i) => mSum + (i.quantity || 0) * (((i.price || 0) - (i.costPrice || 0))),
+        0
+      );
+
+    const currentMargin = currentSales.reduce((sum, s) => sum + marginFromSale(s), 0);
+    const previousMargin = previousSales.reduce((sum, s) => sum + marginFromSale(s), 0);
+    const marginGrowth = previousMargin > 0 ?
+      ((currentMargin - previousMargin) / previousMargin * 100) : 0;
+
     const currentTransactions = currentSales.length;
     const previousTransactions = previousSales.length;
-    const transactionGrowth = previousTransactions > 0 ? 
+    const transactionGrowth = previousTransactions > 0 ?
       ((currentTransactions - previousTransactions) / previousTransactions * 100) : 0;
-    
+
     return {
       periodLabel: currentPeriod.label,
       currentRevenue,
       previousRevenue,
       revenueGrowth: parseFloat(revenueGrowth.toFixed(1)),
+      currentMargin,
+      previousMargin,
+      marginGrowth: parseFloat(marginGrowth.toFixed(1)),
       currentTransactions,
       previousTransactions,
       transactionGrowth: parseFloat(transactionGrowth.toFixed(1))
@@ -148,6 +162,17 @@ const DashboardModule = ({ onNavigate }) => {
           change={dashboardMetrics.revenueGrowth}
           icon={DollarSign}
           color="#10b981"
+          format="currency"
+          isDark={isDark}
+          currency={appSettings?.currency}
+        />
+
+        <MetricCard
+          title={`Marge brute - ${dashboardMetrics.periodLabel}`}
+          value={dashboardMetrics.currentMargin}
+          change={dashboardMetrics.marginGrowth}
+          icon={BarChart3}
+          color="#14b8a6"
           format="currency"
           isDark={isDark}
           currency={appSettings?.currency}
