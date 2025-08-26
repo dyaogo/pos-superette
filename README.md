@@ -2,6 +2,21 @@
 
 This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
+## Project Structure
+
+The project is organized into feature-oriented modules within the `src/` directory:
+
+- **assets/** – static images and other asset files.
+- **components/** – reusable UI components and layout elements.
+- **config/** – configuration files such as `firebase.js`.
+- **contexts/** – React context providers for global state.
+- **hooks/** – custom React hooks like `useAuth` and `useInventory`.
+- **modules/** – domain modules (cash, credits, customers, dashboard, inventory, sales, etc.).
+- **services/** – API clients and services.
+- **utils/** – helper functions, constants, and formatters.
+
+Static files like `index.html` reside in the `public/` directory.
+
 ## Available Scripts
 
 In the project directory, you can run:
