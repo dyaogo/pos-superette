@@ -4,6 +4,7 @@ import MetricCard from './components/MetricCard';
 import AlertsWidget from './components/AlertsWidget';
 import TopProductsWidget from './components/TopProductsWidget';
 import DataManagerWidget from './components/DataManagerWidget';
+import SalesChart from './SalesChart';
 import { useApp } from '../../contexts/AppContext'; // ✅ CORRECTION CRITIQUE
 import styles from './DashboardModule.module.css';
 
@@ -198,7 +199,7 @@ const DashboardModule = ({ onNavigate }) => {
           currency={appSettings?.currency}
         />
 
-        <MetricCard
+      <MetricCard
           title="Clients Fidèles"
           value={stats?.totalCustomers || 0}
           change={0}
@@ -208,6 +209,10 @@ const DashboardModule = ({ onNavigate }) => {
           currency={appSettings?.currency}
         />
       </div>
+      <SalesChart
+        salesHistory={salesHistory}
+        selectedPeriod={selectedPeriod}
+      />
 
       {/* Widgets d'analyse */}
       <div className={styles.chartsGrid}>
