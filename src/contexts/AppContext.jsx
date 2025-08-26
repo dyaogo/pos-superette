@@ -52,6 +52,7 @@ export const AppProvider = ({ children }) => {
   
   // Obtenir le magasin actuel
   const getCurrentStore = () => {
+    if (viewMode === 'consolidated') return null;
     return stores.find(store => store.id === currentStoreId) || stores[0];
   };
 
@@ -76,7 +77,7 @@ export const AppProvider = ({ children }) => {
         amountReceived: amountReceived || 0,
         change: paymentMethod === 'cash' ? Math.max(0, (amountReceived || 0) - (cart || []).reduce((sum, item) => sum + ((item.price || 0) * (item.quantity || 0)), 0)) : 0,
         customerId: customerId || 1,
-        receiptNumber: `${getCurrentStore().code}${Date.now().toString().slice(-8)}`,
+        receiptNumber: `${getCurrentStore()?.code || ''}${Date.now().toString().slice(-8)}`,
         storeId: currentStoreId
       };
 
@@ -305,6 +306,88 @@ export const AppProvider = ({ children }) => {
       console.error('Erreur lors du chargement initial:', error);
     }
   }, [currentStoreId]);
+
+  // Chargement des données en mode consolidé
+  useEffect(() => {
+    if (viewMode !== 'consolidated') return;
+    try {
+      let allProducts = [];
+      let allSales = [];
+      let allCustomers = new Map();
+      let allCredits = [];
+      let allEmployees = [];
+      let allReturns = [];
+
+      stores.forEach(store => {
+        const storeKey = `pos_${store.id}`;
+
+        const savedProducts = localStorage.getItem(`${storeKey}_products`);
+        if (savedProducts) {
+          try {
+            const parsed = JSON.parse(savedProducts).map(p => ({ ...p, storeId: store.id }));
+            allProducts = allProducts.concat(parsed);
+          } catch (e) {
+            console.warn('Erreur de parsing products:', e);
+          }
+        }
+
+        const savedSales = localStorage.getItem(`${storeKey}_sales`);
+        if (savedSales) {
+          try {
+            const parsed = JSON.parse(savedSales).map(s => ({ ...s, storeId: store.id }));
+            allSales = allSales.concat(parsed);
+          } catch (e) {
+            console.warn('Erreur de parsing sales:', e);
+          }
+        }
+
+        const savedCustomers = localStorage.getItem(`${storeKey}_customers`);
+        if (savedCustomers) {
+          try {
+            JSON.parse(savedCustomers).forEach(c => allCustomers.set(c.id, c));
+          } catch (e) {
+            console.warn('Erreur de parsing customers:', e);
+          }
+        }
+
+        const savedCredits = localStorage.getItem(`${storeKey}_credits`);
+        if (savedCredits) {
+          try {
+            allCredits = allCredits.concat(JSON.parse(savedCredits));
+          } catch (e) {
+            console.warn('Erreur de parsing credits:', e);
+          }
+        }
+
+        const savedEmployees = localStorage.getItem(`${storeKey}_employees`);
+        if (savedEmployees) {
+          try {
+            allEmployees = allEmployees.concat(JSON.parse(savedEmployees));
+          } catch (e) {
+            console.warn('Erreur de parsing employees:', e);
+          }
+        }
+
+        const savedReturns = localStorage.getItem(`${storeKey}_returns`);
+        if (savedReturns) {
+          try {
+            allReturns = allReturns.concat(JSON.parse(savedReturns));
+          } catch (e) {
+            console.warn('Erreur de parsing returns:', e);
+          }
+        }
+      });
+
+      setGlobalProducts(allProducts);
+      setSalesHistory(allSales);
+      setCustomers(Array.from(allCustomers.values()));
+      setCredits(allCredits);
+      setEmployees(allEmployees);
+      setReturnsHistory(allReturns);
+    } catch (error) {
+      console.error('Erreur lors du chargement consolidé:', error);
+    }
+  }, [viewMode]);
 
   // Sauvegarde automatique avec protection
   useEffect(() => {
