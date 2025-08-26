@@ -25,6 +25,10 @@ const SettingsModule = () => {
   const currentStore = getCurrentStore();
   const stats = getStats();
 
+  useEffect(() => {
+    setLocalSettings(appSettings);
+  }, [appSettings]);
+
   // Détecter les changements
   useEffect(() => {
     const hasChanged = JSON.stringify(localSettings) !== JSON.stringify(appSettings);
