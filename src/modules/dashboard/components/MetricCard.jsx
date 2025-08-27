@@ -1,7 +1,16 @@
 import React from 'react';
 import { ArrowUp, ArrowDown, Activity } from 'lucide-react';
 
-const MetricCard = ({ title, value, change, icon: Icon, color, format = 'number', isDark, currency }) => {
+const FormattedNumber = ({ value, style, minimumFractionDigits = 0 }) => {
+  const formatter = new Intl.NumberFormat(undefined, {
+    style,
+    minimumFractionDigits,
+    maximumFractionDigits: minimumFractionDigits,
+  });
+  const formatted = formatter.format(style === 'percent' ? value / 100 : value);
+  return <>{formatted}</>;
+};
+const MetricCard = ({ title, value, change, marginPct, icon: Icon, color, format = 'number', isDark, currency }) => {
   const safeToLocaleString = (val) => (val || 0).toLocaleString();
   const formatValue = (val) => {
     if (format === 'currency') {
@@ -32,6 +41,11 @@ const MetricCard = ({ title, value, change, icon: Icon, color, format = 'number'
         <div style={{ fontSize: '28px', fontWeight: 'bold', color: isDark ? '#f7fafc' : '#2d3748', marginBottom: '4px' }}>
           {formatValue(value)}
         </div>
+        {typeof marginPct === 'number' && (
+          <div style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#4a5568' }}>
+            (<FormattedNumber value={marginPct} style="percent" minimumFractionDigits={1} /> du CA)
+          </div>
+        )}
       </div>
 
       {change !== 0 && (
