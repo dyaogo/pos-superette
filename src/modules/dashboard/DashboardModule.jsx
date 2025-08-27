@@ -79,6 +79,8 @@ const DashboardModule = ({ onNavigate }) => {
     const marginGrowth = previousMargin > 0 ?
       ((currentMargin - previousMargin) / previousMargin * 100) : 0;
 
+    const marginPct = currentRevenue > 0 ? (currentMargin / currentRevenue) * 100 : 0;
+
     const currentTransactions = currentSales.length;
     const previousTransactions = previousSales.length;
     const transactionGrowth = previousTransactions > 0 ?
@@ -92,6 +94,7 @@ const DashboardModule = ({ onNavigate }) => {
       currentMargin,
       previousMargin,
       marginGrowth: parseFloat(marginGrowth.toFixed(1)),
+      marginPct: parseFloat(marginPct.toFixed(1)),
       currentTransactions,
       previousTransactions,
       transactionGrowth: parseFloat(transactionGrowth.toFixed(1))
@@ -172,6 +175,7 @@ const DashboardModule = ({ onNavigate }) => {
           title={`Marge brute - ${dashboardMetrics.periodLabel}`}
           value={dashboardMetrics.currentMargin}
           change={dashboardMetrics.marginGrowth}
+          marginPct={dashboardMetrics.marginPct}
           icon={BarChart3}
           color="#14b8a6"
           format="currency"
