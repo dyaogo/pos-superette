@@ -1,4 +1,13 @@
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LabelList
+} from 'recharts';
 
 // Map for day and month names used in labels
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -77,65 +86,33 @@ export const groupSalesByPeriod = (salesHistory = [], selectedPeriod = 'today', 
   return { labels, data };
 };
 
+const X_AXIS_LABELS = {
+  today: 'Heure',
+  week: 'Jour',
+  month: 'Semaine',
+  year: 'Mois'
+};
+
 /**
- * Affiche un graphique simple en utilisant la balise canvas
- * représentant les ventes pour la période sélectionnée.
+ * Affiche un graphique en barres représentant les ventes
+ * pour la période sélectionnée.
  */
 const SalesChart = ({ salesHistory, selectedPeriod }) => {
-  const canvasRef = useRef(null);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const { labels, data } = groupSalesByPeriod(salesHistory, selectedPeriod);
-    const ctx = canvas.getContext('2d');
-
-    const width = canvas.width;
-    const height = canvas.height;
-    const padding = 30;
-
-    ctx.clearRect(0, 0, width, height);
-
-    // Axes
-    ctx.strokeStyle = '#ccc';
-    ctx.beginPath();
-    ctx.moveTo(padding, padding);
-    ctx.lineTo(padding, height - padding);
-    ctx.lineTo(width - padding, height - padding);
-    ctx.stroke();
-
-    const max = Math.max(...data, 1);
-    const stepX = (width - padding * 2) / (data.length - 1 || 1);
-    const chartHeight = height - padding * 2;
-
-    // Ligne des données
-    ctx.strokeStyle = '#3b82f6';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    data.forEach((val, i) => {
-      const x = padding + i * stepX;
-      const y = padding + chartHeight - (val / max) * chartHeight;
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    });
-    ctx.stroke();
-
-    // Points
-    ctx.fillStyle = '#3b82f6';
-    data.forEach((val, i) => {
-      const x = padding + i * stepX;
-      const y = padding + chartHeight - (val / max) * chartHeight;
-      ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-  }, [salesHistory, selectedPeriod]);
+  const { labels, data } = groupSalesByPeriod(salesHistory, selectedPeriod);
+  const chartData = labels.map((label, i) => ({ label, value: data[i] }));
 
   return (
-    <div style={{ width: '100%', marginTop: '2rem' }}>
-      <canvas ref={canvasRef} width={800} height={300} style={{ width: '100%' }} />
+    <div style={{ width: '100%', height: 300, marginTop: '2rem' }}>
+      <ResponsiveContainer>
+        <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+          <XAxis dataKey="label" label={{ value: X_AXIS_LABELS[selectedPeriod], position: 'insideBottomRight', offset: -5 }} />
+          <YAxis label={{ value: 'Total des ventes', angle: -90, position: 'insideLeft' }} />
+          <Tooltip formatter={(value) => value} />
+          <Bar dataKey="value" fill="#3b82f6">
+            <LabelList dataKey="value" position="top" />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 };

@@ -209,10 +209,12 @@ const DashboardModule = ({ onNavigate }) => {
           currency={appSettings?.currency}
         />
       </div>
-      <SalesChart
-        salesHistory={salesHistory}
-        selectedPeriod={selectedPeriod}
-      />
+      <div style={{ width: '100%', height: 300 }}>
+        <SalesChart
+          salesHistory={salesHistory}
+          selectedPeriod={selectedPeriod}
+        />
+      </div>
 
       {/* Widgets d'analyse */}
       <div className={styles.chartsGrid}>
