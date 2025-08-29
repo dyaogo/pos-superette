@@ -52,7 +52,14 @@ export const groupSalesByPeriod = (salesHistory = [], selectedPeriod = 'today', 
         break;
     }
 
-    groups[key] = (groups[key] || 0) + (sale.total || 0);
+    if (!groups[key]) {
+      groups[key] = { revenue: 0, margin: 0 };
+    }
+
+    groups[key].revenue += sale.total || 0;
+    (sale.items || []).forEach(item => {
+      groups[key].margin += item.quantity * (item.price - item.costPrice);
+    });
   });
 
   let labels = [];
@@ -81,9 +88,11 @@ export const groupSalesByPeriod = (salesHistory = [], selectedPeriod = 'today', 
       break;
   }
 
-  const data = labels.map(label => groups[label] || 0);
-
-  return { labels, data };
+  return labels.map(label => ({
+    label,
+    revenue: groups[label]?.revenue ?? 0,
+    margin: groups[label]?.margin ?? 0,
+  }));
 };
 
 const X_AXIS_LABELS = {
@@ -98,8 +107,7 @@ const X_AXIS_LABELS = {
  * pour la période sélectionnée.
  */
 const SalesChart = ({ salesHistory, selectedPeriod }) => {
-  const { labels, data } = groupSalesByPeriod(salesHistory, selectedPeriod);
-  const chartData = labels.map((label, i) => ({ label, value: data[i] }));
+  const chartData = groupSalesByPeriod(salesHistory, selectedPeriod);
 
   return (
     <div style={{ width: '100%', height: 300, marginTop: '2rem' }}>
@@ -108,8 +116,8 @@ const SalesChart = ({ salesHistory, selectedPeriod }) => {
           <XAxis dataKey="label" label={{ value: X_AXIS_LABELS[selectedPeriod], position: 'insideBottomRight', offset: -5 }} />
           <YAxis label={{ value: 'Total des ventes', angle: -90, position: 'insideLeft' }} />
           <Tooltip formatter={(value) => value} />
-          <Bar dataKey="value" fill="#3b82f6">
-            <LabelList dataKey="value" position="top" />
+          <Bar dataKey="revenue" fill="#3b82f6">
+            <LabelList dataKey="revenue" position="top" />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
