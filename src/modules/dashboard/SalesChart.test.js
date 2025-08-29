@@ -1,4 +1,4 @@
-import { groupSalesByPeriod } from './SalesChart';
+import SalesChart, { groupSalesByPeriod } from './SalesChart';
 
 describe('groupSalesByPeriod', () => {
   const now = new Date('2024-05-15T12:00:00Z');
@@ -85,6 +85,26 @@ describe('groupSalesByPeriod', () => {
     const may = chartData.find(d => d.label === 'May');
     expect(mar).toEqual({ label: 'Mar', revenue: 200, margin: 100 });
     expect(may).toEqual({ label: 'May', revenue: 425, margin: 163 });
+  });
+
+  test('renders two Bars for SalesChart component', () => {
+    const element = SalesChart({ salesHistory, selectedPeriod: 'today' });
+    const collectBars = (node, acc = []) => {
+      if (!node) return acc;
+      if (Array.isArray(node)) {
+        node.forEach(child => collectBars(child, acc));
+      } else if (node.type && node.type.name === 'Bar') {
+        acc.push(node);
+      } else if (node.props && node.props.children) {
+        collectBars(node.props.children, acc);
+      }
+      return acc;
+    };
+    const bars = collectBars(element);
+    expect(bars).toHaveLength(2);
+    bars.forEach(bar => {
+      expect(bar.props.stackId).toBe('a');
+    });
   });
 });
 
