@@ -51,10 +51,9 @@ export const CloudSyncPanel = () => {
 
   if (isCollapsed) {
     return (
-      <div className={styles.collapsed} onClick={() => setIsCollapsed(false)}>
-        <span className={styles.statusIcon}>☁️</span>
-        <span className={styles.toggle}>⬇️</span>
-      </div>
+      <button className={styles.fab} onClick={() => setIsCollapsed(false)}>
+        ☁️
+      </button>
     );
   }
 
