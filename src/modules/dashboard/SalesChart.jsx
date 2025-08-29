@@ -95,13 +95,6 @@ export const groupSalesByPeriod = (salesHistory = [], selectedPeriod = 'today', 
   }));
 };
 
-const X_AXIS_LABELS = {
-  today: 'Heure',
-  week: 'Jour',
-  month: 'Semaine',
-  year: 'Mois'
-};
-
 /**
  * Affiche un graphique en barres représentant les ventes
  * pour la période sélectionnée.
@@ -113,10 +106,11 @@ const SalesChart = ({ salesHistory, selectedPeriod }) => {
     <div style={{ width: '100%', height: 300, marginTop: '2rem' }}>
       <ResponsiveContainer>
         <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <XAxis dataKey="label" label={{ value: X_AXIS_LABELS[selectedPeriod], position: 'insideBottomRight', offset: -5 }} />
-          <YAxis label={{ value: 'Total des ventes', angle: -90, position: 'insideLeft' }} />
+          <XAxis dataKey="label" />
+          <YAxis />
           <Tooltip formatter={(value) => value} />
-          <Bar dataKey="revenue" fill="#3b82f6">
+          <Bar dataKey="margin" stackId="a" fill="#34d399" />
+          <Bar dataKey="revenue" stackId="a" fill="#3b82f6">
             <LabelList dataKey="revenue" position="top" />
           </Bar>
         </BarChart>
