@@ -4,14 +4,21 @@ import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from 'fire
 
 export class CloudSyncService {
   constructor() {
-    this.storeId = localStorage.getItem('pos_store_id') || this.generateStoreId();
-    this.syncEnabled = localStorage.getItem('pos_cloud_sync') === 'true';
+    if (typeof window !== 'undefined') {
+      this.storeId = localStorage.getItem('pos_store_id') || this.generateStoreId();
+      this.syncEnabled = localStorage.getItem('pos_cloud_sync') === 'true';
+    } else {
+      this.storeId = null;
+      this.syncEnabled = false;
+    }
     this.user = null;
   }
 
   generateStoreId() {
     const id = 'store_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-    localStorage.setItem('pos_store_id', id);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pos_store_id', id);
+    }
     return id;
   }
 
@@ -24,7 +31,9 @@ export class CloudSyncService {
       }
       
       this.user = auth.currentUser;
-      localStorage.setItem('pos_cloud_sync', 'true');
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pos_cloud_sync', 'true');
+      }
       this.syncEnabled = true;
       
       // Synchronisation initiale
@@ -77,8 +86,10 @@ export class CloudSyncService {
         console.log('Données cloud disponibles:', cloudData.data);
       }
 
-      localStorage.setItem('pos_last_sync', new Date().toISOString());
-      
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('pos_last_sync', new Date().toISOString());
+      }
+
       return { success: true, message: 'Synchronisation réussie' };
     } catch (error) {
       console.error('Erreur sync:', error);
@@ -87,6 +98,16 @@ export class CloudSyncService {
   }
 
   gatherLocalData() {
+    if (typeof window === 'undefined') {
+      return {
+        products: [],
+        sales: [],
+        customers: [],
+        credits: [],
+        settings: {},
+        cashReports: []
+      };
+    }
     return {
       products: JSON.parse(localStorage.getItem('pos_products') || '[]'),
       sales: JSON.parse(localStorage.getItem('pos_sales') || '[]'),
@@ -99,13 +120,18 @@ export class CloudSyncService {
 
   async signOut() {
     await auth.signOut();
-    localStorage.setItem('pos_cloud_sync', 'false');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('pos_cloud_sync', 'false');
+    }
     this.syncEnabled = false;
     this.user = null;
   }
 
   // Méthodes de sauvegarde locale (inchangées)
   async createBackup() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return;
+    }
     const data = this.gatherLocalData();
     const backup = {
       version: '1.0',
@@ -114,7 +140,7 @@ export class CloudSyncService {
       createdAt: new Date().toISOString(),
       data: data
     };
-    
+
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -125,6 +151,9 @@ export class CloudSyncService {
   }
 
   async restoreBackup(file) {
+    if (typeof window === 'undefined') {
+      return { success: false, message: 'Restauration non disponible hors navigateur' };
+    }
     try {
       const text = await file.text();
       const backup = JSON.parse(text);
@@ -143,10 +172,10 @@ export class CloudSyncService {
       Object.entries(backup.data).forEach(([key, value]) => {
         localStorage.setItem(`pos_${key}`, JSON.stringify(value));
       });
-      
+
       alert('Sauvegarde restaurée ! La page va se recharger.');
       window.location.reload();
-      
+
       return { success: true, message: 'Sauvegarde restaurée avec succès' };
     } catch (error) {
       console.error('Erreur restauration:', error);
