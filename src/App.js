@@ -26,7 +26,6 @@ import {
   UserCog,
   RotateCcw,
   Receipt,
-  CashRegister
 } from 'lucide-react';
 import styles from './App.module.css';
 import LoadingSpinner from './components/common/LoadingSpinner';
@@ -213,7 +212,7 @@ function App() {
                       }`}
                       onClick={() => setActiveModule('pos')}
                     >
-                      <CashRegister size={18} />
+                      <ShoppingCart size={18} />
                       Point de Vente
                     </button>
                   )}
