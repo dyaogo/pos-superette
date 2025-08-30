@@ -207,7 +207,7 @@ export const getResponsiveStyles = (deviceType, isDark) => {
   };
 };
 
-// Navigation mobile avec bottom tabs
+// Navigation mobile avec bottom tabs - Version mise à jour
 export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowedModules = [] }) => {
   const { deviceType } = useResponsive();
 
@@ -215,13 +215,19 @@ export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowe
 
   const navItems = [
     { id: 'dashboard', icon: '🏠', label: 'Accueil' },
-    { id: 'sales', icon: '🛒', label: 'Ventes' },
+    { id: 'pos', icon: '🏪', label: 'Point de Vente' }, // Ancien: sales
+    { id: 'sales-history', icon: '📊', label: 'Ventes' }, // Nouveau
     { id: 'stocks', icon: '📦', label: 'Stocks' },
+    { id: 'customers', icon: '👤', label: 'Clients' },
     { id: 'credits', icon: '💳', label: 'Crédits' },
     { id: 'cash', icon: '🧮', label: 'Caisse' },
     { id: 'employees', icon: '👥', label: 'Employés' },
-    { id: 'returns', icon: '↩️', label: 'Retours' }
+    { id: 'returns', icon: '↩️', label: 'Retours' },
+    { id: 'reports', icon: '📈', label: 'Rapports' }
   ].filter(item => allowedModules.includes(item.id));
+
+  // Limiter à 5 items visibles sur mobile pour éviter l'encombrement
+  const visibleItems = navItems.slice(0, 5);
 
   return (
     <div style={{
@@ -234,9 +240,10 @@ export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowe
       borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
       display: 'flex',
       zIndex: 1000,
-      paddingBottom: 'env(safe-area-inset-bottom)' // Support iPhone notch
+      paddingBottom: 'env(safe-area-inset-bottom)', // Support iPhone notch
+      boxShadow: '0 -2px 10px rgba(0,0,0,0.1)'
     }}>
-      {navItems.map(item => (
+      {visibleItems.map(item => (
         <button
           key={item.id}
           onClick={() => setActiveModule(item.id)}
@@ -257,10 +264,20 @@ export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowe
             touchAction: 'manipulation'
           }}
         >
-          <span style={{ fontSize: '20px', marginBottom: '2px' }}>
+          <span style={{ 
+            fontSize: '20px', 
+            marginBottom: '2px',
+            filter: activeModule === item.id ? 'none' : 'grayscale(0.5)'
+          }}>
             {item.icon}
           </span>
-          <span>{item.label}</span>
+          <span style={{
+            fontSize: '10px',
+            textAlign: 'center',
+            lineHeight: 1.1
+          }}>
+            {item.label}
+          </span>
         </button>
       ))}
     </div>
