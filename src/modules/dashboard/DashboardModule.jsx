@@ -500,12 +500,12 @@ const DashboardModule = ({ onNavigate }) => {
                       {/* Valeur au dessus */}
                       <span style={{
                         position: 'absolute',
-                        top: '-20px',
+                        top: '-22px',
                         left: '50%',
                         transform: 'translateX(-50%)',
-                        fontSize: '10px',
+                        fontSize: '12px',
                         color: '#8b5cf6',
-                        fontWeight: '600',
+                        fontWeight: '700',
                         whiteSpace: 'nowrap'
                       }}>
                         {formatNumber(Math.round(item.margesBrutes/1000))}k
@@ -528,12 +528,12 @@ const DashboardModule = ({ onNavigate }) => {
                     {/* Valeur au dessus */}
                     <span style={{
                       position: 'absolute',
-                      top: '-20px',
+                      top: '-22px',
                       left: '50%',
                       transform: 'translateX(-50%)',
-                      fontSize: '10px',
+                      fontSize: '12px',
                       color: '#10b981',
-                      fontWeight: '600',
+                      fontWeight: '700',
                       whiteSpace: 'nowrap'
                     }}>
                       {formatNumber(Math.round(item.ventes/1000))}k
@@ -639,7 +639,7 @@ const DashboardModule = ({ onNavigate }) => {
       {/* Cartes statistiques principales */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '24px',
         marginBottom: '32px'
       }}>
@@ -669,19 +669,11 @@ const DashboardModule = ({ onNavigate }) => {
           delay={100}
         />
         <StatCard 
-          title="Clients"
-          value={getMetricsForPeriod.customers}
-          icon={Users}
-          trend={trends.customers}
-          color="#f59e0b"
-          delay={150}
-        />
-        <StatCard 
           title="Stock Faible"
           value={getMetricsForPeriod.lowStockItems}
           icon={AlertTriangle}
           color="#ef4444"
-          delay={200}
+          delay={150}
         />
       </div>
 
@@ -758,18 +750,47 @@ const DashboardModule = ({ onNavigate }) => {
           boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
           border: `1px solid ${isDark ? '#4a5568' : '#f1f5f9'}`
         }}>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: isDark ? '#f7fafc' : '#1a202c',
-            margin: '0 0 20px 0',
+          <div style={{
             display: 'flex',
+            justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '8px'
+            marginBottom: '20px'
           }}>
-            <Activity size={20} color="#6366f1" />
-            Ventes Récentes
-          </h3>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: isDark ? '#f7fafc' : '#1a202c',
+              margin: 0,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <Activity size={20} color="#6366f1" />
+              Ventes Récentes
+            </h3>
+            <button
+              onClick={() => onNavigate('sales')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: '#6366f1',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: 'pointer',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                transition: 'all 0.2s ease'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.background = '#6366f115';
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.background = 'transparent';
+              }}
+            >
+              Voir toutes les ventes →
+            </button>
+          </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {recentSales.map((sale, index) => (
