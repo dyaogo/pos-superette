@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import POSModule from './modules/pos/POSModule';
-import SalesHistoryModule from './modules/sales/SalesHistoryModule';
+import SalesHistoryModule from './modules/pos/SalesHistoryModule';
 import InventoryModule from './modules/inventory/InventoryModule';
 import CustomersModule from './modules/customers/CustomersModule';
 import SettingsModule from './modules/settings/SettingsModule';
