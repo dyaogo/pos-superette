@@ -195,6 +195,12 @@ export const getResponsiveStyles = (deviceType, isDark) => {
         color: isDark ? '#f7fafc' : '#2d3748',
         margin: 0
       },
+      h3: {
+        fontSize: baseStyles.fontSize[deviceType].h3,
+        fontWeight: '600',
+        color: isDark ? '#f7fafc' : '#2d3748',
+        margin: 0
+      },
       body: {
         fontSize: baseStyles.fontSize[deviceType].body,
         color: isDark ? '#f7fafc' : '#2d3748'
@@ -207,27 +213,20 @@ export const getResponsiveStyles = (deviceType, isDark) => {
   };
 };
 
-// Navigation mobile avec bottom tabs - Version mise à jour
+// Navigation mobile avec bottom tabs - VERSION CORRIGÉE
 export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowedModules = [] }) => {
   const { deviceType } = useResponsive();
 
   if (deviceType === 'desktop') return null;
 
+  // ✅ NOUVELLE STRUCTURE avec navigation corrigée
   const navItems = [
     { id: 'dashboard', icon: '🏠', label: 'Accueil' },
-    { id: 'pos', icon: '🏪', label: 'Point de Vente' }, // Ancien: sales
-    { id: 'sales-history', icon: '📊', label: 'Ventes' }, // Nouveau
+    { id: 'sales', icon: '🏪', label: 'Point de Vente' },  // ✅ Changé: 🛒 → 🏪, Ventes → Point de Vente
     { id: 'stocks', icon: '📦', label: 'Stocks' },
-    { id: 'customers', icon: '👤', label: 'Clients' },
-    { id: 'credits', icon: '💳', label: 'Crédits' },
-    { id: 'cash', icon: '🧮', label: 'Caisse' },
-    { id: 'employees', icon: '👥', label: 'Employés' },
-    { id: 'returns', icon: '↩️', label: 'Retours' },
-    { id: 'reports', icon: '📈', label: 'Rapports' }
+    { id: 'customers', icon: '👤', label: 'Clients' },     // ✅ Ajouté pour remplacer credits
+    { id: 'cash', icon: '🧮', label: 'Caisse' }            // ✅ Gardé les 5 plus importants pour mobile
   ].filter(item => allowedModules.includes(item.id));
-
-  // Limiter à 5 items visibles sur mobile pour éviter l'encombrement
-  const visibleItems = navItems.slice(0, 5);
 
   return (
     <div style={{
@@ -241,9 +240,9 @@ export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowe
       display: 'flex',
       zIndex: 1000,
       paddingBottom: 'env(safe-area-inset-bottom)', // Support iPhone notch
-      boxShadow: '0 -2px 10px rgba(0,0,0,0.1)'
+      boxShadow: '0 -2px 10px rgba(0,0,0,0.1)' // ✅ Ajouté pour élever la navigation
     }}>
-      {visibleItems.map(item => (
+      {navItems.map(item => (
         <button
           key={item.id}
           onClick={() => setActiveModule(item.id)}
@@ -267,7 +266,7 @@ export const MobileNavigation = ({ activeModule, setActiveModule, isDark, allowe
           <span style={{ 
             fontSize: '20px', 
             marginBottom: '2px',
-            filter: activeModule === item.id ? 'none' : 'grayscale(0.5)'
+            filter: activeModule === item.id ? 'none' : 'grayscale(0.3)' // ✅ Effet visuel amélioré
           }}>
             {item.icon}
           </span>
