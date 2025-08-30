@@ -3,8 +3,8 @@ import { useState, useEffect } from 'react';
 
 export const useResponsive = () => {
   const [screenSize, setScreenSize] = useState({
-    width: window.innerWidth,
-    height: window.innerHeight
+    width: typeof window !== 'undefined' ? window.innerWidth : 0,
+    height: typeof window !== 'undefined' ? window.innerHeight : 0
   });
 
   const [deviceType, setDeviceType] = useState('desktop');
@@ -38,7 +38,9 @@ export const useResponsive = () => {
     isMobile: deviceType === 'mobile',
     isTablet: deviceType === 'tablet',
     isDesktop: deviceType === 'desktop',
-    isTouchDevice: 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    isTouchDevice:
+      typeof window !== 'undefined' &&
+      (('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0))
   };
 };
 
