@@ -13,6 +13,9 @@ import {
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
+// Format a number into the CFA currency
+export const formatCFA = (value) => `${value.toLocaleString('fr-FR')} CFA`;
+
 /**
  * Regroupe l'historique des ventes selon la période sélectionnée
  * et retourne les labels et les totaux correspondants.
@@ -107,11 +110,11 @@ const SalesChart = ({ salesHistory, selectedPeriod }) => {
       <ResponsiveContainer>
         <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
           <XAxis dataKey="label" />
-          <YAxis />
-          <Tooltip formatter={(value) => value} />
+          <YAxis tickFormatter={formatCFA} />
+          <Tooltip formatter={(value) => formatCFA(value)} />
           <Bar dataKey="margin" stackId="a" fill="#34d399" />
           <Bar dataKey="revenue" stackId="a" fill="#3b82f6">
-            <LabelList dataKey="revenue" position="top" />
+            <LabelList dataKey="revenue" position="top" formatter={formatCFA} />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
