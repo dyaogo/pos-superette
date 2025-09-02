@@ -110,8 +110,8 @@ describe('groupSalesByPeriod', () => {
 
 describe('formatting', () => {
   test('formatCFA returns full value without abbreviation', () => {
-    expect(formatCFA(1200)).toBe('1 200 CFA');
-    expect(formatCFA(1200).toLowerCase()).not.toContain('k');
+    expect(formatCFA(123456)).toBe('123 456 CFA');
+    expect(formatCFA(123456).toLowerCase()).not.toContain('k');
   });
 
   test('SalesChart components use formatCFA', () => {
@@ -134,9 +134,17 @@ describe('formatting', () => {
     const tooltip = findComponent(element, 'Tooltip');
     const labelList = findComponent(element, 'LabelList');
 
-    expect(yAxis.props.tickFormatter(1000)).toBe('1 000 CFA');
-    expect(tooltip.props.formatter(1000)).toBe('1 000 CFA');
-    expect(labelList.props.formatter(1000)).toBe('1 000 CFA');
+    const yTick = yAxis.props.tickFormatter(123456);
+    const tip = tooltip.props.formatter(123456);
+    const labelElement = labelList.props.content({ value: 123456 });
+
+    expect(yTick).toBe('123 456 CFA');
+    expect(tip).toBe('123 456 CFA');
+    expect(labelElement.props.children).toBe('123 456 CFA');
+
+    expect(yTick.toLowerCase()).not.toContain('k');
+    expect(tip.toLowerCase()).not.toContain('k');
+    expect(labelElement.props.children.toLowerCase()).not.toContain('k');
   });
 });
 
