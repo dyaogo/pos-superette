@@ -233,7 +233,7 @@ const DashboardModule = ({ onNavigate }) => {
       style={{
         background: isDark ? '#2d3748' : 'white',
         borderRadius: '16px',
-        padding: '24px',
+        padding: '20px',
         boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
         border: `1px solid ${isDark ? '#4a5568' : '#f1f5f9'}`,
         position: 'relative',
@@ -265,7 +265,7 @@ const DashboardModule = ({ onNavigate }) => {
           }}>
             <div style={{
               background: `${color}15`,
-              padding: '10px',
+              padding: '8px',
               borderRadius: '12px',
               display: 'flex',
               alignItems: 'center',
@@ -274,7 +274,7 @@ const DashboardModule = ({ onNavigate }) => {
               <Icon size={20} color={color} />
             </div>
             <h3 style={{
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '500',
               color: isDark ? '#a0aec0' : '#64748b',
               margin: 0
@@ -284,7 +284,7 @@ const DashboardModule = ({ onNavigate }) => {
           </div>
           
           <div style={{
-            fontSize: '28px',
+            fontSize: '24px',
             fontWeight: '700',
             color: isDark ? '#f7fafc' : '#1a202c',
             marginBottom: marginPercentage ? '4px' : '8px',
@@ -296,7 +296,7 @@ const DashboardModule = ({ onNavigate }) => {
           {/* Affichage du pourcentage de marge */}
           {marginPercentage && (
             <div style={{
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: '600',
               color: '#8b5cf6',
               marginBottom: '8px'
@@ -639,7 +639,7 @@ const DashboardModule = ({ onNavigate }) => {
       {/* Cartes statistiques principales */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
         gap: '24px',
         marginBottom: '32px'
       }}>
