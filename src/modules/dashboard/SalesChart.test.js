@@ -1,4 +1,4 @@
-import SalesChart, { groupSalesByPeriod } from './SalesChart';
+import SalesChart, { groupSalesByPeriod, formatCFA } from './SalesChart';
 
 describe('groupSalesByPeriod', () => {
   const now = new Date('2024-05-15T12:00:00Z');
@@ -105,6 +105,38 @@ describe('groupSalesByPeriod', () => {
     bars.forEach(bar => {
       expect(bar.props.stackId).toBe('a');
     });
+  });
+});
+
+describe('formatting', () => {
+  test('formatCFA returns full value without abbreviation', () => {
+    expect(formatCFA(1200)).toBe('1 200 CFA');
+    expect(formatCFA(1200).toLowerCase()).not.toContain('k');
+  });
+
+  test('SalesChart components use formatCFA', () => {
+    const element = SalesChart({ salesHistory: [], selectedPeriod: 'today' });
+    const findComponent = (node, typeName) => {
+      if (!node) return null;
+      if (Array.isArray(node)) {
+        for (const child of node) {
+          const found = findComponent(child, typeName);
+          if (found) return found;
+        }
+        return null;
+      }
+      if (node.type && node.type.name === typeName) return node;
+      if (node.props && node.props.children) return findComponent(node.props.children, typeName);
+      return null;
+    };
+
+    const yAxis = findComponent(element, 'YAxis');
+    const tooltip = findComponent(element, 'Tooltip');
+    const labelList = findComponent(element, 'LabelList');
+
+    expect(yAxis.props.tickFormatter(1000)).toBe('1 000 CFA');
+    expect(tooltip.props.formatter(1000)).toBe('1 000 CFA');
+    expect(labelList.props.formatter(1000)).toBe('1 000 CFA');
   });
 });
 
