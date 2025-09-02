@@ -709,7 +709,7 @@ const DashboardModule = ({ onNavigate }) => {
             title="Nouvelle Vente"
             subtitle="Scanner ou saisir produits"
             color="#10b981"
-            onClick={() => onNavigate('sales')}
+            onClick={() => onNavigate('pos')}
           />
           <QuickAction
             icon={Package}
@@ -769,7 +769,7 @@ const DashboardModule = ({ onNavigate }) => {
               Ventes Récentes
             </h3>
             <button
-              onClick={() => onNavigate('sales')}
+              onClick={() => onNavigate('sales-history')}
               style={{
                 background: 'transparent',
                 border: 'none',
