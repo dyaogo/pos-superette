@@ -72,7 +72,7 @@ const QuickSale = ({
           cursor: cart.length > 0 ? 'pointer' : 'not-allowed'
         }}
       >
-        Vider (F1)
+        Vider
       </button>
 
       <button
@@ -87,16 +87,8 @@ const QuickSale = ({
           cursor: 'pointer'
         }}
       >
-        Scanner (F4)
+        Scanner
       </button>
-
-      <span style={{
-        fontSize: '12px',
-        color: isDark ? '#a0aec0' : '#64748b',
-        alignSelf: 'center'
-      }}>
-        F2: Recherche | F3: Payer | F4: Scanner | Entrée: Ajouter
-      </span>
     </div>
   );
 
@@ -109,7 +101,7 @@ const QuickSale = ({
         <input
           id="product-search"
           type="text"
-          placeholder="Rechercher... (F2 pour focus, Entrée pour ajouter)"
+          placeholder="Rechercher..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           style={styles.searchBar}

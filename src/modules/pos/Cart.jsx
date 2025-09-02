@@ -33,8 +33,7 @@ const Cart = ({ cart, setCart, updateQuantity, total, appSettings, isDark, onChe
         }}>
           <ShoppingCart size={40} />
           <p style={{ marginTop: '10px', fontSize: '14px' }}>
-            Panier vide<br/>
-            <span style={{ fontSize: '12px' }}>F2 pour rechercher</span>
+            Panier vide
           </p>
         </div>
       ) : (
@@ -150,7 +149,7 @@ const Cart = ({ cart, setCart, updateQuantity, total, appSettings, isDark, onChe
               }}
             >
               <CreditCard size={18} />
-              Payer (F3)
+              Payer
             </button>
           </div>
         </>
