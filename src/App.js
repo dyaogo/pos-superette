@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { AppProvider, useApp } from './contexts/AppContext';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { useApp } from './contexts/AppContext';
+import { useAuth } from './contexts/AuthContext';
 import POSModule from './modules/pos/POSModule';
 import SalesHistoryModule from './modules/pos/SalesHistoryModule';
 import InventoryModule from './modules/inventory/InventoryModule';
@@ -43,14 +43,7 @@ function App() {
     credits,
     currentStoreId
   } = useApp();
-  let auth;
-  try {
-    auth = useAuth();
-  } catch (error) {
-    console.error('Firebase initialization failed:', error);
-    return <div>Erreur d\'initialisation de Firebase</div>;
-  }
-  const { user, role, login, logout, loading } = auth;
+  const { user, role, login, logout, loading } = useAuth();
   const { isMobile } = useResponsive();
   const [activeModule, setActiveModule] = useState('dashboard');
   const [email, setEmail] = useState('');
@@ -121,9 +114,7 @@ function App() {
 
   return (
     <ErrorBoundary fallback={<div>Une erreur est survenue.</div>}>
-      <AppProvider>
-        <AuthProvider>
-          {loading ? (
+      {loading ? (
             <LoadingSpinner />
           ) : !user ? (
             <div className={styles.container}>
@@ -328,8 +319,6 @@ function App() {
               )}
             </div>
           )}
-        </AuthProvider>
-      </AppProvider>
     </ErrorBoundary>
   );
 }
