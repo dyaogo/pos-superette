@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package, 
+import {
+  TrendingUp, TrendingDown, DollarSign, ShoppingCart, Package,
   Users, AlertTriangle, Activity, Zap, ArrowUp, ArrowDown, Award, BarChart3
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { groupSalesByPeriod } from './SalesChart.jsx';
 
 const DashboardModule = ({ onNavigate }) => {
   const {
@@ -115,62 +116,15 @@ const DashboardModule = ({ onNavigate }) => {
     margin: { value: 15.7, positive: true, comparison: getComparisonText(selectedPeriod) }
   };
 
-  // Données pour les graphiques (simulées mais basées sur vos vraies données)
-  const generateChartData = () => {
-    if (selectedPeriod === 'today') {
-      // Données horaires
-      return Array.from({ length: 10 }, (_, i) => {
-        const hour = 8 + i;
-        const baseVentes = Math.random() * 200000 + 50000;
-        return {
-          label: `${hour}h`,
-          ventes: Math.round(baseVentes),
-          margesBrutes: Math.round(baseVentes * 0.4),
-          percentage: Math.random() * 100
-        };
-      });
-    } else if (selectedPeriod === 'week') {
-      // Données journalières
-      const days = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
-      return days.map(day => {
-        const baseVentes = Math.random() * 1500000 + 500000;
-        return {
-          label: day,
-          ventes: Math.round(baseVentes),
-          margesBrutes: Math.round(baseVentes * 0.4),
-          objectif: 900000,
-          percentage: Math.random() * 100
-        };
-      });
-    } else if (selectedPeriod === 'month') {
-      // Données hebdomadaires
-      return ['S1', 'S2', 'S3', 'S4'].map(week => {
-        const baseVentes = Math.random() * 6000000 + 4000000;
-        return {
-          label: week,
-          ventes: Math.round(baseVentes),
-          margesBrutes: Math.round(baseVentes * 0.4),
-          objectif: 5000000,
-          percentage: Math.random() * 100
-        };
-      });
-    } else {
-      // Données mensuelles
-      const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
-      return months.map(month => {
-        const baseVentes = Math.random() * 25000000 + 15000000;
-        return {
-          label: month,
-          ventes: Math.round(baseVentes),
-          margesBrutes: Math.round(baseVentes * 0.4),
-          objectif: 20000000,
-          percentage: Math.random() * 100
-        };
-      });
-    }
-  };
-
-  const chartData = generateChartData();
+  // Données pour les graphiques basées sur l'historique des ventes
+  const chartData = groupSalesByPeriod(salesHistory, selectedPeriod).map(
+    ({ label, revenue, margin }) => ({
+      label,
+      ventes: revenue,
+      margesBrutes: margin,
+      percentage: 0,
+    })
+  );
 
   // Top produits basés sur vos vraies données
   const getTopProducts = () => {
