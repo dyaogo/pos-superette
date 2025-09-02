@@ -111,10 +111,16 @@ const SalesChart = ({ salesHistory, selectedPeriod }) => {
         <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
           <XAxis dataKey="label" />
           <YAxis tickFormatter={formatCFA} />
-          <Tooltip formatter={(value) => formatCFA(value)} />
+          <Tooltip formatter={formatCFA} />
           <Bar dataKey="margin" stackId="a" fill="#34d399" />
           <Bar dataKey="revenue" stackId="a" fill="#3b82f6">
-            <LabelList dataKey="revenue" position="top" formatter={formatCFA} />
+            <LabelList
+              dataKey="revenue"
+              position="top"
+              content={(props) => (
+                <text {...props}>{formatCFA(props.value)}</text>
+              )}
+            />
           </Bar>
         </BarChart>
       </ResponsiveContainer>
