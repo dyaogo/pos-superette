@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from 'react';
-import { 
-  Search, Filter, Calendar, Download, Eye, Receipt, 
+import {
+  Search, Filter, Calendar, Download, Eye, Receipt,
   TrendingUp, DollarSign, ShoppingCart, Clock, User
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { generateRealExcel } from '../../utils/ExportUtils';
 
 const SalesHistoryModule = () => {
   const { salesHistory, customers, appSettings, globalProducts } = useApp();
@@ -86,6 +87,58 @@ const SalesHistoryModule = () => {
       uniqueCustomers
     };
   }, [filteredSales]);
+
+  // Exporter les ventes filtrées en Excel
+  const handleExport = async () => {
+    if (!filteredSales.length) return;
+
+    const dates = filteredSales.map(s => new Date(s.date));
+    const period = {
+      startDate: new Date(Math.min(...dates)),
+      endDate: new Date(Math.max(...dates))
+    };
+
+    const totals = filteredSales.reduce(
+      (acc, sale) => {
+        acc.totalRevenue += sale.total || 0;
+        switch (sale.paymentMethod) {
+          case 'cash':
+            acc.cashSales += sale.total || 0;
+            break;
+          case 'card':
+            acc.cardSales += sale.total || 0;
+            break;
+          case 'credit':
+            acc.creditSales += sale.total || 0;
+            break;
+          default:
+            break;
+        }
+        return acc;
+      },
+      { totalRevenue: 0, cashSales: 0, cardSales: 0, creditSales: 0 }
+    );
+
+    const reportData = {
+      period,
+      sales: {
+        totalRevenue: totals.totalRevenue,
+        totalTransactions: filteredSales.length,
+        averageBasket: filteredSales.length
+          ? totals.totalRevenue / filteredSales.length
+          : 0,
+        cashSales: totals.cashSales,
+        cardSales: totals.cardSales,
+        creditSales: totals.creditSales
+      }
+    };
+
+    try {
+      await generateRealExcel(reportData, 'sales', appSettings, filteredSales, customers);
+    } catch (error) {
+      console.error('Erreur lors de l\'export des ventes', error);
+    }
+  };
 
   // Composant de statistiques rapides
   const StatCard = ({ title, value, icon: Icon, color }) => (
@@ -382,10 +435,7 @@ const SalesHistoryModule = () => {
             alignItems: 'center',
             gap: '6px'
           }}
-          onClick={() => {
-            // Fonction d'export (à implémenter)
-            console.log('Export des ventes');
-          }}
+          onClick={handleExport}
         >
           <Download size={16} />
           Exporter
