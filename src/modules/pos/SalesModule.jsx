@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import { useResponsive } from '../../components/ResponsiveComponents';
 import Cart from './Cart';
@@ -6,6 +6,7 @@ import PaymentModal from './PaymentModal';
 import QuickSale from './QuickSale';
 import Receipt from './Receipt';
 import BarcodeScanner from './BarcodeScanner';
+import { getSuggestedAmounts } from '../../utils/calculations';
 
 const SalesModule = () => {
   const { globalProducts, processSale, customers, appSettings, addCredit } = useApp();
@@ -25,7 +26,7 @@ const SalesModule = () => {
 
   const { deviceType, isMobile } = useResponsive();
 
-  const frequentAmounts = [500, 1000, 2000, 5000, 10000, 20000];
+  const frequentAmounts = useMemo(() => getSuggestedAmounts(total), [total]);
 
   useEffect(() => {
     const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
