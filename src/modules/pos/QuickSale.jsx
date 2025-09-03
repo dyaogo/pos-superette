@@ -4,6 +4,9 @@ import ProductGrid from './ProductGrid';
 
 const QuickSale = ({
   products,
+  categories = [],
+  selectedCategory = 'all',
+  setSelectedCategory = () => {},
   addToCart,
   searchQuery,
   setSearchQuery,
@@ -36,6 +39,16 @@ const QuickSale = ({
       border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
       borderRadius: '8px',
       fontSize: '16px',
+      marginBottom: '15px',
+      background: isDark ? '#374151' : 'white',
+      color: isDark ? '#f7fafc' : '#2d3748'
+    },
+    categorySelect: {
+      width: '100%',
+      padding: '12px 16px',
+      border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+      borderRadius: '8px',
+      fontSize: '14px',
       marginBottom: '15px',
       background: isDark ? '#374151' : 'white',
       color: isDark ? '#f7fafc' : '#2d3748'
@@ -95,6 +108,18 @@ const QuickSale = ({
   return (
     <div style={styles.productSection}>
       <QuickActions />
+
+      <select
+        aria-label="Catégorie"
+        value={selectedCategory}
+        onChange={(e) => setSelectedCategory(e.target.value)}
+        style={styles.categorySelect}
+      >
+        <option value="all">Toutes catégories</option>
+        {categories.filter(cat => cat !== 'all').map(category => (
+          <option key={category} value={category}>{category}</option>
+        ))}
+      </select>
 
       <div style={{ position: 'relative' }}>
         <Search style={{ position: 'absolute', left: '15px', top: '12px' }} size={20} color="#94a3b8" />

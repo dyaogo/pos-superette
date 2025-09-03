@@ -11,6 +11,7 @@ const POSModule = () => {
   const { globalProducts, processSale, customers, appSettings, addCredit } = useApp();
   const [cart, setCart] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [total, setTotal] = useState(0);
   const [selectedCustomer, setSelectedCustomer] = useState(1);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -21,6 +22,7 @@ const POSModule = () => {
   const [showScanner, setShowScanner] = useState(false);
 
   const products = globalProducts;
+  const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
   const isDark = appSettings.darkMode;
 
   const { deviceType, isMobile } = useResponsive();
@@ -33,11 +35,14 @@ const POSModule = () => {
     setTotal(subtotal + tax);
   }, [cart, appSettings.taxRate]);
 
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    product.barcode?.includes(searchQuery)
-  ).slice(0, quickMode ? 12 : 20);
+  const filteredProducts = products.filter(product => {
+    const matchesSearch =
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.barcode?.includes(searchQuery);
+    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
+    return matchesSearch && matchesCategory;
+  }).slice(0, quickMode ? 12 : 20);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -187,6 +192,9 @@ const POSModule = () => {
       <div style={styles.container}>
         <QuickSale
           products={filteredProducts}
+          categories={categories}
+          selectedCategory={selectedCategory}
+          setSelectedCategory={setSelectedCategory}
           addToCart={addToCart}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
