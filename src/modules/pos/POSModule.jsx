@@ -34,12 +34,16 @@ const POSModule = () => {
     const tax = subtotal * (appSettings.taxRate / 100);
     setTotal(subtotal + tax);
   }, [cart, appSettings.taxRate]);
-
+  const q = searchQuery.toLowerCase();
   const filteredProducts = products.filter(product => {
+    const name = (product.name || '').toLowerCase();
+    const sku = (product.sku || '').toLowerCase();
+    const barcode = String(product.barcode || '');
+    if (!product.name || !product.sku) {
+      console.warn('Produit incomplet:', product);
+    }
     const matchesSearch =
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode?.includes(searchQuery);
+      name.includes(q) || sku.includes(q) || barcode.includes(searchQuery);
     const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
     return matchesSearch && matchesCategory;
   }).slice(0, quickMode ? 12 : 20);
