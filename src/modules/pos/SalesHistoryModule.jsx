@@ -76,7 +76,7 @@ const SalesHistoryModule = () => {
   const stats = useMemo(() => {
     const total = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
     const count = filteredSales.length;
-    const averageTicket = count > 0 ? total / count : 0;
+    const averageTicket = count > 0 ? Math.round(total / count) : 0;
     const uniqueCustomers = new Set(filteredSales.map(sale => sale.customerId)).size;
 
     return {
