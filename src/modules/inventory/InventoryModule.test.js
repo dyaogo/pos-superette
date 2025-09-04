@@ -7,7 +7,7 @@ jest.mock('../../contexts/AppContext', () => ({
     inventories: { store1: [{ id: 1, name: 'Produit', category: 'A', stock: 10, costPrice: 5, price: 10 }] },
     setGlobalProducts: jest.fn(),
     addStock: jest.fn(),
-    appSettings: { darkMode: false },
+    appSettings: { darkMode: false, currency: 'FCFA' },
     salesHistory: [],
     currentStoreId: 'store1'
   })

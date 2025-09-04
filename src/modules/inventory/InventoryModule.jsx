@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Package, AlertTriangle, TrendingDown, TrendingUp, 
+import {
+  Package, AlertTriangle, TrendingDown, TrendingUp,
   Search, Plus, Minus, Edit, Save, X, Bell,
   BarChart3, Truck, Clock, Eye, RefreshCw
 } from 'lucide-react';
@@ -8,6 +8,7 @@ import { useApp } from '../../contexts/AppContext'; // ✅ Correction critique
 import BarcodeSystem from './BarcodeSystem';
 import PhysicalInventory from './PhysicalInventory';
 import TransferStock from './TransferStock';
+import { generateRealExcel } from '../../utils/ExportUtils';
 
 const InventoryModule = () => {
   const { inventories, setGlobalProducts, addStock, appSettings, salesHistory, currentStoreId } = useApp(); // ✅ Utilise useApp
@@ -20,6 +21,7 @@ const InventoryModule = () => {
   const [restockingProduct, setRestockingProduct] = useState(null);
   const [restockQuantity, setRestockQuantity] = useState('');
   const [activeTab, setActiveTab] = useState('overview');
+  const [lowStockOnly, setLowStockOnly] = useState(false);
 
   const isDark = appSettings.darkMode;
 
@@ -51,13 +53,18 @@ const InventoryModule = () => {
   const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
 
   // Produits filtrés
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         product.barcode?.includes(searchTerm) ||
-                         product.id?.toString().includes(searchTerm);
-    const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+  const filteredProducts = products.filter(p => {
+    const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         p.barcode?.includes(searchTerm) ||
+                         p.id?.toString().includes(searchTerm);
+    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
+    return matchesSearch && matchesCategory && (!lowStockOnly || ((p.stock||0)>0 && (p.stock||0) <= (p.minStock||5)));
   });
+
+  async function handleExportLowStock() {
+    const low = products.filter(p => (p.stock||0)>0 && (p.stock||0) <= (p.minStock||5));
+    await generateRealExcel({ stock: { lowStockProducts: low } }, 'stock', appSettings);
+  }
 
   // Styles
   const styles = {
@@ -213,22 +220,38 @@ const InventoryModule = () => {
             </div>
           )}
           
-          <button
-            onClick={() => setActiveTab('products')}
-            style={{
-              marginTop: '16px',
-              padding: '8px 16px',
-              background: '#3182ce',
-              color: 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}
-          >
-            Voir les produits
-          </button>
+          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+            <button
+              onClick={() => { setLowStockOnly(true); setActiveTab('products'); }}
+              style={{
+                padding: '8px 16px',
+                background: '#3182ce',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Voir les produits
+            </button>
+            <button
+              onClick={handleExportLowStock}
+              style={{
+                padding: '8px 16px',
+                background: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              Exporter
+            </button>
+          </div>
         </div>
       )}
 
@@ -370,6 +393,27 @@ const InventoryModule = () => {
           <Plus size={16} />
           Ajouter Produit
         </button>
+        {lowStockOnly && (
+          <button
+            onClick={() => setLowStockOnly(false)}
+            style={{
+              padding: '12px 20px',
+              background: '#3182ce',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            <RefreshCw size={16} />
+            Tous les produits
+          </button>
+        )}
       </div>
 
       {/* Liste des produits */}
