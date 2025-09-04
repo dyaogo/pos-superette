@@ -30,8 +30,24 @@ const ProductGrid = ({ products, addToCart, quickMode, isDark, appSettings }) =>
           onMouseOver={e => (e.currentTarget.style.transform = 'scale(1.02)')}
           onMouseOut={e => (e.currentTarget.style.transform = 'scale(1)')}
         >
-          <div style={{ fontSize: quickMode ? '24px' : '40px', marginBottom: '5px' }}>
-            {product.image}
+          <div style={{
+            marginBottom: '5px',
+            width: quickMode ? '60px' : '80px',
+            height: quickMode ? '60px' : '80px',
+            marginLeft: 'auto',
+            marginRight: 'auto'
+          }}>
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{ fontSize: quickMode ? '24px' : '40px' }}>
+                {product.image}
+              </div>
+            )}
           </div>
           <div style={{
             fontSize: quickMode ? '12px' : '14px',

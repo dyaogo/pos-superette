@@ -723,8 +723,10 @@ const InventoryModule = () => {
       costPrice: '',
       stock: '',
       minStock: '5',
-      barcode: ''
+      barcode: '',
+      imageUrl: ''
     });
+    const [showImageSearch, setShowImageSearch] = useState(false);
 
     if (!showAddModal) return null;
 
@@ -742,6 +744,7 @@ const InventoryModule = () => {
         costPrice: parseFloat(newProduct.costPrice) || 0,
         minStock: parseInt(newProduct.minStock) || 5,
         barcode: newProduct.barcode || `${Date.now()}`,
+        imageUrl: newProduct.imageUrl,
         createdAt: new Date().toISOString()
       };
 
@@ -755,7 +758,8 @@ const InventoryModule = () => {
         costPrice: '',
         stock: '',
         minStock: '5',
-        barcode: ''
+        barcode: '',
+        imageUrl: ''
       });
     };
 
@@ -863,7 +867,7 @@ const InventoryModule = () => {
                   fontSize: '14px'
                 }}
               />
-              
+
               <input
                 type="number"
                 placeholder="Stock minimum"
@@ -879,7 +883,52 @@ const InventoryModule = () => {
                 }}
               />
             </div>
-            
+
+            {/* Image field */}
+            <div style={{ display: 'grid', gap: '8px' }}>
+              {newProduct.imageUrl && (
+                <img
+                  src={newProduct.imageUrl}
+                  alt="Prévisualisation"
+                  style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px' }}
+                />
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const url = URL.createObjectURL(file);
+                    setNewProduct({ ...newProduct, imageUrl: url });
+                  }
+                }}
+                style={{
+                  padding: '12px',
+                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  background: isDark ? '#4a5568' : 'white',
+                  color: isDark ? '#f7fafc' : '#2d3748',
+                  fontSize: '14px'
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowImageSearch(true)}
+                style={{
+                  padding: '10px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px'
+                }}
+              >
+                Rechercher en ligne
+              </button>
+            </div>
+
             <input
               type="text"
               placeholder="Code-barres (optionnel)"
@@ -895,7 +944,7 @@ const InventoryModule = () => {
               }}
             />
           </div>
-          
+
           <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
             <button
               onClick={() => setShowAddModal(false)}
@@ -930,6 +979,119 @@ const InventoryModule = () => {
               Ajouter Produit
             </button>
           </div>
+        </div>
+        {showImageSearch && (
+          <ImageSearchModal
+            isDark={isDark}
+            onSelect={(url) => {
+              setNewProduct({ ...newProduct, imageUrl: url });
+              setShowImageSearch(false);
+            }}
+            onClose={() => setShowImageSearch(false)}
+          />
+        )}
+      </div>
+    );
+  };
+
+  const ImageSearchModal = ({ isDark, onSelect, onClose }) => {
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState([]);
+
+    const searchImages = async () => {
+      if (!query) return;
+      try {
+        const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&client_id=${process.env.REACT_APP_UNSPLASH_KEY}`);
+        const data = await response.json();
+        setResults(data.results || []);
+      } catch (err) {
+        console.error('Image search failed', err);
+      }
+    };
+
+    return (
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1100
+      }}>
+        <div style={{
+          background: isDark ? '#2d3748' : 'white',
+          padding: '20px',
+          borderRadius: '12px',
+          width: '100%',
+          maxWidth: '600px',
+          maxHeight: '80vh',
+          overflow: 'auto'
+        }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <input
+              type="text"
+              placeholder="Recherche d'image"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              style={{
+                flex: 1,
+                padding: '10px',
+                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                borderRadius: '8px',
+                background: isDark ? '#4a5568' : 'white',
+                color: isDark ? '#f7fafc' : '#2d3748'
+              }}
+            />
+            <button
+              onClick={searchImages}
+              style={{
+                padding: '10px 16px',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              Chercher
+            </button>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
+            gap: '10px'
+          }}>
+            {results.map(img => (
+              <img
+                key={img.id}
+                src={img.urls.small}
+                alt={img.alt_description}
+                style={{ width: '100%', height: '100px', objectFit: 'cover', cursor: 'pointer', borderRadius: '8px' }}
+                onClick={() => onSelect(img.urls.small)}
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={onClose}
+            style={{
+              marginTop: '16px',
+              width: '100%',
+              padding: '10px',
+              background: '#6b7280',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            Fermer
+          </button>
         </div>
       </div>
     );

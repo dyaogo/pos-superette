@@ -357,11 +357,26 @@ export const ProductGrid = ({ products, onProductClick, isDark }) => {
           onClick={() => onProductClick(product)}
           onTouchStart={() => {}} // Améliore la réactivité tactile
         >
-          <div style={{ 
-            fontSize: deviceType === 'mobile' ? '32px' : '40px',
-            marginBottom: '8px'
-          }}>
-            {product.image}
+          <div
+            style={{
+              marginBottom: '8px',
+              width: deviceType === 'mobile' ? '80px' : '100px',
+              height: deviceType === 'mobile' ? '80px' : '100px',
+              marginLeft: 'auto',
+              marginRight: 'auto'
+            }}
+          >
+            {product.imageUrl ? (
+              <img
+                src={product.imageUrl}
+                alt={product.name}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{ fontSize: deviceType === 'mobile' ? '32px' : '40px' }}>
+                {product.image}
+              </div>
+            )}
           </div>
           
           <div style={{
