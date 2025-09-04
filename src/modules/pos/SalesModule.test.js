@@ -31,7 +31,7 @@ jest.mock('./Receipt', () => () => <div>Receipt</div>);
 
 test('affiche le client et ouvre la modale de paiement', () => {
   render(<SalesModule />);
-  expect(screen.getByText(/Client/i)).toBeInTheDocument();
+  expect(screen.getAllByText(/Client/i)[0]).toBeInTheDocument();
   fireEvent.click(screen.getByText('Checkout'));
   expect(screen.getByText('Payment Modal')).toBeInTheDocument();
 });

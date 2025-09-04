@@ -201,17 +201,19 @@ export const AppProvider = ({ children }) => {
       setStockForStore(storeId, storeStock);
 
       const product = (productCatalog || []).find(p => p.id === productId);
-      addInventoryRecord({
+      const record = {
         id: Date.now(),
+        date: new Date().toISOString(),
         storeId,
         productId,
         productName: product?.name || '',
+        product,
         quantity,
-        reason,
-        date: new Date().toISOString()
-      });
+        reason
+      };
+      addInventoryRecord(record);
 
-      return true;
+      return record;
     } catch (error) {
       console.error('Erreur lors de l\'ajout de stock:', error);
       return false;
@@ -237,6 +239,7 @@ export const AppProvider = ({ children }) => {
         storeId: fromStoreId,
         productId,
         productName: product?.name || '',
+        product,
         quantity: -quantity,
         reason: `Transfert vers ${toStoreId}`,
         date
@@ -246,6 +249,7 @@ export const AppProvider = ({ children }) => {
         storeId: toStoreId,
         productId,
         productName: product?.name || '',
+        product,
         quantity,
         reason: `Transfert de ${fromStoreId}`,
         date
