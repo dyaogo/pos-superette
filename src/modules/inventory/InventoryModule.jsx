@@ -11,7 +11,7 @@ import TransferStock from './TransferStock';
 import { generateRealExcel } from '../../utils/ExportUtils';
 
 const InventoryModule = () => {
-  const { inventories, setGlobalProducts, addStock, appSettings, salesHistory, currentStoreId } = useApp(); // ✅ Utilise useApp
+  const { globalProducts, addStock, appSettings, salesHistory, currentStoreId, addProduct } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -26,7 +26,7 @@ const InventoryModule = () => {
   const isDark = appSettings.darkMode;
 
   // Produits du magasin courant
-  const products = (inventories[currentStoreId] || []);
+  const products = globalProducts || [];
 
   // Calculs statistiques mis à jour
   const stats = {
@@ -720,13 +720,13 @@ const InventoryModule = () => {
         category: newProduct.category || 'Divers',
         price: parseFloat(newProduct.price) || 0,
         costPrice: parseFloat(newProduct.costPrice) || 0,
-        stock: parseInt(newProduct.stock) || 0,
         minStock: parseInt(newProduct.minStock) || 5,
         barcode: newProduct.barcode || `${Date.now()}`,
         createdAt: new Date().toISOString()
       };
 
-      setGlobalProducts([...products, product]);
+      const initialStock = parseInt(newProduct.stock) || 0;
+      addProduct(product, initialStock);
       setShowAddModal(false);
       setNewProduct({
         name: '',

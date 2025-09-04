@@ -39,14 +39,24 @@ export const AppProvider = ({ children }) => {
   });
   const [viewMode, setViewMode] = useState('single');
   
-  // Inventaire par magasin { [storeId]: Product[] }
-  const [inventories, setInventories] = useState({});
-  const setProductsForStore = (storeId, products) => {
-    setInventories(prev => ({ ...prev, [storeId]: products }));
-    saveInventory(storeId, products);
+  // Catalogue produit global (hors magasin)
+  const [productCatalog, setProductCatalog] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pos_products_catalog');
+      return saved ? JSON.parse(saved) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  // Stock par magasin { [storeId]: { [productId]: quantity } }
+  const [stockByStore, setStockByStore] = useState({});
+  const setStockForStore = (storeId, stock) => {
+    setStockByStore(prev => ({ ...prev, [storeId]: stock }));
+    saveInventory(storeId, stock);
   };
-  const globalProducts = inventories[currentStoreId] || [];
-  const setGlobalProducts = (products) => setProductsForStore(currentStoreId, products);
+
+  const [globalProducts, setGlobalProducts] = useState([]);
   const [salesHistory, setSalesHistory] = useState([]);
   const [customers, setCustomers] = useState([
     { id: 1, name: 'Client Comptant', phone: '', email: '', totalPurchases: 0, points: 0 }
@@ -98,9 +108,43 @@ export const AppProvider = ({ children }) => {
     localStorage.setItem('pos_current_store', newStoreId);
     const storeName = stores.find(store => store.id === newStoreId)?.name;
     setAppSettings(prev => ({ ...prev, storeName }));
+    if (!stockByStore[newStoreId]) {
+      const loaded = loadInventory(newStoreId);
+      setStockForStore(newStoreId, loaded);
+    }
   };
 
+  // Recalculer les produits globaux lorsqu'on change de magasin, de catalogue ou de stock
+  useEffect(() => {
+    const stock = stockByStore[currentStoreId] || {};
+    const merged = (productCatalog || []).map(p => ({ ...p, stock: stock[p.id] || 0 }));
+    setGlobalProducts(merged);
+  }, [productCatalog, stockByStore, currentStoreId]);
+
+  // Sauvegarder le catalogue produits
+  useEffect(() => {
+    try {
+      localStorage.setItem('pos_products_catalog', JSON.stringify(productCatalog));
+    } catch (e) {
+      console.warn('Erreur de sauvegarde du catalogue:', e);
+    }
+  }, [productCatalog]);
+
   // ==================== FONCTIONS MÉTIER ====================
+
+  // Ajouter un produit au catalogue et initialiser son stock pour le magasin courant
+  const addProduct = (product, initialStock = 0) => {
+    try {
+      setProductCatalog(prev => [...prev, product]);
+      const storeStock = { ...(stockByStore[currentStoreId] || {}) };
+      storeStock[product.id] = initialStock;
+      setStockForStore(currentStoreId, storeStock);
+      return true;
+    } catch (error) {
+      console.error("Erreur lors de l'ajout de produit:", error);
+      return false;
+    }
+  };
 
   // Traiter une vente
   const processSale = (cart, paymentMethod, amountReceived, customerId = 1) => {
@@ -119,16 +163,12 @@ export const AppProvider = ({ children }) => {
       };
 
       // Déduire du stock avec protection
-      const updatedProducts = (globalProducts || []).map(product => {
-        const cartItem = (cart || []).find(item => item.id === product.id);
-        if (cartItem) {
-          return {
-            ...product,
-            stock: Math.max(0, (product.stock || 0) - (cartItem.quantity || 0))
-          };
-        }
-        return product;
+      const storeStock = { ...(stockByStore[currentStoreId] || {}) };
+      (cart || []).forEach(item => {
+        const currentQty = storeStock[item.id] || 0;
+        storeStock[item.id] = Math.max(0, currentQty - (item.quantity || 0));
       });
+      setStockForStore(currentStoreId, storeStock);
 
       // Mettre à jour les points du client
       let updatedCustomers = customers || [];
@@ -141,7 +181,6 @@ export const AppProvider = ({ children }) => {
         );
       }
 
-      setGlobalProducts(updatedProducts);
       setSalesHistory([sale, ...(salesHistory || [])]);
       setCustomers(updatedCustomers);
 
@@ -157,14 +196,9 @@ export const AppProvider = ({ children }) => {
     try {
       if (!storeId || !productId || !quantity || quantity <= 0) return false;
 
-      const storeProducts = inventories[storeId] || [];
-      const updatedProducts = storeProducts.map(product =>
-        product.id === productId
-          ? { ...product, stock: (product.stock || 0) + quantity }
-          : product
-      );
-
-      setProductsForStore(storeId, updatedProducts);
+      const storeStock = { ...(stockByStore[storeId] || {}) };
+      storeStock[productId] = (storeStock[productId] || 0) + quantity;
+      setStockForStore(storeId, storeStock);
       return true;
     } catch (error) {
       console.error('Erreur lors de l\'ajout de stock:', error);
@@ -176,28 +210,13 @@ export const AppProvider = ({ children }) => {
   const transferStock = (fromStoreId, toStoreId, productId, quantity) => {
     try {
       if (!fromStoreId || !toStoreId || !productId || quantity <= 0) return false;
-      const fromProducts = inventories[fromStoreId] || [];
-      const toProducts = inventories[toStoreId] || [];
-
-      const product = fromProducts.find(p => p.id === productId);
-      if (!product || (product.stock || 0) < quantity) return false;
-
-      const updatedFrom = fromProducts.map(p =>
-        p.id === productId ? { ...p, stock: (p.stock || 0) - quantity } : p
-      );
-
-      let updatedTo;
-      const target = toProducts.find(p => p.id === productId);
-      if (target) {
-        updatedTo = toProducts.map(p =>
-          p.id === productId ? { ...p, stock: (p.stock || 0) + quantity } : p
-        );
-      } else {
-        updatedTo = [...toProducts, { ...product, stock: quantity }];
-      }
-
-      setProductsForStore(fromStoreId, updatedFrom);
-      setProductsForStore(toStoreId, updatedTo);
+      const fromStock = { ...(stockByStore[fromStoreId] || {}) };
+      const toStock = { ...(stockByStore[toStoreId] || {}) };
+      if ((fromStock[productId] || 0) < quantity) return false;
+      fromStock[productId] = (fromStock[productId] || 0) - quantity;
+      toStock[productId] = (toStock[productId] || 0) + quantity;
+      setStockForStore(fromStoreId, fromStock);
+      setStockForStore(toStoreId, toStock);
       return true;
     } catch (error) {
       console.error('Erreur lors du transfert de stock:', error);
@@ -208,7 +227,7 @@ export const AppProvider = ({ children }) => {
   // Traiter un retour produit
   const processReturn = (productId, quantity, reason = 'Retour client') => {
     try {
-      const product = (inventories[currentStoreId] || []).find(p => p.id === productId);
+      const product = productCatalog.find(p => p.id === productId);
       if (!product || !quantity || quantity <= 0) return false;
 
       const returnEntry = {
@@ -352,7 +371,7 @@ export const AppProvider = ({ children }) => {
     try {
       const storeKey = `pos_${currentStoreId}`;
 
-      const savedProducts = loadInventory(currentStoreId);
+      const savedStock = loadInventory(currentStoreId);
       const savedSales = localStorage.getItem(`${storeKey}_sales`);
       const savedCustomers = localStorage.getItem(`${storeKey}_customers`);
       const savedCredits = localStorage.getItem(`${storeKey}_credits`);
@@ -360,7 +379,7 @@ export const AppProvider = ({ children }) => {
       const savedEmployees = localStorage.getItem(`${storeKey}_employees`);
       const savedReturns = localStorage.getItem(`${storeKey}_returns`);
 
-      setProductsForStore(currentStoreId, savedProducts);
+      setStockForStore(currentStoreId, savedStock);
       
       if (savedSales) {
         try {
@@ -433,15 +452,13 @@ export const AppProvider = ({ children }) => {
       stores.forEach(store => {
         const storeKey = `pos_${store.id}`;
 
-        const savedProducts = localStorage.getItem(`${storeKey}_products`);
-        if (savedProducts) {
-          try {
-            const parsed = JSON.parse(savedProducts).map(p => ({ ...p, storeId: store.id }));
-            allProducts = allProducts.concat(parsed);
-          } catch (e) {
-            console.warn('Erreur de parsing products:', e);
-          }
-        }
+        const storeStock = loadInventory(store.id);
+        const merged = (productCatalog || []).map(p => ({
+          ...p,
+          stock: (storeStock || {})[p.id] || 0,
+          storeId: store.id
+        }));
+        allProducts = allProducts.concat(merged);
 
         const savedSales = localStorage.getItem(`${storeKey}_sales`);
         if (savedSales) {
@@ -564,9 +581,9 @@ export const AppProvider = ({ children }) => {
   // ==================== VALEUR DU CONTEXTE ====================
   const value = {
     // États existants
-    inventories,
+    productCatalog: productCatalog || [],
+    stockByStore,
     globalProducts: globalProducts || [],
-    setGlobalProducts,
     salesHistory: salesHistory || [],
     setSalesHistory,
     customers: customers || [],
@@ -582,6 +599,8 @@ export const AppProvider = ({ children }) => {
 
     // Fonctions sécurisées
     processSale,
+    addProduct,
+    setStockForStore,
     addStock,
     transferStock,
     processReturn,

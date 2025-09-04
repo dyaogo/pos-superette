@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../contexts/AppContext';
 
 const TransferStock = () => {
-  const { stores, inventories, transferStock, currentStoreId } = useApp();
+  const { stores, productCatalog, stockByStore, transferStock, currentStoreId } = useApp();
   const [fromStore, setFromStore] = useState(currentStoreId);
   const [toStore, setToStore] = useState(stores.find(s => s.id !== currentStoreId)?.id || '');
   const [productId, setProductId] = useState('');
@@ -16,7 +16,10 @@ const TransferStock = () => {
     }
   };
 
-  const sourceProducts = inventories[fromStore] || [];
+  const sourceProducts = (productCatalog || []).map(p => ({
+    ...p,
+    stock: (stockByStore[fromStore] || {})[p.id] || 0
+  }));
 
   return (
     <div style={{ padding: '20px' }}>
