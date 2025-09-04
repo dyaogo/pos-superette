@@ -661,13 +661,14 @@ const InventoryModule = () => {
     if (!showRestockModal || !restockingProduct) return null;
 
     const handleRestock = () => {
-      const quantity = parseInt(restockQuantity);
+      const quantity = parseInt(restockQuantity, 10);
+      const reason = (restockReason || '').trim() || 'Réapprovisionnement';
       if (quantity > 0) {
         addStock(
           currentStoreId,
           restockingProduct.id,
           quantity,
-          restockReason || 'Réapprovisionnement'
+          reason
         );
         setShowRestockModal(false);
         setRestockingProduct(null);

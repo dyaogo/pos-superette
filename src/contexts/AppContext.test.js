@@ -39,7 +39,8 @@ test('enregistre un réapprovisionnement dans l\'historique', () => {
         storeId: 'wend-kuuni',
         productId: 1,
         quantity: 5,
-        reason: 'Test restock'
+        reason: 'Test restock',
+        date: expect.any(String)
       })
     ])
   );

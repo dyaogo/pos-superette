@@ -21,5 +21,5 @@ test('renders data manager widget heading', () => {
       setAppSettings={() => {}}
     />
   );
-  expect(screen.getByText(/Sauvegarde/)).toBeInTheDocument();
+  expect(screen.getAllByText(/Sauvegarde/)[0]).toBeInTheDocument();
 });
