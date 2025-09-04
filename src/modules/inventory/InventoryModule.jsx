@@ -10,6 +10,7 @@ import PhysicalInventory from './PhysicalInventory';
 import TransferStock from './TransferStock';
 import { generateRealExcel } from '../../utils/ExportUtils';
 import ProductImportModal from './ProductImportModal';
+import StockMovements from './StockMovements';
 
 const InventoryModule = () => {
   const { globalProducts, addStock, appSettings, salesHistory, currentStoreId, addProduct } = useApp();
@@ -1224,6 +1225,12 @@ const InventoryModule = () => {
         >
           Transfert
         </button>
+        <button
+          style={{ ...styles.tab, ...(activeTab === 'history' ? styles.activeTab : {}) }}
+          onClick={() => setActiveTab('history')}
+        >
+          Historique
+        </button>
       </div>
 
       {/* Contenu des onglets */}
@@ -1233,6 +1240,7 @@ const InventoryModule = () => {
         {activeTab === 'barcodes' && <BarcodeSystem />}
         {activeTab === 'inventory' && <PhysicalInventory />}
         {activeTab === 'transfer' && <TransferStock />}
+        {activeTab === 'history' && <StockMovements />}
       </div>
 
       {/* Modals */}
