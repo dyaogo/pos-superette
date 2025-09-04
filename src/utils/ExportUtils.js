@@ -327,6 +327,15 @@ const addStockSheet = (workbook, XLSX, reportData, appSettings) => {
   
   const summarySheet = XLSX.utils.json_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Résumé Stocks');
+
+  const lowData = (stock.lowStockProducts || []).map(p => ({
+    'Produit': p.name,
+    'Stock': p.stock,
+    'Seuil Min': p.minStock,
+    'Prix Achat': `${p.costPrice?.toLocaleString()} ${appSettings.currency}`
+  }));
+  const lowSheet = XLSX.utils.json_to_sheet(lowData);
+  XLSX.utils.book_append_sheet(workbook, lowSheet, 'Stock Faible');
 };
 
 // Feuille des clients pour Excel
