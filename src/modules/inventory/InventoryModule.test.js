@@ -40,6 +40,7 @@ test("affiche l'inventaire et change d'onglet", () => {
   fireEvent.click(screen.getByText('Produits'));
   expect(screen.getByText(/Ajouter Produit/i)).toBeInTheDocument();
   expect(screen.getByText('Importer')).toBeInTheDocument();
+  expect(screen.getByText('Exporter inventaire')).toBeInTheDocument();
 });
 
 test("onglet Historique affiche les mouvements après un réapprovisionnement", () => {

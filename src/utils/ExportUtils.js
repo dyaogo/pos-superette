@@ -328,6 +328,19 @@ const addStockSheet = (workbook, XLSX, reportData, appSettings) => {
   const summarySheet = XLSX.utils.json_to_sheet(summaryData);
   XLSX.utils.book_append_sheet(workbook, summarySheet, 'Résumé Stocks');
 
+  const allProductsData = (stock.products || []).map(p => ({
+    'Nom': p.name,
+    'Stock': p.stock,
+    'Prix': `${p.price?.toLocaleString()} ${appSettings.currency}`,
+    'Valeur': `${((p.stock || 0) * (p.price || 0)).toLocaleString()} ${appSettings.currency}`,
+    'Catégorie': p.category || ''
+  }));
+  const allSheet = XLSX.utils.json_to_sheet(allProductsData);
+  allSheet['!cols'] = [
+    { wch: 25 }, { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 15 }
+  ];
+  XLSX.utils.book_append_sheet(workbook, allSheet, 'Tous les produits');
+
   const lowData = (stock.lowStockProducts || []).map(p => ({
     'Produit': p.name,
     'Stock': p.stock,

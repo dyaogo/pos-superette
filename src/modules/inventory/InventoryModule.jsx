@@ -80,6 +80,33 @@ const InventoryModule = () => {
     await generateRealExcel(reportData, 'stock', appSettings);
   }
 
+  async function handleExportInventory() {
+    const categoryBreakdown = products.reduce((acc, p) => {
+      const category = p.category || 'Divers';
+      if (!acc[category]) {
+        acc[category] = { count: 0, totalStock: 0, totalValue: 0 };
+      }
+      acc[category].count++;
+      acc[category].totalStock += (p.stock || 0);
+      acc[category].totalValue += (p.stock || 0) * (p.costPrice || 0);
+      return acc;
+    }, {});
+
+    const reportData = {
+      stock: {
+        categoryBreakdown,
+        totalProducts: products.length,
+        totalStockValue: products.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0),
+        totalSaleValue: products.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0),
+        outOfStockProducts: products.filter(p => (p.stock || 0) === 0),
+        lowStockProducts: products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5)),
+        overStockProducts: products.filter(p => (p.maxStock || Infinity) > 0 && (p.stock || 0) > (p.maxStock || Infinity)),
+        products
+      }
+    };
+    await generateRealExcel(reportData, 'stock', appSettings);
+  }
+
   // Styles
   const styles = {
     container: {
@@ -409,6 +436,25 @@ const InventoryModule = () => {
           }}
         >
           Importer
+        </button>
+        <button
+          onClick={handleExportInventory}
+          style={{
+            padding: '12px 20px',
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <BarChart3 size={16} />
+          Exporter inventaire
         </button>
         {lowStockOnly && (
           <>
