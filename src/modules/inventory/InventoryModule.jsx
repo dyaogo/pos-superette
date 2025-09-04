@@ -22,6 +22,7 @@ const InventoryModule = () => {
   const [editingProduct, setEditingProduct] = useState(null);
   const [restockingProduct, setRestockingProduct] = useState(null);
   const [restockQuantity, setRestockQuantity] = useState('');
+  const [restockReason, setRestockReason] = useState('Réapprovisionnement manuel');
   const [activeTab, setActiveTab] = useState('overview');
   const [lowStockOnly, setLowStockOnly] = useState(false);
 
@@ -615,10 +616,16 @@ const InventoryModule = () => {
     const handleRestock = () => {
       const quantity = parseInt(restockQuantity);
       if (quantity > 0) {
-        addStock(currentStoreId, restockingProduct.id, quantity, 'Réapprovisionnement manuel');
+        addStock(
+          currentStoreId,
+          restockingProduct.id,
+          quantity,
+          restockReason || 'Réapprovisionnement'
+        );
         setShowRestockModal(false);
         setRestockingProduct(null);
         setRestockQuantity('');
+        setRestockReason('Réapprovisionnement manuel');
       }
     };
 
@@ -669,7 +676,25 @@ const InventoryModule = () => {
             }}
             autoFocus
           />
-          
+
+          <input
+            type="text"
+            placeholder="Raison du réapprovisionnement"
+            value={restockReason}
+            onChange={(e) => setRestockReason(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+              borderRadius: '8px',
+              background: isDark ? '#4a5568' : 'white',
+              color: isDark ? '#f7fafc' : '#2d3748',
+              fontSize: '14px',
+              marginBottom: '20px',
+              boxSizing: 'border-box'
+            }}
+          />
+
           <div style={{ display: 'flex', gap: '12px' }}>
             <button
               onClick={() => {
