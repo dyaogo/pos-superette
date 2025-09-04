@@ -22,5 +22,6 @@ test("affiche l'inventaire et change d'onglet", () => {
   expect(screen.getByText(/Gestion des Stocks/i)).toBeInTheDocument();
   fireEvent.click(screen.getByText('Produits'));
   expect(screen.getByText(/Ajouter Produit/i)).toBeInTheDocument();
+  expect(screen.getByText('Importer')).toBeInTheDocument();
 });
 

@@ -9,6 +9,7 @@ import BarcodeSystem from './BarcodeSystem';
 import PhysicalInventory from './PhysicalInventory';
 import TransferStock from './TransferStock';
 import { generateRealExcel } from '../../utils/ExportUtils';
+import ProductImportModal from './ProductImportModal';
 
 const InventoryModule = () => {
   const { inventories, setGlobalProducts, addStock, appSettings, salesHistory, currentStoreId } = useApp(); // ✅ Utilise useApp
@@ -17,6 +18,7 @@ const InventoryModule = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [restockingProduct, setRestockingProduct] = useState(null);
   const [restockQuantity, setRestockQuantity] = useState('');
@@ -387,6 +389,24 @@ const InventoryModule = () => {
         >
           <Plus size={16} />
           Ajouter Produit
+        </button>
+        <button
+          onClick={() => setShowImportModal(true)}
+          style={{
+            padding: '12px 20px',
+            background: '#3182ce',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          Importer
         </button>
         {lowStockOnly && (
           <>
@@ -1032,6 +1052,12 @@ const InventoryModule = () => {
       {showAddModal && <AddProductModal />}
       {showEditModal && <EditProductModal />}
       {showRestockModal && <RestockModal />}
+      {showImportModal && (
+        <ProductImportModal
+          isOpen={showImportModal}
+          onClose={() => setShowImportModal(false)}
+        />
+      )}
     </div>
   );
 };
