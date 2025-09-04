@@ -1,4 +1,5 @@
 import api from './api';
+import { generateRealExcel } from '../utils/ExportUtils';
 
 const INVENTORY_KEY = 'pos_inventory_history';
 
@@ -20,6 +21,19 @@ export async function addInventoryRecord(record) {
     console.warn('API addInventoryRecord failed', e);
   }
   return record;
+}
+
+export async function exportInventoryRecord(record) {
+  const reportData = {
+    inventory: {
+      ...record
+    }
+  };
+  try {
+    await generateRealExcel(reportData, 'inventory', {});
+  } catch (e) {
+    console.warn('Export inventory record failed', e);
+  }
 }
 
 export const loadInventory = (storeId) => {

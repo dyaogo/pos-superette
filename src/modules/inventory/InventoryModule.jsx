@@ -9,6 +9,7 @@ import BarcodeSystem from './BarcodeSystem';
 import PhysicalInventory from './PhysicalInventory';
 import TransferStock from './TransferStock';
 import { generateRealExcel } from '../../utils/ExportUtils';
+import { getInventoryHistory, exportInventoryRecord } from '../../services/inventory.service';
 
 const InventoryModule = () => {
   const { inventories, setGlobalProducts, addStock, appSettings, salesHistory, currentStoreId } = useApp(); // ✅ Utilise useApp
@@ -970,6 +971,72 @@ const InventoryModule = () => {
     );
   };
 
+  const HistoryTab = () => {
+    const [history, setHistory] = useState([]);
+    useEffect(() => {
+      setHistory(getInventoryHistory());
+    }, []);
+
+    const handleExport = (record) => {
+      exportInventoryRecord(record);
+    };
+
+    const handleRestore = (record) => {
+      if (window.confirm('Restaurer cet inventaire ?')) {
+        const restored = products.map(p => {
+          const diff = (record.differences || []).find(d => d.id === p.id);
+          if (diff) {
+            return { ...p, stock: p.stock - diff.difference };
+          }
+          return p;
+        });
+        setGlobalProducts(restored);
+      }
+    };
+
+    return (
+      <div style={{ marginTop: '20px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <thead>
+            <tr style={{ borderBottom: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}` }}>
+              <th style={{ padding: '10px', textAlign: 'left', color: isDark ? '#a0aec0' : '#718096' }}>Date</th>
+              <th style={{ padding: '10px', textAlign: 'left', color: isDark ? '#a0aec0' : '#718096' }}>Auteur</th>
+              <th style={{ padding: '10px', textAlign: 'center', color: isDark ? '#a0aec0' : '#718096' }}>Ajustements</th>
+              <th style={{ padding: '10px', textAlign: 'center' }}>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {history.map((rec, idx) => (
+              <tr key={idx} style={{ borderBottom: `1px solid ${isDark ? '#374151' : '#f1f5f9'}` }}>
+                <td style={{ padding: '10px', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                  {new Date(rec.appliedAt || rec.date).toLocaleString('fr-FR')}
+                </td>
+                <td style={{ padding: '10px', color: isDark ? '#f7fafc' : '#2d3748' }}>{rec.author || ''}</td>
+                <td style={{ padding: '10px', textAlign: 'center', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                  {(rec.differences || []).length}
+                </td>
+                <td style={{ padding: '10px', textAlign: 'center', display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                  <button
+                    onClick={() => handleExport(rec)}
+                    style={{ padding: '6px 12px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                  >
+                    Exporter
+                  </button>
+                  <button
+                    onClick={() => handleRestore(rec)}
+                    style={{ padding: '6px 12px', background: '#f59e0b', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '12px' }}
+                  >
+                    Restaurer
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
+
   return (
     <div style={styles.container}>
       {/* En-tête */}
@@ -1012,6 +1079,12 @@ const InventoryModule = () => {
           Inventaire
         </button>
         <button
+          style={{ ...styles.tab, ...(activeTab === 'history' ? styles.activeTab : {}) }}
+          onClick={() => setActiveTab('history')}
+        >
+          Historique
+        </button>
+        <button
           style={{ ...styles.tab, ...(activeTab === 'transfer' ? styles.activeTab : {}) }}
           onClick={() => setActiveTab('transfer')}
         >
@@ -1025,6 +1098,7 @@ const InventoryModule = () => {
         {activeTab === 'products' && <ProductsTab />}
         {activeTab === 'barcodes' && <BarcodeSystem />}
         {activeTab === 'inventory' && <PhysicalInventory />}
+        {activeTab === 'history' && <HistoryTab />}
         {activeTab === 'transfer' && <TransferStock />}
       </div>
 

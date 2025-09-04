@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { ClipboardList, Save, AlertTriangle, Check } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { addInventoryRecord } from '../../services/inventory.service';
+import { addInventoryRecord, exportInventoryRecord } from '../../services/inventory.service';
+import { useAuth } from '../../contexts/AuthContext';
 
 const PhysicalInventory = () => {
   const { globalProducts, setGlobalProducts, appSettings } = useApp();
+  const { user } = useAuth();
   const [inventoryDate] = useState(new Date().toISOString().split('T')[0]);
   const [counts, setCounts] = useState({});
   const [notes, setNotes] = useState({});
@@ -59,11 +61,16 @@ const PhysicalInventory = () => {
       const inventoryRecord = {
         date: inventoryDate,
         differences,
-        appliedAt: new Date().toISOString()
+        appliedAt: new Date().toISOString(),
+        author: user?.email || 'Anonyme'
       };
 
       addInventoryRecord(inventoryRecord);
-      
+
+      if (window.confirm('Inventaire sauvegardé. Voulez-vous exporter le rapport ?')) {
+        exportInventoryRecord(inventoryRecord);
+      }
+
       alert('Inventaire appliqué avec succès!');
       setShowSummary(true);
     }

@@ -234,6 +234,9 @@ const generateRealExcel = async (reportData, reportType, appSettings, salesHisto
     case 'credits':
       addCreditsSheet(workbook, XLSX, reportData, customers, appSettings);
       break;
+    case 'inventory':
+      addInventorySheet(workbook, XLSX, reportData);
+      break;
   }
   
   // Sauvegarde
@@ -336,6 +339,19 @@ const addStockSheet = (workbook, XLSX, reportData, appSettings) => {
   }));
   const lowSheet = XLSX.utils.json_to_sheet(lowData);
   XLSX.utils.book_append_sheet(workbook, lowSheet, 'Stock Faible');
+};
+
+const addInventorySheet = (workbook, XLSX, reportData) => {
+  const { inventory } = reportData;
+  const diffData = (inventory.differences || []).map(d => ({
+    'Produit': d.name,
+    'Stock Avant': d.stock,
+    'Compté': d.counted,
+    'Différence': d.difference,
+    'Note': d.note || ''
+  }));
+  const worksheet = XLSX.utils.json_to_sheet(diffData);
+  XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventaire');
 };
 
 // Feuille des clients pour Excel
