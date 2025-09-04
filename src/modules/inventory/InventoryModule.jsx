@@ -62,8 +62,18 @@ const InventoryModule = () => {
   });
 
   async function handleExportLowStock() {
-    const low = products.filter(p => (p.stock||0)>0 && (p.stock||0) <= (p.minStock||5));
-    await generateRealExcel({ stock: { lowStockProducts: low } }, 'stock', appSettings);
+    const low = products.filter(p => (p.stock||0) > 0 && (p.stock||0) <= (p.minStock||5));
+    const reportData = {
+      stock: {
+        categoryBreakdown: {},
+        totalProducts: products.length,
+        totalStockValue: 0,
+        totalSaleValue: 0,
+        outOfStockProducts: [],
+        lowStockProducts: low,
+      }
+    };
+    await generateRealExcel(reportData, 'stock', appSettings);
   }
 
   // Styles
@@ -236,21 +246,6 @@ const InventoryModule = () => {
             >
               Voir les produits
             </button>
-            <button
-              onClick={handleExportLowStock}
-              style={{
-                padding: '8px 16px',
-                background: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              Exporter
-            </button>
           </div>
         </div>
       )}
@@ -394,25 +389,46 @@ const InventoryModule = () => {
           Ajouter Produit
         </button>
         {lowStockOnly && (
-          <button
-            onClick={() => setLowStockOnly(false)}
-            style={{
-              padding: '12px 20px',
-              background: '#3182ce',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <RefreshCw size={16} />
-            Tous les produits
-          </button>
+          <>
+            <button
+              onClick={handleExportLowStock}
+              style={{
+                padding: '12px 20px',
+                background: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <BarChart3 size={16} />
+              Exporter
+            </button>
+            <button
+              onClick={() => setLowStockOnly(false)}
+              style={{
+                padding: '12px 20px',
+                background: '#3182ce',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <RefreshCw size={16} />
+              Tous les produits
+            </button>
+          </>
         )}
       </div>
 
