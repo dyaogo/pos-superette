@@ -32,7 +32,9 @@ export function AuthProvider({ children }) {
             const stores = data.stores || [];
             setAllowedStores(stores);
             if (stores.length) {
-              setCurrentStoreId(stores[0]);
+              const saved = localStorage.getItem('pos_current_store');
+              const chosen = saved && stores.includes(saved) ? saved : stores[0];
+              setCurrentStoreId(chosen);
             }
           } else {
             setRole(null);
