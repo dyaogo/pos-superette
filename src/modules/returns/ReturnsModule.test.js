@@ -8,10 +8,10 @@ beforeEach(() => {
 });
 
 const Setup = () => {
-  const { setGlobalProducts } = useApp();
+  const { addProduct } = useApp();
   useEffect(() => {
-    setGlobalProducts([{ id: 1, name: 'Produit A', stock: 5 }]);
-  }, [setGlobalProducts]);
+    addProduct({ id: 1, name: 'Produit A', price: 0, costPrice: 0, minStock: 0, barcode: '1', category: '', createdAt: new Date().toISOString() }, 5);
+  }, [addProduct]);
   return <ReturnsModule />;
 };
 

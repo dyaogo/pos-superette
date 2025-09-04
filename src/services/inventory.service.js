@@ -22,22 +22,23 @@ export async function addInventoryRecord(record) {
   return record;
 }
 
+// Stock par magasin { [productId]: quantity }
 export const loadInventory = (storeId) => {
-  if (!storeId) return [];
+  if (!storeId) return {};
   try {
-    const data = localStorage.getItem(`pos_${storeId}_products`);
-    return data ? JSON.parse(data) : [];
+    const data = localStorage.getItem(`pos_${storeId}_stock`);
+    return data ? JSON.parse(data) : {};
   } catch (err) {
-    console.warn('Erreur de chargement de l\'inventaire:', err);
-    return [];
+    console.warn("Erreur de chargement de l'inventaire:", err);
+    return {};
   }
 };
 
-export const saveInventory = (storeId, products) => {
+export const saveInventory = (storeId, stock) => {
   if (!storeId) return;
   try {
-    localStorage.setItem(`pos_${storeId}_products`, JSON.stringify(products));
+    localStorage.setItem(`pos_${storeId}_stock`, JSON.stringify(stock));
   } catch (err) {
-    console.warn('Erreur de sauvegarde de l\'inventaire:', err);
+    console.warn("Erreur de sauvegarde de l'inventaire:", err);
   }
 };

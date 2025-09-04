@@ -4,8 +4,8 @@ import InventoryModule from './InventoryModule';
 
 jest.mock('../../contexts/AppContext', () => ({
   useApp: () => ({
-    inventories: { store1: [{ id: 1, name: 'Produit', category: 'A', stock: 10, costPrice: 5, price: 10 }] },
-    setGlobalProducts: jest.fn(),
+    globalProducts: [{ id: 1, name: 'Produit', category: 'A', stock: 10, costPrice: 5, price: 10 }],
+    addProduct: jest.fn(),
     addStock: jest.fn(),
     appSettings: { darkMode: false, currency: 'FCFA' },
     salesHistory: [],

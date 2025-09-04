@@ -4,7 +4,7 @@ import { useApp } from '../../contexts/AppContext';
 import { addInventoryRecord } from '../../services/inventory.service';
 
 const PhysicalInventory = () => {
-  const { globalProducts, setGlobalProducts, appSettings } = useApp();
+  const { globalProducts, stockByStore, currentStoreId, setStockForStore, appSettings } = useApp();
   const [inventoryDate] = useState(new Date().toISOString().split('T')[0]);
   const [counts, setCounts] = useState({});
   const [notes, setNotes] = useState({});
@@ -48,12 +48,12 @@ const PhysicalInventory = () => {
     }
     
     if (window.confirm(`Voulez-vous appliquer ${differences.length} ajustement(s) ?`)) {
-      const updatedProducts = globalProducts.map(product => {
+      const newStock = { ...(stockByStore[currentStoreId] || {}) };
+      globalProducts.forEach(product => {
         const counted = parseInt(counts[product.id] || product.stock);
-        return { ...product, stock: counted };
+        newStock[product.id] = counted;
       });
-      
-      setGlobalProducts(updatedProducts);
+      setStockForStore(currentStoreId, newStock);
       
       // Sauvegarder l'historique de l'inventaire
       const inventoryRecord = {
