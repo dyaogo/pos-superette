@@ -8,10 +8,19 @@ const StockMovements = () => {
   const [endDate, setEndDate] = useState('');
 
   useEffect(() => {
-    const data = getInventoryHistory() || [];
-    // Tri du plus récent au plus ancien
-    data.sort((a, b) => new Date(b.date) - new Date(a.date));
-    setHistory(data);
+    const loadHistory = () => {
+      const data = [...(getInventoryHistory() || [])].sort(
+        (a, b) => new Date(b.date) - new Date(a.date)
+      );
+      setHistory(data);
+    };
+
+    // Chargement initial
+    loadHistory();
+
+    // Met à jour lorsqu'un autre onglet modifie l'historique
+    window.addEventListener('storage', loadHistory);
+    return () => window.removeEventListener('storage', loadHistory);
   }, []);
 
   const filteredHistory = history.filter((record) => {
