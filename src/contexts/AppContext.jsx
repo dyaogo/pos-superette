@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { loadInventory, saveInventory } from '../services/inventory.service';
+import { loadInventory, saveInventory, addInventoryRecord } from '../services/inventory.service';
 
 // Créer le contexte
 const AppContext = createContext();
@@ -199,6 +199,18 @@ export const AppProvider = ({ children }) => {
       const storeStock = { ...(stockByStore[storeId] || {}) };
       storeStock[productId] = (storeStock[productId] || 0) + quantity;
       setStockForStore(storeId, storeStock);
+
+      const product = (productCatalog || []).find(p => p.id === productId);
+      addInventoryRecord({
+        id: Date.now(),
+        storeId,
+        productId,
+        productName: product?.name || '',
+        quantity,
+        reason,
+        date: new Date().toISOString()
+      });
+
       return true;
     } catch (error) {
       console.error('Erreur lors de l\'ajout de stock:', error);
@@ -217,6 +229,28 @@ export const AppProvider = ({ children }) => {
       toStock[productId] = (toStock[productId] || 0) + quantity;
       setStockForStore(fromStoreId, fromStock);
       setStockForStore(toStoreId, toStock);
+
+      const product = (productCatalog || []).find(p => p.id === productId);
+      const date = new Date().toISOString();
+      addInventoryRecord({
+        id: Date.now(),
+        storeId: fromStoreId,
+        productId,
+        productName: product?.name || '',
+        quantity: -quantity,
+        reason: `Transfert vers ${toStoreId}`,
+        date
+      });
+      addInventoryRecord({
+        id: Date.now() + 1,
+        storeId: toStoreId,
+        productId,
+        productName: product?.name || '',
+        quantity,
+        reason: `Transfert de ${fromStoreId}`,
+        date
+      });
+
       return true;
     } catch (error) {
       console.error('Erreur lors du transfert de stock:', error);
