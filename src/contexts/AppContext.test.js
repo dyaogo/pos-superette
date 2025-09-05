@@ -45,3 +45,36 @@ test('enregistre un réapprovisionnement dans l\'historique', () => {
     ])
   );
 });
+
+test("après l'import de plusieurs produits, chaque article conserve sa quantité", async () => {
+  localStorage.clear();
+  localStorage.setItem('pos_current_store', 'wend-kuuni');
+
+  let addProductFn;
+  let getGlobalProducts;
+  const Collector = () => {
+    const { addProduct, globalProducts } = useApp();
+    addProductFn = addProduct;
+    getGlobalProducts = () => globalProducts;
+    return null;
+  };
+
+  render(
+    <AppProvider>
+      <Collector />
+    </AppProvider>
+  );
+
+  await act(async () => {
+    addProductFn({ id: 1, name: 'Produit 1' }, 3);
+    addProductFn({ id: 2, name: 'Produit 2' }, 7);
+  });
+
+  const products = getGlobalProducts();
+  expect(products).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({ id: 1, stock: 3 }),
+      expect.objectContaining({ id: 2, stock: 7 })
+    ])
+  );
+});
