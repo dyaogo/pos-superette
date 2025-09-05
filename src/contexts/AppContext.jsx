@@ -136,9 +136,11 @@ export const AppProvider = ({ children }) => {
   const addProduct = (product, initialStock = 0) => {
     try {
       setProductCatalog(prev => [...prev, product]);
-      const storeStock = { ...(stockByStore[currentStoreId] || {}) };
-      storeStock[product.id] = initialStock;
-      setStockForStore(currentStoreId, storeStock);
+      setStockByStore(prev => {
+        const storeStock = { ...(prev[currentStoreId] || {}), [product.id]: initialStock };
+        saveInventory(currentStoreId, storeStock);
+        return { ...prev, [currentStoreId]: storeStock };
+      });
       return true;
     } catch (error) {
       console.error("Erreur lors de l'ajout de produit:", error);
