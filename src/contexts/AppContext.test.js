@@ -78,3 +78,38 @@ test("aprÃ¨s l'import de plusieurs produits, chaque article conserve sa quantitÃ
     ])
   );
 });
+
+test('removeProduct supprime le produit du catalogue et du stock de tous les magasins', async () => {
+  localStorage.clear();
+  localStorage.setItem('pos_current_store', 'wend-kuuni');
+
+  let addProductFn, removeProductFn, setStockForStoreFn, getCatalog, getStock;
+  const Collector = () => {
+    const { addProduct, removeProduct, setStockForStore, productCatalog, stockByStore } = useApp();
+    addProductFn = addProduct;
+    removeProductFn = removeProduct;
+    setStockForStoreFn = setStockForStore;
+    getCatalog = () => productCatalog;
+    getStock = () => stockByStore;
+    return null;
+  };
+
+  render(
+    <AppProvider>
+      <Collector />
+    </AppProvider>
+  );
+
+  await act(async () => {
+    addProductFn({ id: 1, name: 'Produit 1' }, 5);
+    setStockForStoreFn('wend-yam', { 1: 3 });
+  });
+
+  act(() => {
+    removeProductFn(1);
+  });
+
+  expect(getCatalog().find(p => p.id === 1)).toBeUndefined();
+  expect(getStock()['wend-kuuni']?.[1]).toBeUndefined();
+  expect(getStock()['wend-yam']?.[1]).toBeUndefined();
+});

@@ -148,6 +148,29 @@ export const AppProvider = ({ children }) => {
     }
   };
 
+  const removeProduct = (id) => {
+    try {
+      setProductCatalog(prev => prev.filter(p => p.id !== id));
+      setStockByStore(prev => {
+        const updated = {};
+        Object.entries(prev).forEach(([storeId, stock]) => {
+          if (stock && Object.prototype.hasOwnProperty.call(stock, id)) {
+            const { [id]: _removed, ...rest } = stock;
+            updated[storeId] = rest;
+            saveInventory(storeId, rest);
+          } else {
+            updated[storeId] = stock;
+          }
+        });
+        return updated;
+      });
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la suppression du produit:', error);
+      return false;
+    }
+  };
+
   // Traiter une vente
   const processSale = (cart, paymentMethod, amountReceived, customerId = 1) => {
     try {
@@ -640,6 +663,7 @@ export const AppProvider = ({ children }) => {
     // Fonctions sécurisées
     processSale,
     addProduct,
+    removeProduct,
     setStockForStore,
     addStock,
     transferStock,
