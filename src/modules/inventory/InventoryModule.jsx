@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Package, AlertTriangle, TrendingDown, TrendingUp,
   Search, Plus, Minus, Edit, Save, X, Bell,
-  BarChart3, Truck, Clock, Eye, RefreshCw
+  BarChart3, Truck, Clock, Eye, RefreshCw, Trash
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext'; // ✅ Correction critique
 import BarcodeSystem from './BarcodeSystem';
@@ -13,7 +13,7 @@ import ProductImportModal from './ProductImportModal';
 import StockMovements from './StockMovements';
 
 const InventoryModule = () => {
-  const { globalProducts, addStock, appSettings, salesHistory, currentStoreId, addProduct } = useApp();
+  const { globalProducts, addStock, appSettings, salesHistory, currentStoreId, addProduct, removeProduct } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -642,6 +642,29 @@ const InventoryModule = () => {
                           >
                             <Edit size={12} />
                             Modifier
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Supprimer ce produit ?')) {
+                                removeProduct(product.id);
+                              }
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#dc2626',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <Trash size={12} />
+                            Supprimer
                           </button>
                         </div>
                       </td>
