@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { useApp } from '../../contexts/AppContext';
+import { generateSku } from '../../utils/helpers';
 
 const ProductImportModal = ({ isOpen, onClose }) => {
-  const { addProduct, addStock, appSettings, stores, currentStoreId } = useApp();
-  const baseHeaders = ['name', 'category', 'price', 'costPrice', 'minStock'];
+  const { addProduct, addStock, appSettings, stores, currentStoreId, productCatalog, stockByStore, setStockForStore } = useApp();
+  const baseHeaders = ['sku', 'name', 'category', 'price', 'costPrice', 'minStock'];
   const stockHeaders = stores.map(s => `stock_${s.code}`);
   const HEADERS = [...baseHeaders, ...stockHeaders];
   const isDark = appSettings.darkMode;
@@ -41,8 +42,24 @@ const ProductImportModal = ({ isOpen, onClose }) => {
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
           if (!row.name) continue;
+
+          const sku = row.sku;
+          const existing = (productCatalog || []).find(p => p.sku === sku);
+
+          if (existing) {
+            stores.forEach(store => {
+              const qty = parseInt(row[`stock_${store.code}`]) || 0;
+              setStockForStore(
+                store.id,
+                { ...(stockByStore[store.id] || {}), [existing.id]: qty }
+              );
+            });
+            continue;
+          }
+
           const product = {
             id: Date.now() + i,
+            sku: sku || generateSku(),
             name: row.name,
             category: row.category || 'Divers',
             price: parseFloat(row.price) || 0,
