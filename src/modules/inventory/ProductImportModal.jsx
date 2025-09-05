@@ -1,12 +1,11 @@
 import React, { useState } from 'react';
 import * as XLSX from 'xlsx';
 import { useApp } from '../../contexts/AppContext';
-import { addProduct } from '../../services/product.service';
 
 const HEADERS = ['name', 'category', 'price', 'costPrice', 'minStock', 'stock'];
 
 const ProductImportModal = ({ isOpen, onClose }) => {
-  const { inventories, setGlobalProducts, currentStoreId, appSettings, globalProducts } = useApp();
+  const { addProduct, appSettings } = useApp();
   const isDark = appSettings.darkMode;
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState(null);
@@ -36,13 +35,11 @@ const ProductImportModal = ({ isOpen, onClose }) => {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: HEADERS, range: 1, defval: '' });
 
-        const existing = inventories[currentStoreId] || globalProducts;
-        const imported = [];
-
-        for (const row of rows) {
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
           if (!row.name) continue;
           const product = {
-            id: Date.now() + imported.length,
+            id: Date.now() + i,
             name: row.name,
             category: row.category || 'Divers',
             price: parseFloat(row.price) || 0,
@@ -51,11 +48,9 @@ const ProductImportModal = ({ isOpen, onClose }) => {
             stock: parseInt(row.stock) || 0,
             barcode: `${Date.now()}${Math.floor(Math.random() * 1000)}`
           };
-          await addProduct(product);
-          imported.push(product);
+          addProduct(product, product.stock);
         }
 
-        setGlobalProducts([...existing, ...imported]);
         onClose();
       } catch (err) {
         console.error('Erreur lors de l\'importation:', err);
