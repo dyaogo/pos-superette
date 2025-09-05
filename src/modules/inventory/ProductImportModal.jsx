@@ -6,7 +6,7 @@ import { addProduct } from '../../services/product.service';
 const HEADERS = ['name', 'category', 'price', 'costPrice', 'minStock', 'stock'];
 
 const ProductImportModal = ({ isOpen, onClose }) => {
-  const { inventories, setGlobalProducts, currentStoreId, appSettings } = useApp();
+  const { inventories, setGlobalProducts, currentStoreId, appSettings, globalProducts } = useApp();
   const isDark = appSettings.darkMode;
   const [loading, setLoading] = useState(false);
   const [file, setFile] = useState(null);
@@ -36,7 +36,7 @@ const ProductImportModal = ({ isOpen, onClose }) => {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(sheet, { header: HEADERS, range: 1, defval: '' });
 
-        const existing = inventories[currentStoreId] || [];
+        const existing = inventories[currentStoreId] || globalProducts;
         const imported = [];
 
         for (const row of rows) {
