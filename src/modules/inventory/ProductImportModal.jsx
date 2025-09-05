@@ -20,6 +20,10 @@ const ProductImportModal = ({ isOpen, onClose }) => {
     XLSX.writeFile(wb, 'gabarit-import-produits.xlsx');
   };
 
+  const handleFileSelect = (e) => {
+    setFile(e.target.files[0] || null);
+  };
+
   const handleImport = () => {
     if (!file) return;
     setLoading(true);
@@ -70,7 +74,7 @@ const ProductImportModal = ({ isOpen, onClose }) => {
         <input
           type="file"
           accept=".xlsx,.xls"
-          onChange={(e) => setFile(e.target.files[0] || null)}
+          onChange={handleFileSelect}
           disabled={loading}
         />
         <div style={{ marginTop: '16px', display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
