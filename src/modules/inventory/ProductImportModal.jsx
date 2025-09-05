@@ -3,8 +3,18 @@ import * as XLSX from 'xlsx';
 import { useApp } from '../../contexts/AppContext';
 
 const ProductImportModal = ({ isOpen, onClose }) => {
-  const { addProduct, addStock, appSettings, stores, currentStoreId } = useApp();
-  const baseHeaders = ['name', 'category', 'price', 'costPrice', 'minStock'];
+  const {
+    addProduct,
+    addStock,
+    removeProduct,
+    setStockForStore,
+    productCatalog,
+    stockByStore,
+    appSettings,
+    stores,
+    currentStoreId
+  } = useApp();
+  const baseHeaders = ['name', 'sku', 'category', 'price', 'costPrice', 'minStock'];
   const stockHeaders = stores.map(s => `stock_${s.code}`);
   const HEADERS = [...baseHeaders, ...stockHeaders];
   const isDark = appSettings.darkMode;
@@ -38,31 +48,71 @@ const ProductImportModal = ({ isOpen, onClose }) => {
 
         const currentStore = stores.find(s => s.id === currentStoreId);
 
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
+        const errors = [];
+        const seen = new Set();
+        const validRows = [];
+
+        rows.forEach((row, idx) => {
+          const sku = (row.sku || '').toString().trim();
+          if (!sku) {
+            errors.push({ index: idx + 2, message: 'SKU manquant' });
+            return;
+          }
+          if (seen.has(sku)) {
+            errors.push({ index: idx + 2, message: `SKU dupliqué (${sku})` });
+            return;
+          }
+          seen.add(sku);
+          validRows.push(row);
+        });
+
+        let added = 0;
+        let updated = 0;
+
+        for (let i = 0; i < validRows.length; i++) {
+          const row = validRows[i];
           if (!row.name) continue;
+          const sku = row.sku.toString().trim();
+          const existing = productCatalog.find(p => p.sku === sku);
+
+          const productId = existing ? existing.id : Date.now() + i;
           const product = {
-            id: Date.now() + i,
+            id: productId,
+            sku,
             name: row.name,
             category: row.category || 'Divers',
             price: parseFloat(row.price) || 0,
             costPrice: parseFloat(row.costPrice) || 0,
             minStock: parseInt(row.minStock) || 0,
-            barcode: `${Date.now()}${Math.floor(Math.random() * 1000)}`
+            barcode: existing ? existing.barcode : `${Date.now()}${Math.floor(Math.random() * 1000)}`
           };
 
           const currentStock = parseInt(row[`stock_${currentStore.code}`]) || 0;
-          addProduct(product, currentStock);
 
-          stores.forEach(store => {
-            if (store.id === currentStoreId) return;
-            const qty = parseInt(row[`stock_${store.code}`]) || 0;
-            if (qty > 0) {
-              addStock(store.id, product.id, qty, 'Import initial');
-            }
-          });
+          if (existing) {
+            removeProduct(existing.id);
+            addProduct(product, 0);
+            stores.forEach(store => {
+              const qty = parseInt(row[`stock_${store.code}`]) || 0;
+              const storeStock = { ...(stockByStore[store.id] || {}), [productId]: qty };
+              setStockForStore(store.id, storeStock);
+            });
+            updated++;
+          } else {
+            addProduct(product, currentStock);
+            stores.forEach(store => {
+              if (store.id === currentStoreId) return;
+              const qty = parseInt(row[`stock_${store.code}`]) || 0;
+              if (qty > 0) {
+                addStock(store.id, product.id, qty, 'Import initial');
+              }
+            });
+            added++;
+          }
         }
 
+        const summary = `Import terminé.\nAjouts: ${added}\nMises à jour: ${updated}\nErreurs: ${errors.length ? errors.map(e => `Ligne ${e.index}: ${e.message}`).join('\n') : 'Aucune'}`;
+        alert(summary);
         onClose();
       } catch (err) {
         console.error("Erreur lors de l'importation:", err);
