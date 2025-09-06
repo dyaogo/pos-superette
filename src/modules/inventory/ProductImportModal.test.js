@@ -74,7 +74,7 @@ describe('ProductImportModal', () => {
     const headers = ['sku','name','category','price','costPrice','minStock','stock_WK001','stock_WY002'];
     const data = [
       headers,
-      ['SKU001','Produit A','Cat','100','50','5','7','9']
+      ['SKU001','','','','','','7','9']
     ];
     const ws = XLSX.utils.aoa_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -99,5 +99,39 @@ describe('ProductImportModal', () => {
     expect(mockAddStock).not.toHaveBeenCalled();
     expect(mockSetStockForStore).toHaveBeenCalledWith('wend-kuuni', { 1: 7 });
     expect(mockSetStockForStore).toHaveBeenCalledWith('wend-yam', { 1: 9 });
+  });
+
+  test('refuses import when duplicate SKUs are present', async () => {
+    window.alert = jest.fn();
+
+    const headers = ['sku','name','category','price','costPrice','minStock','stock_WK001','stock_WY002'];
+    const data = [
+      headers,
+      ['SKU001','Produit A','Cat','100','50','5','10','0'],
+      ['SKU001','Produit B','Cat','100','50','5','5','0']
+    ];
+    const ws = XLSX.utils.aoa_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Produits');
+    const binary = XLSX.write(wb, { bookType: 'xlsx', type: 'binary' });
+
+    global.FileReader = class {
+      constructor() { this.onload = null; }
+      readAsBinaryString() { this.onload({ target: { result: binary } }); }
+    };
+
+    const file = new Blob(['']);
+    file.name = 'import.xlsx';
+
+    const { container, getByText } = render(<ProductImportModal isOpen={true} onClose={() => {}} />);
+    const input = container.querySelector('input[type="file"]');
+    fireEvent.change(input, { target: { files: [file] } });
+    fireEvent.click(getByText('Importer'));
+
+    await waitFor(() => expect(window.alert).toHaveBeenCalled());
+    expect(mockAddProduct).not.toHaveBeenCalled();
+    expect(mockAddStock).not.toHaveBeenCalled();
+    expect(mockSetStockForStore).not.toHaveBeenCalled();
+    expect(window.alert.mock.calls[0][0]).toMatch(/dupliqué/);
   });
 });

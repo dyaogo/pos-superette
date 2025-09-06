@@ -39,11 +39,46 @@ const ProductImportModal = ({ isOpen, onClose }) => {
 
         const currentStore = stores.find(s => s.id === currentStoreId);
 
+        // Pré-validation des lignes pour détecter les problèmes de SKU
+        const errors = [];
+        const seenSkus = new Set();
+
         for (let i = 0; i < rows.length; i++) {
           const row = rows[i];
-          if (!row.name) continue;
+          const lineNumber = i + 2; // +1 for header row +1 for 1-indexed lines
+          const sku = (row.sku || '').toString().trim();
 
-          const sku = row.sku;
+          if (!sku) {
+            errors.push(`Ligne ${lineNumber}: SKU manquant`);
+            continue;
+          }
+
+          if (seenSkus.has(sku)) {
+            errors.push(`Ligne ${lineNumber}: SKU ${sku} dupliqué`);
+            continue;
+          }
+
+          seenSkus.add(sku);
+          const existing = (productCatalog || []).find(p => p.sku === sku);
+
+          if (!row.name && !existing) {
+            errors.push(`Ligne ${lineNumber}: SKU ${sku} inexistant dans le catalogue`);
+          } else if (row.name && existing) {
+            errors.push(`Ligne ${lineNumber}: SKU ${sku} existe déjà dans le catalogue`);
+          }
+        }
+
+        if (errors.length > 0) {
+          alert(`Erreurs d'import:\n${errors.join('\n')}`);
+          setLoading(false);
+          setFile(null);
+          return;
+        }
+
+        // Importation effective des produits
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const sku = (row.sku || '').toString().trim();
           const existing = (productCatalog || []).find(p => p.sku === sku);
 
           if (existing) {
@@ -56,6 +91,8 @@ const ProductImportModal = ({ isOpen, onClose }) => {
             });
             continue;
           }
+
+          if (!row.name) continue; // sécurité, ne devrait pas arriver après validation
 
           const product = {
             id: Date.now() + i,
