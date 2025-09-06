@@ -1,30 +1,64 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+// src/modules/pos/POSModule.jsx - VERSION RÉÉCRITE COMPLÈTE
+import React, { useState, useRef } from 'react';
 import { 
-  Search, ShoppingCart, Plus, Minus, Trash2, CreditCard, 
-  DollarSign, Smartphone, Hash, X, Settings, User, 
-  Scan, ArrowLeft, Check, Calculator, Package
+  Search, ShoppingCart, CreditCard, DollarSign, Smartphone, 
+  Package, User, X, Check, Scan, Plus, Minus, Trash2
 } from 'lucide-react';
+
+// Import des contextes
 import { useApp } from '../../contexts/AppContext';
 import { useResponsive } from '../../components/ResponsiveComponents';
+
+// Import des hooks personnalisés
+import { 
+  useCart, 
+  useProductSearch, 
+  useCategories, 
+  useKeyboardShortcuts 
+} from '../../hooks';
+
+// Import des composants UI
+import { 
+  Button, 
+  Input, 
+  Modal, 
+  Card, 
+  Badge 
+} from '../../components/ui';
+
+// Import des composants spécialisés
 import BarcodeScanner from './BarcodeScanner';
 
-const OptimizedPOSModule = () => {
-  // Context et hooks
+const POSModule = () => {
+  // ==================== CONTEXTES ET HOOKS ====================
   const { 
     globalProducts, 
     processSale, 
     customers, 
-    appSettings, 
+    appSettings,
     addCredit 
   } = useApp();
   
   const { deviceType, isMobile } = useResponsive();
   
-  // États principaux
-  const [cart, setCart] = useState([]);
+  // ==================== HOOKS PERSONNALISÉS ====================
+  // Hook pour le panier (remplace toute la logique complexe)
+  const { 
+    cart, 
+    cartStats, 
+    addToCart, 
+    updateQuantity, 
+    removeFromCart, 
+    clearCart 
+  } = useCart(globalProducts || [], appSettings);
+  
+  // Hook pour les catégories (génération automatique)
+  const categories = useCategories(globalProducts || []);
+  
+  // ==================== ÉTATS LOCAUX ====================
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedCustomer, setSelectedCustomer] = useState(customers[0]);
+  const [selectedCustomer, setSelectedCustomer] = useState(customers[0] || { id: 1, name: 'Client Comptant' });
   
   // États modaux
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -39,166 +73,82 @@ const OptimizedPOSModule = () => {
   // Références
   const searchInputRef = useRef(null);
   
-  // Configuration
-  const isDark = appSettings.darkMode;
-  const products = globalProducts || [];
+  // ==================== HOOKS DE RECHERCHE ET RACCOURCIS ====================
+  // Hook pour la recherche optimisée avec debouncing
+  const filteredProducts = useProductSearch(
+    globalProducts || [], 
+    searchQuery, 
+    selectedCategory
+  );
   
-  // Catégories dynamiques avec compteurs
-  const categories = useMemo(() => {
-    const categoryCounts = products.reduce((acc, product) => {
-      const category = product.category || 'Divers';
-      acc[category] = (acc[category] || 0) + 1;
-      return acc;
-    }, {});
-    
-    const categoryList = [
-      { id: 'all', name: 'Tout', icon: '🏪', count: products.length }
-    ];
-    
-    Object.entries(categoryCounts).forEach(([name, count]) => {
-      const icons = {
-        'Boissons': '🥤', 'Alimentaire': '🍞', 'Hygiène': '🧼',
-        'Snacks': '🍿', 'Fruits': '🍎', 'Légumes': '🥬',
-        'Viande': '🥩', 'Poisson': '🐟', 'Épicerie': '🛒'
-      };
-      categoryList.push({
-        id: name.toLowerCase(),
-        name,
-        icon: icons[name] || '📦',
-        count
-      });
-    });
-    
-    return categoryList;
-  }, [products]);
-  
-  // Produits filtrés avec optimisation
-  const filteredProducts = useMemo(() => {
-    return products.filter(product => {
-      const matchesCategory = selectedCategory === 'all' || 
-        (product.category?.toLowerCase() === selectedCategory);
-      
-      const searchLower = searchQuery.toLowerCase();
-      const matchesSearch = !searchQuery || 
-        product.name?.toLowerCase().includes(searchLower) ||
-        product.sku?.toLowerCase().includes(searchLower) ||
-        product.barcode?.includes(searchQuery);
-      
-      return matchesCategory && matchesSearch;
-    });
-  }, [products, selectedCategory, searchQuery]);
-  
-  // Calculs du panier
-  const cartStats = useMemo(() => {
-    const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-    const totalAmount = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const totalTax = totalAmount * (appSettings.taxRate || 0) / 100;
-    const finalTotal = totalAmount + totalTax;
-    
-    return { totalItems, totalAmount, totalTax, finalTotal };
-  }, [cart, appSettings.taxRate]);
-  
-  // Raccourcis clavier professionnels
-  useEffect(() => {
-    const handleKeyPress = (e) => {
-      // Éviter les conflits avec les inputs
-      if (e.target.matches('input, textarea, select')) return;
-      
-      // Prévenir les actions par défaut pour les touches fonction
-      if (['F1', 'F2', 'F3', 'F4'].includes(e.key)) {
-        e.preventDefault();
-      }
-
-      switch(e.key) {
-        case 'F1': // Vider panier
-          if (cart.length > 0) {
-            if (window.confirm('Vider le panier ?')) {
-              setCart([]);
-              setSearchQuery('');
-            }
-          }
-          break;
-          
-        case 'F2': // Focus recherche
-          searchInputRef.current?.focus();
-          break;
-          
-        case 'F3': // Ouvrir paiement
-          if (cart.length > 0) {
-            setShowPaymentModal(true);
-          } else {
-            alert('Panier vide');
-          }
-          break;
-          
-        case 'F4': // Scanner
-          setShowScanner(true);
-          break;
-          
-        case 'Escape': // Annuler
-          if (showPaymentModal) setShowPaymentModal(false);
-          else if (showScanner) setShowScanner(false);
-          else if (showCustomerModal) setShowCustomerModal(false);
-          break;
-          
-        case 'Enter': // Ajouter produit trouvé
-          if (searchQuery && filteredProducts.length > 0) {
-            e.preventDefault();
-            addToCart(filteredProducts[0]);
-            setSearchQuery('');
-          }
-          break;
-          
-        // Raccourcis numériques pour catégories
-        case '1': case '2': case '3': case '4': case '5':
-        case '6': case '7': case '8': case '9':
-          const categoryIndex = parseInt(e.key) - 1;
-          if (categories[categoryIndex]) {
-            setSelectedCategory(categories[categoryIndex].id);
-          }
-          break;
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [cart, searchQuery, showPaymentModal, showScanner, showCustomerModal, filteredProducts, categories]);
-  
-  // Fonctions du panier
-  const addToCart = (product) => {
-    if (product.stock === 0) {
-      alert(`${product.name} est en rupture de stock!`);
-      return;
+  // Hook pour les raccourcis clavier professionnels
+  useKeyboardShortcuts([
+    { 
+      key: 'F1', 
+      action: () => {
+        if (cart.length > 0 && window.confirm('Vider le panier ?')) {
+          clearCart();
+          setSearchQuery('');
+        }
+      },
+      description: 'Vider le panier'
+    },
+    { 
+      key: 'F2', 
+      action: () => searchInputRef.current?.focus(),
+      description: 'Focus recherche'
+    },
+    { 
+      key: 'F3', 
+      action: () => {
+        if (cart.length > 0) {
+          setShowPaymentModal(true);
+        } else {
+          alert('Panier vide');
+        }
+      },
+      description: 'Ouvrir paiement'
+    },
+    { 
+      key: 'F4', 
+      action: () => setShowScanner(true),
+      description: 'Scanner code-barre'
+    },
+    {
+      key: 'Escape',
+      action: () => {
+        if (showPaymentModal) setShowPaymentModal(false);
+        else if (showScanner) setShowScanner(false);
+        else if (showCustomerModal) setShowCustomerModal(false);
+      },
+      description: 'Annuler'
+    },
+    {
+      key: 'Enter',
+      action: () => {
+        if (searchQuery && filteredProducts.length > 0) {
+          addToCart(filteredProducts[0]);
+          setSearchQuery('');
+        }
+      },
+      description: 'Ajouter premier produit trouvé'
     }
-
-    const existingItem = cart.find(item => item.id === product.id);
-    if (existingItem) {
-      if (existingItem.quantity >= product.stock) {
-        alert(`Stock insuffisant! Maximum: ${product.stock}`);
-        return;
-      }
-      updateQuantity(product.id, 1);
+  ], [cart.length, searchQuery, showPaymentModal, showScanner, showCustomerModal, filteredProducts]);
+  
+  // ==================== GESTIONNAIRES D'ÉVÉNEMENTS ====================
+  const handleBarcodeDetected = (barcode) => {
+    const product = (globalProducts || []).find(p => 
+      p.barcode === barcode || p.sku === barcode
+    );
+    
+    if (product) {
+      addToCart(product);
+      setShowScanner(false);
     } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
+      alert('Produit non trouvé');
     }
   };
-
-  const updateQuantity = (id, change) => {
-    setCart(cart.map(item => {
-      if (item.id === id) {
-        const product = products.find(p => p.id === id);
-        const newQuantity = Math.max(0, Math.min(item.quantity + change, product.stock));
-        return newQuantity > 0 ? { ...item, quantity: newQuantity } : null;
-      }
-      return item;
-    }).filter(Boolean));
-  };
-
-  const removeFromCart = (id) => {
-    setCart(cart.filter(item => item.id !== id));
-  };
   
-  // Gestion du paiement
   const handleCheckout = () => {
     if (cart.length === 0) return;
 
@@ -222,7 +172,7 @@ const OptimizedPOSModule = () => {
       processSale(saleData);
       
       // Réinitialiser
-      setCart([]);
+      clearCart();
       setShowPaymentModal(false);
       setAmountReceived('');
       setNotes('');
@@ -233,75 +183,36 @@ const OptimizedPOSModule = () => {
     }
   };
   
-  // Gestion du scanner
-  const handleBarcodeDetected = (barcode) => {
-    const product = products.find(p => 
-      p.barcode === barcode || p.sku === barcode
-    );
-    
-    if (product) {
-      addToCart(product);
-      setShowScanner(false);
-    } else {
-      alert('Produit non trouvé');
-    }
-  };
-
-  // Styles modernes inspirés de Loyverse
+  // ==================== CONFIGURATION DU THÈME ====================
+  const isDark = appSettings.darkMode;
+  
+  // ==================== STYLES MODERNES ====================
   const styles = {
     container: {
       display: 'grid',
       gridTemplateColumns: isMobile ? '1fr' : '70% 30%',
       height: '100vh',
-      background: '#f8fafc',
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      background: isDark ? '#1a202c' : '#f8fafc',
       gap: 0
     },
     
-    // Section produits
     productsSection: {
       display: 'flex',
       flexDirection: 'column',
-      background: 'white',
-      borderRight: '1px solid #e2e8f0',
+      background: isDark ? '#2d3748' : 'white',
+      borderRight: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
       overflow: 'hidden'
     },
     
-    // Header avec recherche
     header: {
-      padding: '16px 20px',
-      borderBottom: '1px solid #e2e8f0',
-      background: 'white',
+      padding: '20px',
+      borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+      background: isDark ? '#2d3748' : 'white',
       position: 'sticky',
       top: 0,
       zIndex: 10
     },
     
-    searchContainer: {
-      position: 'relative',
-      marginBottom: '16px'
-    },
-    
-    searchInput: {
-      width: '100%',
-      padding: '14px 16px 14px 48px',
-      border: '2px solid #e2e8f0',
-      borderRadius: '12px',
-      fontSize: '16px',
-      background: '#f8fafc',
-      transition: 'all 0.2s ease',
-      outline: 'none'
-    },
-    
-    searchIcon: {
-      position: 'absolute',
-      left: '16px',
-      top: '50%',
-      transform: 'translateY(-50%)',
-      color: '#64748b'
-    },
-    
-    // Catégories horizontales
     categoriesBar: {
       display: 'flex',
       gap: '8px',
@@ -318,8 +229,8 @@ const OptimizedPOSModule = () => {
       padding: '12px 16px',
       border: 'none',
       borderRadius: '8px',
-      background: '#f1f5f9',
-      color: '#475569',
+      background: isDark ? '#4a5568' : '#f1f5f9',
+      color: isDark ? '#cbd5e0' : '#475569',
       cursor: 'pointer',
       transition: 'all 0.2s ease',
       whiteSpace: 'nowrap',
@@ -333,7 +244,6 @@ const OptimizedPOSModule = () => {
       transform: 'scale(1.02)'
     },
     
-    // Grille de produits
     productsGrid: {
       flex: 1,
       padding: '20px',
@@ -344,34 +254,17 @@ const OptimizedPOSModule = () => {
       alignContent: 'start'
     },
     
-    productCard: {
-      background: 'white',
-      border: '1px solid #e2e8f0',
-      borderRadius: '12px',
-      padding: '16px',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      textAlign: 'center',
-      position: 'relative',
-      minHeight: isMobile ? '120px' : '140px'
-    },
-    
-    // Section panier
     cartSection: {
-      background: '#f8fafc',
+      background: isDark ? '#1a202c' : '#f8fafc',
       display: 'flex',
       flexDirection: 'column',
-      height: '100vh',
-      width: isMobile ? '100%' : '380px'
+      height: '100vh'
     },
     
     cartHeader: {
       padding: '20px',
-      background: 'white',
-      borderBottom: '1px solid #e2e8f0',
+      background: isDark ? '#2d3748' : 'white',
+      borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
       textAlign: 'center'
     },
     
@@ -381,53 +274,14 @@ const OptimizedPOSModule = () => {
       padding: '16px'
     },
     
-    cartItem: {
-      background: 'white',
-      borderRadius: '12px',
-      padding: '16px',
-      marginBottom: '12px',
-      border: '1px solid #e2e8f0'
-    },
-    
     cartFooter: {
-      background: 'white',
+      background: isDark ? '#2d3748' : 'white',
       padding: '20px',
-      borderTop: '1px solid #e2e8f0'
-    },
-    
-    // Boutons
-    primaryButton: {
-      width: '100%',
-      padding: '16px',
-      background: '#3b82f6',
-      color: 'white',
-      border: 'none',
-      borderRadius: '12px',
-      fontSize: '16px',
-      fontWeight: '600',
-      cursor: 'pointer',
-      transition: 'all 0.2s ease',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '8px'
-    },
-    
-    secondaryButton: {
-      width: '100%',
-      padding: '12px',
-      background: 'transparent',
-      color: '#64748b',
-      border: '1px solid #e2e8f0',
-      borderRadius: '8px',
-      fontSize: '14px',
-      cursor: 'pointer',
-      marginTop: '8px',
-      transition: 'all 0.2s ease'
+      borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
     }
   };
-
-  // Composants
+  
+  // ==================== COMPOSANTS INTERNES ====================
   const CategoryButton = ({ category }) => (
     <button
       onClick={() => setSelectedCategory(category.id)}
@@ -438,16 +292,16 @@ const OptimizedPOSModule = () => {
     >
       <span>{category.icon}</span>
       <span>{category.name}</span>
-      <span style={{ 
-        background: selectedCategory === category.id ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
-        color: selectedCategory === category.id ? 'white' : '#64748b',
-        padding: '2px 6px',
-        borderRadius: '8px',
-        fontSize: '11px',
-        fontWeight: '600'
-      }}>
+      <Badge 
+        variant={selectedCategory === category.id ? 'default' : 'info'}
+        size="small"
+        style={{
+          background: selectedCategory === category.id ? 'rgba(255,255,255,0.2)' : undefined,
+          color: selectedCategory === category.id ? 'white' : undefined
+        }}
+      >
         {category.count}
-      </span>
+      </Badge>
     </button>
   );
 
@@ -455,51 +309,51 @@ const OptimizedPOSModule = () => {
     const isInCart = cart.some(item => item.id === product.id);
     
     return (
-      <div
+      <Card
+        hover
+        clickable
         onClick={() => addToCart(product)}
         style={{
-          ...styles.productCard,
-          borderColor: isInCart ? '#3b82f6' : '#e2e8f0',
+          position: 'relative',
+          minHeight: isMobile ? '120px' : '140px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          textAlign: 'center',
+          borderColor: isInCart ? '#3b82f6' : undefined,
           transform: isInCart ? 'scale(0.98)' : 'scale(1)',
-          boxShadow: isInCart ? '0 4px 12px rgba(59, 130, 246, 0.15)' : '0 1px 3px rgba(0,0,0,0.1)'
-        }}
-        onMouseEnter={(e) => {
-          if (!isInCart) {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = isInCart ? 'scale(0.98)' : 'scale(1)';
-          e.currentTarget.style.boxShadow = isInCart ? '0 4px 12px rgba(59, 130, 246, 0.15)' : '0 1px 3px rgba(0,0,0,0.1)';
+          boxShadow: isInCart ? '0 4px 12px rgba(59, 130, 246, 0.15)' : undefined,
+          background: isDark ? '#374151' : 'white'
         }}
       >
-        {/* Badge stock */}
-        <div style={{
-          position: 'absolute',
-          top: '8px',
-          right: '8px',
-          background: product.stock > 10 ? '#10b981' : product.stock > 0 ? '#f59e0b' : '#ef4444',
-          color: 'white',
-          fontSize: '10px',
-          padding: '2px 6px',
-          borderRadius: '8px',
-          fontWeight: '600'
-        }}>
+        {/* Badge de stock */}
+        <Badge 
+          variant={product.stock > 10 ? 'success' : product.stock > 0 ? 'warning' : 'danger'}
+          size="small"
+          style={{
+            position: 'absolute',
+            top: '8px',
+            right: '8px'
+          }}
+        >
           {product.stock}
-        </div>
+        </Badge>
         
-        {/* Image/emoji produit */}
-        <div style={{ fontSize: isMobile ? '28px' : '32px', marginBottom: '8px' }}>
+        {/* Image produit */}
+        <div style={{ 
+          fontSize: isMobile ? '28px' : '32px', 
+          marginBottom: '8px',
+          marginTop: '8px'
+        }}>
           {product.image || '📦'}
         </div>
         
         {/* Nom produit */}
-        <div style={{
+        <h4 style={{
+          margin: '0 0 8px 0',
           fontSize: isMobile ? '12px' : '14px',
           fontWeight: '600',
-          color: '#1e293b',
-          marginBottom: '4px',
+          color: isDark ? '#f7fafc' : '#1f2937',
           lineHeight: '1.3',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -508,7 +362,7 @@ const OptimizedPOSModule = () => {
           WebkitBoxOrient: 'vertical'
         }}>
           {product.name}
-        </div>
+        </h4>
         
         {/* Prix */}
         <div style={{
@@ -519,12 +373,12 @@ const OptimizedPOSModule = () => {
         }}>
           {product.price?.toLocaleString()} {appSettings.currency}
         </div>
-      </div>
+      </Card>
     );
   };
 
   const CartItem = ({ item }) => (
-    <div style={styles.cartItem}>
+    <Card style={{ marginBottom: '12px', background: isDark ? '#374151' : 'white' }}>
       <div style={{
         display: 'flex',
         justifyContent: 'space-between',
@@ -534,7 +388,7 @@ const OptimizedPOSModule = () => {
         <div style={{
           fontSize: '14px',
           fontWeight: '600',
-          color: '#1e293b',
+          color: isDark ? '#f7fafc' : '#1f2937',
           flex: 1,
           marginRight: '8px'
         }}>
@@ -549,331 +403,236 @@ const OptimizedPOSModule = () => {
         </div>
       </div>
       
-      {/* Contrôles quantité */}
+      {/* Contrôles de quantité avec les nouveaux composants */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: '12px'
       }}>
-        <button
+        <Button
+          variant="ghost"
+          size="small"
           onClick={() => updateQuantity(item.id, -1)}
-          style={{
-            width: '32px',
-            height: '32px',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            background: 'white',
-            color: '#64748b',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <Minus size={16} />
-        </button>
+          icon={<Minus size={16} />}
+        />
         
         <div style={{
           fontSize: '16px',
           fontWeight: '600',
-          color: '#1e293b',
+          color: isDark ? '#f7fafc' : '#1f2937',
           minWidth: '24px',
           textAlign: 'center'
         }}>
           {item.quantity}
         </div>
         
-        <button
+        <Button
+          variant="ghost"
+          size="small"
           onClick={() => updateQuantity(item.id, 1)}
-          style={{
-            width: '32px',
-            height: '32px',
-            border: '1px solid #e2e8f0',
-            borderRadius: '8px',
-            background: 'white',
-            color: '#64748b',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <Plus size={16} />
-        </button>
+          icon={<Plus size={16} />}
+        />
         
-        <button
+        <Button
+          variant="danger"
+          size="small"
           onClick={() => removeFromCart(item.id)}
-          style={{
-            width: '32px',
-            height: '32px',
-            border: '1px solid #ef4444',
-            borderRadius: '8px',
-            background: '#fef2f2',
-            color: '#ef4444',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginLeft: 'auto'
-          }}
-        >
-          <Trash2 size={16} />
-        </button>
+          icon={<Trash2 size={16} />}
+          style={{ marginLeft: 'auto' }}
+        />
       </div>
-    </div>
-  );
-
-  const PaymentModal = () => (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '20px'
-    }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '32px',
-        width: '100%',
-        maxWidth: '400px',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}>
-        {/* Header */}
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          marginBottom: '24px' 
-        }}>
-          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700' }}>
-            Finaliser la vente
-          </h2>
-          <button 
-            onClick={() => setShowPaymentModal(false)}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              fontSize: '24px', 
-              cursor: 'pointer',
-              color: '#64748b',
-              width: '32px',
-              height: '32px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}
-          >
-            <X size={20} />
-          </button>
-        </div>
-        
-        {/* Récapitulatif */}
-        <div style={{ marginBottom: '24px', padding: '16px', background: '#f8fafc', borderRadius: '8px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <span>Sous-total:</span>
-            <span>{cartStats.totalAmount.toLocaleString()} {appSettings.currency}</span>
-          </div>
-          {cartStats.totalTax > 0 && (
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span>TVA ({appSettings.taxRate}%):</span>
-              <span>{cartStats.totalTax.toLocaleString()} {appSettings.currency}</span>
-            </div>
-          )}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            fontSize: '20px', 
-            fontWeight: '700',
-            borderTop: '1px solid #e2e8f0',
-            paddingTop: '8px'
-          }}>
-            <span>Total:</span>
-            <span style={{ color: '#3b82f6' }}>
-              {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
-            </span>
-          </div>
-        </div>
-
-        {/* Client */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-            Client
-          </label>
-          <button
-            onClick={() => setShowCustomerModal(true)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              background: 'white',
-              textAlign: 'left',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            <User size={16} />
-            {selectedCustomer.name}
-          </button>
-        </div>
-
-        {/* Méthode de paiement */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-            Méthode de paiement
-          </label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-            {[
-              { id: 'cash', icon: DollarSign, label: 'Espèces' },
-              { id: 'card', icon: CreditCard, label: 'Carte' },
-              { id: 'mobile', icon: Smartphone, label: 'Mobile' }
-            ].map(method => (
-              <button
-                key={method.id}
-                onClick={() => setPaymentMethod(method.id)}
-                style={{
-                  padding: '12px',
-                  border: paymentMethod === method.id ? '2px solid #3b82f6' : '1px solid #e2e8f0',
-                  borderRadius: '8px',
-                  background: paymentMethod === method.id ? '#eff6ff' : 'white',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '4px',
-                  fontSize: '12px',
-                  fontWeight: '500',
-                  transition: 'all 0.2s ease'
-                }}
-              >
-                <method.icon size={20} />
-                {method.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Montant reçu pour espèces */}
-        {paymentMethod === 'cash' && (
-          <div style={{ marginBottom: '24px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-              Montant reçu
-            </label>
-            <input
-              type="number"
-              value={amountReceived}
-              onChange={(e) => setAmountReceived(e.target.value)}
-              placeholder="Entrez le montant"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                fontSize: '16px',
-                outline: 'none'
-              }}
-            />
-            {amountReceived && (
-              <div style={{ 
-                marginTop: '8px', 
-                fontSize: '14px', 
-                color: parseFloat(amountReceived) >= cartStats.finalTotal ? '#10b981' : '#ef4444'
-              }}>
-                Monnaie à rendre: {Math.max(0, parseFloat(amountReceived) - cartStats.finalTotal).toLocaleString()} {appSettings.currency}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Notes */}
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>
-            Notes (optionnel)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Ajouter une note..."
-            rows={2}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: '1px solid #e2e8f0',
-              borderRadius: '8px',
-              fontSize: '14px',
-              resize: 'vertical',
-              outline: 'none'
-            }}
-          />
-        </div>
-
-        {/* Bouton de confirmation */}
-        <button
-          onClick={handleCheckout}
-          disabled={paymentMethod === 'cash' && (!amountReceived || parseFloat(amountReceived) < cartStats.finalTotal)}
-          style={{
-            width: '100%',
-            padding: '16px',
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '12px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-            opacity: (paymentMethod === 'cash' && (!amountReceived || parseFloat(amountReceived) < cartStats.finalTotal)) ? 0.5 : 1
-          }}
-        >
-          <Check size={20} />
-          Confirmer la vente
-        </button>
-      </div>
-    </div>
+    </Card>
   );
 
   const EmptyCartState = () => (
     <div style={{ 
       textAlign: 'center', 
-      color: '#64748b', 
+      color: isDark ? '#a0aec0' : '#6b7280', 
       fontSize: '14px',
       padding: '40px 20px'
     }}>
       <ShoppingCart size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
-      <div style={{ fontWeight: '600', marginBottom: '8px' }}>Votre panier est vide</div>
+      <div style={{ fontWeight: '600', marginBottom: '8px' }}>
+        Votre panier est vide
+      </div>
       <div style={{ fontSize: '12px' }}>
         Cliquez sur un produit pour l'ajouter
       </div>
-      <div style={{ fontSize: '12px', marginTop: '16px', color: '#94a3b8' }}>
+      <div style={{ fontSize: '12px', marginTop: '16px', color: isDark ? '#718096' : '#94a3b8' }}>
         Raccourcis: F2=Recherche, F4=Scanner
       </div>
     </div>
   );
 
-  // Rendu principal
+  const PaymentModal = () => (
+    <Modal
+      isOpen={showPaymentModal}
+      onClose={() => setShowPaymentModal(false)}
+      title="Finaliser la vente"
+      size="medium"
+    >
+      {/* Récapitulatif */}
+      <Card style={{ marginBottom: '24px', background: isDark ? '#374151' : '#f8fafc' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <span style={{ color: isDark ? '#cbd5e0' : '#374151' }}>Sous-total:</span>
+          <span style={{ color: isDark ? '#f7fafc' : '#374151' }}>
+            {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
+          </span>
+        </div>
+        {cartStats.totalTax > 0 && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <span style={{ color: isDark ? '#cbd5e0' : '#374151' }}>
+              TVA ({appSettings.taxRate}%):
+            </span>
+            <span style={{ color: isDark ? '#f7fafc' : '#374151' }}>
+              {cartStats.totalTax.toLocaleString()} {appSettings.currency}
+            </span>
+          </div>
+        )}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          fontSize: '20px', 
+          fontWeight: '700',
+          borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          paddingTop: '8px'
+        }}>
+          <span style={{ color: isDark ? '#f7fafc' : '#374151' }}>Total:</span>
+          <span style={{ color: '#3b82f6' }}>
+            {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
+          </span>
+        </div>
+      </Card>
+
+      {/* Client */}
+      <div style={{ marginBottom: '24px' }}>
+        <Button
+          variant="secondary"
+          fullWidth
+          onClick={() => setShowCustomerModal(true)}
+          icon={<User size={16} />}
+          style={{ justifyContent: 'flex-start' }}
+        >
+          {selectedCustomer.name}
+        </Button>
+      </div>
+
+      {/* Méthode de paiement */}
+      <div style={{ marginBottom: '24px' }}>
+        <label style={{ 
+          display: 'block', 
+          marginBottom: '8px', 
+          fontWeight: '600',
+          fontSize: '14px',
+          color: isDark ? '#f7fafc' : '#374151'
+        }}>
+          Méthode de paiement
+        </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+          {[
+            { id: 'cash', label: 'Espèces', icon: DollarSign },
+            { id: 'card', label: 'Carte', icon: CreditCard },
+            { id: 'mobile', label: 'Mobile', icon: Smartphone }
+          ].map(method => (
+            <Button
+              key={method.id}
+              variant={paymentMethod === method.id ? 'primary' : 'secondary'}
+              onClick={() => setPaymentMethod(method.id)}
+              icon={<method.icon size={16} />}
+              style={{ flexDirection: 'column', gap: '4px' }}
+            >
+              {method.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      {/* Montant reçu pour espèces */}
+      {paymentMethod === 'cash' && (
+        <div style={{ marginBottom: '24px' }}>
+          <Input
+            label="Montant reçu"
+            type="number"
+            value={amountReceived}
+            onChange={(e) => setAmountReceived(e.target.value)}
+            placeholder="0"
+            fullWidth
+            leftIcon={<DollarSign size={16} />}
+          />
+          {amountReceived && (
+            <div style={{ 
+              marginTop: '8px', 
+              fontSize: '14px', 
+              color: parseFloat(amountReceived) >= cartStats.finalTotal ? '#10b981' : '#ef4444',
+              fontWeight: '500'
+            }}>
+              Monnaie à rendre: {Math.max(0, parseFloat(amountReceived || 0) - cartStats.finalTotal).toLocaleString()} {appSettings.currency}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Notes */}
+      <div style={{ marginBottom: '24px' }}>
+        <Input
+          label="Notes (optionnel)"
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Ajouter une note..."
+          fullWidth
+        />
+      </div>
+
+      {/* Boutons d'action */}
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <Button
+          variant="secondary"
+          onClick={() => setShowPaymentModal(false)}
+          fullWidth
+        >
+          Annuler
+        </Button>
+        <Button
+          variant="success"
+          onClick={handleCheckout}
+          disabled={paymentMethod === 'cash' && (!amountReceived || parseFloat(amountReceived) < cartStats.finalTotal)}
+          fullWidth
+          icon={<Check size={16} />}
+        >
+          Confirmer
+        </Button>
+      </div>
+    </Modal>
+  );
+
+  // ==================== RENDU PRINCIPAL ====================
   return (
     <div style={styles.container}>
       {/* Section Produits */}
       <div style={styles.productsSection}>
         {/* Header avec recherche */}
         <div style={styles.header}>
-          <div style={styles.searchContainer}>
-            <Search size={20} style={styles.searchIcon} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+            <Package size={28} color="#3b82f6" />
+            <h1 style={{ 
+              margin: 0, 
+              fontSize: '24px', 
+              fontWeight: '700',
+              color: isDark ? '#f7fafc' : '#1f2937'
+            }}>
+              Point de Vente
+            </h1>
+          </div>
+          
+          {/* Recherche moderne */}
+          <div style={{ position: 'relative', marginBottom: '16px' }}>
+            <Search size={20} style={{
+              position: 'absolute',
+              left: '16px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: isDark ? '#a0aec0' : '#6b7280'
+            }} />
             <input
               ref={searchInputRef}
               type="text"
@@ -881,9 +640,16 @@ const OptimizedPOSModule = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
-                ...styles.searchInput,
-                borderColor: searchQuery ? '#3b82f6' : '#e2e8f0',
-                background: searchQuery ? 'white' : '#f8fafc'
+                width: '100%',
+                padding: '14px 16px 14px 48px',
+                border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                borderRadius: '12px',
+                fontSize: '16px',
+                background: searchQuery ? (isDark ? '#2d3748' : 'white') : (isDark ? '#374151' : '#f8fafc'),
+                borderColor: searchQuery ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0'),
+                color: isDark ? '#f7fafc' : '#1f2937',
+                transition: 'all 0.2s ease',
+                outline: 'none'
               }}
             />
           </div>
@@ -906,13 +672,15 @@ const OptimizedPOSModule = () => {
             <div style={{
               gridColumn: '1 / -1',
               textAlign: 'center',
-              color: '#64748b',
-              padding: '40px'
+              color: isDark ? '#a0aec0' : '#6b7280',
+              padding: '60px 20px'
             }}>
               <Package size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
-              <div>Aucun produit trouvé</div>
-              <div style={{ fontSize: '14px', marginTop: '8px' }}>
-                {searchQuery ? `Aucun résultat pour "${searchQuery}"` : 'Cette catégorie est vide'}
+              <div style={{ fontSize: '18px', fontWeight: '600', marginBottom: '8px' }}>
+                Aucun produit trouvé
+              </div>
+              <div style={{ fontSize: '14px' }}>
+                {searchQuery ? `Aucun résultat pour "${searchQuery}"` : 'Aucun produit disponible'}
               </div>
             </div>
           )}
@@ -925,7 +693,7 @@ const OptimizedPOSModule = () => {
           <h2 style={{
             fontSize: '20px',
             fontWeight: '700',
-            color: '#1e293b',
+            color: isDark ? '#f7fafc' : '#1f2937',
             margin: 0,
             display: 'flex',
             alignItems: 'center',
@@ -937,7 +705,7 @@ const OptimizedPOSModule = () => {
           </h2>
           <div style={{
             fontSize: '14px',
-            color: '#64748b',
+            color: isDark ? '#a0aec0' : '#6b7280',
             marginTop: '4px'
           }}>
             {cartStats.totalItems} article{cartStats.totalItems > 1 ? 's' : ''}
@@ -964,47 +732,40 @@ const OptimizedPOSModule = () => {
               fontSize: '20px',
               fontWeight: '700'
             }}>
-              <span>Total:</span>
+              <span style={{ color: isDark ? '#f7fafc' : '#1f2937' }}>Total:</span>
               <span style={{ color: '#3b82f6' }}>
                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
               </span>
             </div>
             
-            <button
+            <Button
+              variant="success"
+              fullWidth
+              icon={<CreditCard size={20} />}
               onClick={() => setShowPaymentModal(true)}
-              style={{
-                ...styles.primaryButton,
-                background: '#3b82f6'
-              }}
-              onMouseEnter={(e) => {
-                e.target.style.background = '#2563eb';
-                e.target.style.transform = 'translateY(-1px)';
-              }}
-              onMouseLeave={(e) => {
-                e.target.style.background = '#3b82f6';
-                e.target.style.transform = 'translateY(0)';
-              }}
+              size="large"
             >
-              <CreditCard size={20} />
-              Payer (F3)
-            </button>
+              Finaliser la vente (F3)
+            </Button>
             
-            <button
+            <Button
+              variant="ghost"
+              fullWidth
               onClick={() => {
                 if (window.confirm('Vider le panier ?')) {
-                  setCart([]);
+                  clearCart();
                 }
               }}
-              style={styles.secondaryButton}
+              style={{ marginTop: '8px' }}
             >
               Vider le panier (F1)
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Raccourcis clavier (optionnel - à masquer en prod) */}
-      {!isMobile && (
+      {/* Raccourcis clavier (optionnel en développement) */}
+      {process.env.NODE_ENV === 'development' && !isMobile && (
         <div style={{
           position: 'fixed',
           bottom: '16px',
@@ -1039,4 +800,4 @@ const OptimizedPOSModule = () => {
   );
 };
 
-export default OptimizedPOSModule;
+export default POSModule;
