@@ -1,1330 +1,1494 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
-  Package, AlertTriangle, TrendingDown, TrendingUp,
-  Search, Plus, Minus, Edit, Save, X, Bell,
-  BarChart3, Truck, Clock, Eye, RefreshCw, Trash
+  Package, AlertTriangle, TrendingDown, TrendingUp, BarChart3,
+  Search, Plus, Minus, Edit, Save, X, Bell, Clock, Eye,
+  RefreshCw, Trash, Download, Upload, Filter, Settings,
+  Target, Zap, Activity, DollarSign, Truck, Calendar,
+  ArrowUpDown, CheckCircle, XCircle, PieChart, LineChart
 } from 'lucide-react';
-import { useApp } from '../../contexts/AppContext'; // ✅ Correction critique
-import BarcodeSystem from './BarcodeSystem';
-import PhysicalInventory from './PhysicalInventory';
-import TransferStock from './TransferStock';
-import { generateRealExcel } from '../../utils/ExportUtils';
-import ProductImportModal from './ProductImportModal';
-import StockMovements from './StockMovements';
 
-const InventoryModule = () => {
-  const { globalProducts, addStock, appSettings, salesHistory, currentStoreId, addProduct, removeProduct } = useApp();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [showRestockModal, setShowRestockModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [restockingProduct, setRestockingProduct] = useState(null);
-  const [restockQuantity, setRestockQuantity] = useState('');
-  const [restockReason, setRestockReason] = useState('Réapprovisionnement manuel');
-  const [activeTab, setActiveTab] = useState('overview');
-  const [lowStockOnly, setLowStockOnly] = useState(false);
+// ==================== HOOKS PERSONNALISÉS ====================
 
-  const isDark = appSettings.darkMode;
+const useDebounce = (value, delay) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
 
-  // Produits du magasin courant
-  const products = globalProducts || [];
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
 
-  // Calculs statistiques mis à jour
-  const stats = {
-    totalProducts: products.length,
-    totalValue: products.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0),
-    lowStock: products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5)).length,
-    outOfStock: products.filter(p => (p.stock || 0) === 0).length,
-    overStock: products.filter(p => (p.maxStock || Infinity) > 0 && (p.stock || 0) > (p.maxStock || Infinity)).length,
-    totalSalesValue: products.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0)
-  };
-
-  // Calculer les mouvements de stock basés sur l'historique des ventes
-  const stockMovements = (salesHistory || []).flatMap(sale => 
-    (sale.items || []).map(item => ({
-      date: sale.date,
-      productName: item.name,
-      quantity: -item.quantity,
-      type: 'Vente',
-      reference: sale.receiptNumber
-    }))
-  ).sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 10);
-
-  // Categories uniquement à partir des produits existants
-  const categories = ['all', ...new Set(products.map(p => p.category).filter(Boolean))];
-
-  // Produits filtrés
-  const filteredProducts = products.filter(p => {
-    const matchesSearch = p.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         p.barcode?.includes(searchTerm) ||
-                         p.id?.toString().includes(searchTerm);
-    const matchesCategory = selectedCategory === 'all' || p.category === selectedCategory;
-    return matchesSearch && matchesCategory && (!lowStockOnly || ((p.stock||0)>0 && (p.stock||0) <= (p.minStock||5)));
-  });
-
-  async function handleExportLowStock() {
-    const low = products.filter(p => (p.stock||0) > 0 && (p.stock||0) <= (p.minStock||5));
-    const reportData = {
-      stock: {
-        categoryBreakdown: {},
-        totalProducts: products.length,
-        totalStockValue: 0,
-        totalSaleValue: 0,
-        outOfStockProducts: [],
-        lowStockProducts: low,
-      }
+    return () => {
+      clearTimeout(handler);
     };
-    await generateRealExcel(reportData, 'stock', appSettings);
-  }
+  }, [value, delay]);
 
-  async function handleExportInventory() {
-    const categoryBreakdown = products.reduce((acc, p) => {
-      const category = p.category || 'Divers';
-      if (!acc[category]) {
-        acc[category] = { count: 0, totalStock: 0, totalValue: 0 };
-      }
-      acc[category].count++;
-      acc[category].totalStock += (p.stock || 0);
-      acc[category].totalValue += (p.stock || 0) * (p.costPrice || 0);
-      return acc;
-    }, {});
+  return debouncedValue;
+};
 
-    const reportData = {
-      stock: {
-        categoryBreakdown,
-        totalProducts: products.length,
-        totalStockValue: products.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0),
-        totalSaleValue: products.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0),
-        outOfStockProducts: products.filter(p => (p.stock || 0) === 0),
-        lowStockProducts: products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5)),
-        overStockProducts: products.filter(p => (p.maxStock || Infinity) > 0 && (p.stock || 0) > (p.maxStock || Infinity)),
-        products
-      }
-    };
-    await generateRealExcel(reportData, 'stock', appSettings);
-  }
-
-  // Styles
-  const styles = {
-    container: {
-      padding: '20px',
-      background: isDark ? '#1a202c' : '#f7fafc',
-      minHeight: 'calc(100vh - 120px)'
-    },
-    header: {
-      background: isDark ? '#2d3748' : 'white',
-      padding: '24px',
-      borderRadius: '12px',
-      marginBottom: '24px',
-      boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-    },
-    tabs: {
-      display: 'flex',
-      gap: '0',
-      marginBottom: '24px',
-      borderBottom: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-      background: isDark ? '#2d3748' : 'white',
-      borderRadius: '12px 12px 0 0',
-      overflow: 'hidden'
-    },
-    tab: {
-      padding: '16px 24px',
-      background: 'transparent',
-      border: 'none',
-      cursor: 'pointer',
-      fontSize: '14px',
-      fontWeight: '600',
-      color: isDark ? '#a0aec0' : '#718096',
-      transition: 'all 0.2s',
-      borderBottom: '3px solid transparent'
-    },
-    activeTab: {
-      color: isDark ? '#63b3ed' : '#3182ce',
-      background: isDark ? '#4a5568' : '#edf2f7',
-      borderBottomColor: isDark ? '#63b3ed' : '#3182ce'
-    },
-    statsGrid: {
-      display: 'grid',
-      gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-      gap: '20px',
-      marginBottom: '24px'
-    },
-    statCard: {
-      background: isDark ? '#2d3748' : 'white',
-      padding: '20px',
-      borderRadius: '12px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-    },
-    alertCard: {
-      background: isDark ? '#2d3748' : 'white',
-      borderRadius: '12px',
-      padding: '20px',
-      boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-      border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-    }
-  };
-
-  // Composant Vue d'ensemble
-  const OverviewTab = () => (
-    <div>
-      {/* Statistiques principales */}
-      <div style={styles.statsGrid}>
-        <div style={styles.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <Package size={24} color="#3182ce" />
-            <h3 style={{ margin: 0, color: isDark ? '#f7fafc' : '#2d3748' }}>Produits Total</h3>
-          </div>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: 0, color: isDark ? '#f7fafc' : '#2d3748' }}>
-            {stats.totalProducts}
-          </p>
-          <p style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#718096', margin: '4px 0 0 0' }}>
-            Valeur totale: {stats.totalValue.toLocaleString()} {appSettings.currency}
-          </p>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <AlertTriangle size={24} color="#f59e0b" />
-            <h3 style={{ margin: 0, color: isDark ? '#f7fafc' : '#2d3748' }}>Stock Faible</h3>
-          </div>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: 0, color: '#f59e0b' }}>
-            {stats.lowStock}
-          </p>
-          <p style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#718096', margin: '4px 0 0 0' }}>
-            Produits à réapprovisionner
-          </p>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <TrendingDown size={24} color="#ef4444" />
-            <h3 style={{ margin: 0, color: isDark ? '#f7fafc' : '#2d3748' }}>Rupture</h3>
-          </div>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: 0, color: '#ef4444' }}>
-            {stats.outOfStock}
-          </p>
-          <p style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#718096', margin: '4px 0 0 0' }}>
-            Produits en rupture
-          </p>
-        </div>
-
-        <div style={styles.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-            <TrendingUp size={24} color="#10b981" />
-            <h3 style={{ margin: 0, color: isDark ? '#f7fafc' : '#2d3748' }}>Valeur Stock</h3>
-          </div>
-          <p style={{ fontSize: '32px', fontWeight: 'bold', margin: 0, color: isDark ? '#f7fafc' : '#2d3748' }}>
-            {stats.totalSalesValue.toLocaleString()}
-          </p>
-          <p style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#718096', margin: '4px 0 0 0' }}>
-            {appSettings.currency} (prix de vente)
-          </p>
-        </div>
-      </div>
-
-      {/* Alertes */}
-      {(stats.lowStock > 0 || stats.outOfStock > 0) && (
-        <div style={styles.alertCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <Bell size={20} color="#f59e0b" />
-            <h3 style={{ margin: 0, color: isDark ? '#f7fafc' : '#2d3748' }}>Alertes Stock</h3>
-          </div>
-          
-          {stats.outOfStock > 0 && (
-            <div style={{
-              padding: '12px 16px',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '8px',
-              marginBottom: '12px'
-            }}>
-              <p style={{ margin: 0, color: '#dc2626', fontWeight: '600' }}>
-                🚨 {stats.outOfStock} produit(s) en rupture de stock
-              </p>
-            </div>
-          )}
-          
-          {stats.lowStock > 0 && (
-            <div style={{
-              padding: '12px 16px',
-              background: '#fefbf2',
-              border: '1px solid #fed7aa',
-              borderRadius: '8px'
-            }}>
-              <p style={{ margin: 0, color: '#d97706', fontWeight: '600' }}>
-                ⚠️ {stats.lowStock} produit(s) avec stock faible
-              </p>
-            </div>
-          )}
-          
-          <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-            <button
-              onClick={() => { setLowStockOnly(true); setActiveTab('products'); }}
-              style={{
-                padding: '8px 16px',
-                background: '#3182ce',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              Voir les produits
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Mouvements récents */}
-      {stockMovements.length > 0 && (
-        <div style={styles.alertCard}>
-          <h3 style={{ margin: '0 0 16px 0', color: isDark ? '#f7fafc' : '#2d3748' }}>
-            Mouvements récents
-          </h3>
-          
-          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-            {stockMovements.map((movement, index) => (
-              <div
-                key={index}
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '12px 0',
-                  borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
-                }}
-              >
-                <div>
-                  <p style={{
-                    margin: 0,
-                    fontWeight: '500',
-                    color: isDark ? '#f7fafc' : '#2d3748'
-                  }}>
-                    {movement.productName}
-                  </p>
-                  <p style={{
-                    margin: '2px 0 0 0',
-                    fontSize: '12px',
-                    color: isDark ? '#a0aec0' : '#718096'
-                  }}>
-                    {movement.type} - {movement.reference}
-                  </p>
-                </div>
-                
-                <div style={{ textAlign: 'right' }}>
-                  <p style={{
-                    margin: 0,
-                    color: movement.quantity < 0 ? '#ef4444' : '#10b981',
-                    fontWeight: '600'
-                  }}>
-                    {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-                  </p>
-                  <p style={{
-                    margin: '2px 0 0 0',
-                    fontSize: '12px',
-                    color: isDark ? '#a0aec0' : '#718096'
-                  }}>
-                    {new Date(movement.date).toLocaleDateString()}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  // Composant Liste des produits
-  const ProductsTab = () => (
-    <div>
-      {/* Barre de recherche et filtres */}
-      <div style={{
-        display: 'flex',
-        gap: '16px',
-        marginBottom: '24px',
-        flexWrap: 'wrap'
-      }}>
-        <div style={{ flex: '1', minWidth: '200px' }}>
-          <div style={{ position: 'relative' }}>
-            <Search
-              size={20}
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                color: isDark ? '#a0aec0' : '#718096'
-              }}
-            />
-            <input
-              type="text"
-              placeholder="Rechercher un produit..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 12px 12px 44px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                borderRadius: '8px',
-                background: isDark ? '#4a5568' : 'white',
-                color: isDark ? '#f7fafc' : '#2d3748',
-                fontSize: '14px',
-                boxSizing: 'border-box'
-              }}
-            />
-          </div>
-        </div>
-
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          style={{
-            padding: '12px 16px',
-            border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-            borderRadius: '8px',
-            background: isDark ? '#4a5568' : 'white',
-            color: isDark ? '#f7fafc' : '#2d3748',
-            fontSize: '14px'
-          }}
-        >
-          <option value="all">Toutes catégories</option>
-          {categories.filter(cat => cat !== 'all').map(category => (
-            <option key={category} value={category}>{category}</option>
-          ))}
-        </select>
-
-        <button
-          onClick={() => setShowAddModal(true)}
-          style={{
-            padding: '12px 20px',
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <Plus size={16} />
-          Ajouter Produit
-        </button>
-        <button
-          onClick={() => setShowImportModal(true)}
-          style={{
-            padding: '12px 20px',
-            background: '#3182ce',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          Importer
-        </button>
-        <button
-          onClick={handleExportInventory}
-          style={{
-            padding: '12px 20px',
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-        >
-          <BarChart3 size={16} />
-          Exporter inventaire
-        </button>
-        {lowStockOnly && (
-          <>
-            <button
-              onClick={handleExportLowStock}
-              style={{
-                padding: '12px 20px',
-                background: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <BarChart3 size={16} />
-              Exporter
-            </button>
-            <button
-              onClick={() => setLowStockOnly(false)}
-              style={{
-                padding: '12px 20px',
-                background: '#3182ce',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-              }}
-            >
-              <RefreshCw size={16} />
-              Tous les produits
-            </button>
-          </>
-        )}
-      </div>
-
-      {/* Liste des produits */}
-      <div style={{
-        background: isDark ? '#2d3748' : 'white',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        {filteredProducts.length === 0 ? (
-          <div style={{
-            padding: '60px 20px',
-            textAlign: 'center',
-            color: isDark ? '#a0aec0' : '#718096'
-          }}>
-            <Package size={48} style={{ margin: '0 auto 16px' }} />
-            <p style={{ fontSize: '18px', fontWeight: '600', margin: '0 0 8px 0' }}>
-              Aucun produit trouvé
-            </p>
-            <p style={{ margin: 0 }}>
-              {searchTerm || selectedCategory !== 'all' 
-                ? 'Modifiez vos critères de recherche' 
-                : 'Commencez par ajouter des produits à votre inventaire'
-              }
-            </p>
-          </div>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: isDark ? '#4a5568' : '#f7fafc' }}>
-                  <th style={{ padding: '16px', textAlign: 'left', color: isDark ? '#f7fafc' : '#2d3748' }}>Produit</th>
-                  <th style={{ padding: '16px', textAlign: 'center', color: isDark ? '#f7fafc' : '#2d3748' }}>Stock</th>
-                  <th style={{ padding: '16px', textAlign: 'right', color: isDark ? '#f7fafc' : '#2d3748' }}>Prix</th>
-                  <th style={{ padding: '16px', textAlign: 'right', color: isDark ? '#f7fafc' : '#2d3748' }}>Valeur</th>
-                  <th style={{ padding: '16px', textAlign: 'center', color: isDark ? '#f7fafc' : '#2d3748' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredProducts.map(product => {
-                  const isLowStock = (product.stock || 0) <= (product.minStock || 5) && (product.stock || 0) > 0;
-                  const isOutOfStock = (product.stock || 0) === 0;
-                  
-                  return (
-                    <tr
-                      key={product.id}
-                      style={{
-                        borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                        '&:hover': { background: isDark ? '#4a5568' : '#f7fafc' }
-                      }}
-                    >
-                      <td style={{ padding: '16px' }}>
-                        <div>
-                          <p style={{
-                            margin: 0,
-                            fontWeight: '600',
-                            color: isDark ? '#f7fafc' : '#2d3748'
-                          }}>
-                            {product.name}
-                          </p>
-                          <p style={{
-                            margin: '4px 0 0 0',
-                            fontSize: '12px',
-                            color: isDark ? '#a0aec0' : '#718096'
-                          }}>
-                            {product.category} • {product.barcode || 'Pas de code-barres'}
-                          </p>
-                        </div>
-                      </td>
-                      
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          background: isOutOfStock ? '#fee2e2' : isLowStock ? '#fef3c7' : '#d1fae5',
-                          color: isOutOfStock ? '#dc2626' : isLowStock ? '#d97706' : '#065f46'
-                        }}>
-                          {product.stock || 0}
-                        </span>
-                      </td>
-                      
-                      <td style={{
-                        padding: '16px',
-                        textAlign: 'right',
-                        color: isDark ? '#f7fafc' : '#2d3748',
-                        fontWeight: '600'
-                      }}>
-                        {(product.price || 0).toLocaleString()} {appSettings.currency}
-                      </td>
-                      
-                      <td style={{
-                        padding: '16px',
-                        textAlign: 'right',
-                        color: isDark ? '#f7fafc' : '#2d3748'
-                      }}>
-                        {((product.stock || 0) * (product.costPrice || 0)).toLocaleString()} {appSettings.currency}
-                      </td>
-                      
-                      <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                          <button
-                            onClick={() => {
-                              setRestockingProduct(product);
-                              setShowRestockModal(true);
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#3182ce',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <Plus size={12} />
-                            Stock
-                          </button>
-                          
-                          <button
-                            onClick={() => {
-                              setEditingProduct(product);
-                              setShowEditModal(true);
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#f59e0b',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <Edit size={12} />
-                            Modifier
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              if (window.confirm('Supprimer ce produit ?')) {
-                                removeProduct(product.id);
-                              }
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#dc2626',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px'
-                            }}
-                          >
-                            <Trash size={12} />
-                            Supprimer
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-
-  // Modal de réapprovisionnement
-  const RestockModal = () => {
-    if (!showRestockModal || !restockingProduct) return null;
-
-    const handleRestock = () => {
-      const quantity = parseInt(restockQuantity, 10);
-      const reason = (restockReason || '').trim() || 'Réapprovisionnement';
-      if (quantity > 0) {
-        addStock(
-          currentStoreId,
-          restockingProduct.id,
-          quantity,
-          reason
-        );
-        setShowRestockModal(false);
-        setRestockingProduct(null);
-        setRestockQuantity('');
-        setRestockReason('Réapprovisionnement manuel');
-      }
-    };
-
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000
-      }}>
-        <div style={{
-          background: isDark ? '#2d3748' : 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '400px'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', color: isDark ? '#f7fafc' : '#2d3748' }}>
-            Réapprovisionner : {restockingProduct.name}
-          </h3>
-          
-          <p style={{ margin: '0 0 16px 0', color: isDark ? '#a0aec0' : '#718096' }}>
-            Stock actuel : {restockingProduct.stock || 0}
-          </p>
-          
-          <input
-            type="number"
-            min="1"
-            placeholder="Quantité à ajouter"
-            value={restockQuantity}
-            onChange={(e) => setRestockQuantity(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-              borderRadius: '8px',
-              background: isDark ? '#4a5568' : 'white',
-              color: isDark ? '#f7fafc' : '#2d3748',
-              fontSize: '14px',
-              marginBottom: '20px',
-              boxSizing: 'border-box'
-            }}
-            autoFocus
-          />
-
-          <input
-            type="text"
-            placeholder="Raison du réapprovisionnement"
-            value={restockReason}
-            onChange={(e) => setRestockReason(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px',
-              border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-              borderRadius: '8px',
-              background: isDark ? '#4a5568' : 'white',
-              color: isDark ? '#f7fafc' : '#2d3748',
-              fontSize: '14px',
-              marginBottom: '20px',
-              boxSizing: 'border-box'
-            }}
-          />
-
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <button
-              onClick={() => {
-                setShowRestockModal(false);
-                setRestockingProduct(null);
-                setRestockQuantity('');
-              }}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: '#6b7280',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Annuler
-            </button>
-            
-            <button
-              onClick={handleRestock}
-              disabled={!restockQuantity || parseInt(restockQuantity) <= 0}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: (!restockQuantity || parseInt(restockQuantity) <= 0) ? '#9ca3af' : '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: (!restockQuantity || parseInt(restockQuantity) <= 0) ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              Ajouter Stock
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  // Modal d'ajout de produit (simplifié)
-  const AddProductModal = () => {
-    const [newProduct, setNewProduct] = useState({
-      name: '',
-      category: '',
-      price: '',
-      costPrice: '',
-      stock: '',
-      minStock: '5',
-      barcode: '',
-      imageUrl: ''
-    });
-    const [showImageSearch, setShowImageSearch] = useState(false);
-
-    if (!showAddModal) return null;
-
-    const handleAddProduct = () => {
-      if (!newProduct.name || !newProduct.price) {
-        alert('Veuillez remplir au moins le nom et le prix');
-        return;
-      }
-
-      const product = {
-        id: Date.now(),
-        name: newProduct.name,
-        category: newProduct.category || 'Divers',
-        price: parseFloat(newProduct.price) || 0,
-        costPrice: parseFloat(newProduct.costPrice) || 0,
-        minStock: parseInt(newProduct.minStock) || 5,
-        barcode: newProduct.barcode || `${Date.now()}`,
-        imageUrl: newProduct.imageUrl,
-        createdAt: new Date().toISOString()
-      };
-
-      const initialStock = parseInt(newProduct.stock) || 0;
-      addProduct(product, initialStock);
-      setShowAddModal(false);
-      setNewProduct({
-        name: '',
-        category: '',
-        price: '',
-        costPrice: '',
-        stock: '',
-        minStock: '5',
-        barcode: '',
-        imageUrl: ''
+const useKeyboardShortcuts = (shortcuts, deps = []) => {
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      shortcuts.forEach(({ key, action }) => {
+        if (event.key === key) {
+          event.preventDefault();
+          action();
+        }
       });
     };
 
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000
-      }}>
-        <div style={{
-          background: isDark ? '#2d3748' : 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '500px',
-          maxHeight: '80vh',
-          overflow: 'auto'
-        }}>
-          <h3 style={{ margin: '0 0 20px 0', color: isDark ? '#f7fafc' : '#2d3748' }}>
-            Ajouter un nouveau produit
-          </h3>
-          
-          <div style={{ display: 'grid', gap: '16px' }}>
-            <input
-              type="text"
-              placeholder="Nom du produit *"
-              value={newProduct.name}
-              onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-              style={{
-                padding: '12px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                borderRadius: '8px',
-                background: isDark ? '#4a5568' : 'white',
-                color: isDark ? '#f7fafc' : '#2d3748',
-                fontSize: '14px'
-              }}
-            />
-            
-            <input
-              type="text"
-              placeholder="Catégorie"
-              value={newProduct.category}
-              onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-              style={{
-                padding: '12px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                borderRadius: '8px',
-                background: isDark ? '#4a5568' : 'white',
-                color: isDark ? '#f7fafc' : '#2d3748',
-                fontSize: '14px'
-              }}
-            />
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <input
-                type="number"
-                placeholder="Prix de vente *"
-                value={newProduct.price}
-                onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
-                style={{
-                  padding: '12px',
-                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  background: isDark ? '#4a5568' : 'white',
-                  color: isDark ? '#f7fafc' : '#2d3748',
-                  fontSize: '14px'
-                }}
-              />
-              
-              <input
-                type="number"
-                placeholder="Prix d'achat"
-                value={newProduct.costPrice}
-                onChange={(e) => setNewProduct({...newProduct, costPrice: e.target.value})}
-                style={{
-                  padding: '12px',
-                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  background: isDark ? '#4a5568' : 'white',
-                  color: isDark ? '#f7fafc' : '#2d3748',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <input
-                type="number"
-                placeholder="Stock initial"
-                value={newProduct.stock}
-                onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
-                style={{
-                  padding: '12px',
-                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  background: isDark ? '#4a5568' : 'white',
-                  color: isDark ? '#f7fafc' : '#2d3748',
-                  fontSize: '14px'
-                }}
-              />
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, deps);
+};
 
-              <input
-                type="number"
-                placeholder="Stock minimum"
-                value={newProduct.minStock}
-                onChange={(e) => setNewProduct({...newProduct, minStock: e.target.value})}
-                style={{
-                  padding: '12px',
-                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  background: isDark ? '#4a5568' : 'white',
-                  color: isDark ? '#f7fafc' : '#2d3748',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
+const useLocalStorage = (key, initialValue) => {
+  const [storedValue, setStoredValue] = useState(() => {
+    try {
+      const item = window.localStorage.getItem(key);
+      return item ? JSON.parse(item) : initialValue;
+    } catch (error) {
+      return initialValue;
+    }
+  });
 
-            {/* Image field */}
-            <div style={{ display: 'grid', gap: '8px' }}>
-              {newProduct.imageUrl && (
-                <img
-                  src={newProduct.imageUrl}
-                  alt="Prévisualisation"
-                  style={{ width: '100%', height: '150px', objectFit: 'cover', borderRadius: '8px' }}
-                />
-              )}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const url = URL.createObjectURL(file);
-                    setNewProduct({ ...newProduct, imageUrl: url });
-                  }
-                }}
-                style={{
-                  padding: '12px',
-                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  background: isDark ? '#4a5568' : 'white',
-                  color: isDark ? '#f7fafc' : '#2d3748',
-                  fontSize: '14px'
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setShowImageSearch(true)}
-                style={{
-                  padding: '10px',
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  fontSize: '14px'
-                }}
-              >
-                Rechercher en ligne
-              </button>
-            </div>
-
-            <input
-              type="text"
-              placeholder="Code-barres (optionnel)"
-              value={newProduct.barcode}
-              onChange={(e) => setNewProduct({...newProduct, barcode: e.target.value})}
-              style={{
-                padding: '12px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                borderRadius: '8px',
-                background: isDark ? '#4a5568' : 'white',
-                color: isDark ? '#f7fafc' : '#2d3748',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
-            <button
-              onClick={() => setShowAddModal(false)}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: '#6b7280',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px'
-              }}
-            >
-              Annuler
-            </button>
-            
-            <button
-              onClick={handleAddProduct}
-              style={{
-                flex: 1,
-                padding: '12px',
-                background: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '600'
-              }}
-            >
-              Ajouter Produit
-            </button>
-          </div>
-        </div>
-        {showImageSearch && (
-          <ImageSearchModal
-            isDark={isDark}
-            onSelect={(url) => {
-              setNewProduct({ ...newProduct, imageUrl: url });
-              setShowImageSearch(false);
-            }}
-            onClose={() => setShowImageSearch(false)}
-          />
-        )}
-      </div>
-    );
+  const setValue = (value) => {
+    try {
+      setStoredValue(value);
+      window.localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+      console.error('Error saving to localStorage:', error);
+    }
   };
 
-  const ImageSearchModal = ({ isDark, onSelect, onClose }) => {
-    const [query, setQuery] = useState('');
-    const [results, setResults] = useState([]);
+  return [storedValue, setValue];
+};
 
-    const searchImages = async () => {
-      if (!query) return;
-      try {
-        const response = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(query)}&per_page=12&client_id=${process.env.REACT_APP_UNSPLASH_KEY}`);
-        const data = await response.json();
-        setResults(data.results || []);
-      } catch (err) {
-        console.error('Image search failed', err);
-      }
-    };
+const useProductSearch = (products, searchQuery, selectedCategory) => {
+  return useMemo(() => {
+    return products.filter(product => {
+      const matchesCategory = selectedCategory === 'all' || 
+        (product.category?.toLowerCase() === selectedCategory);
+      
+      const searchLower = searchQuery.toLowerCase();
+      const matchesSearch = !searchQuery || 
+        product.name?.toLowerCase().includes(searchLower) ||
+        product.sku?.toLowerCase().includes(searchLower) ||
+        product.barcode?.includes(searchQuery);
+      
+      return matchesCategory && matchesSearch;
+    });
+  }, [products, searchQuery, selectedCategory]);
+};
 
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1100
-      }}>
-        <div style={{
-          background: isDark ? '#2d3748' : 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '600px',
-          maxHeight: '80vh',
-          overflow: 'auto'
-        }}>
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-            <input
-              type="text"
-              placeholder="Recherche d'image"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              style={{
-                flex: 1,
-                padding: '10px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                borderRadius: '8px',
-                background: isDark ? '#4a5568' : 'white',
-                color: isDark ? '#f7fafc' : '#2d3748'
-              }}
-            />
-            <button
-              onClick={searchImages}
-              style={{
-                padding: '10px 16px',
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer'
-              }}
-            >
-              Chercher
-            </button>
-          </div>
+const useCategories = (products) => {
+  return useMemo(() => {
+    const categoryCounts = products.reduce((acc, product) => {
+      const category = product.category || 'Divers';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+    
+    const categoryList = [
+      { id: 'all', name: 'Toutes', count: products.length }
+    ];
+    
+    Object.entries(categoryCounts).forEach(([name, count]) => {
+      categoryList.push({
+        id: name.toLowerCase(),
+        name,
+        count
+      });
+    });
+    
+    return categoryList;
+  }, [products]);
+};
 
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-            gap: '10px'
-          }}>
-            {results.map(img => (
-              <img
-                key={img.id}
-                src={img.urls.small}
-                alt={img.alt_description}
-                style={{ width: '100%', height: '100px', objectFit: 'cover', cursor: 'pointer', borderRadius: '8px' }}
-                onClick={() => onSelect(img.urls.small)}
-              />
-            ))}
-          </div>
+// ==================== COMPOSANTS UI AVEC STYLES INLINE ====================
 
-          <button
-            onClick={onClose}
-            style={{
-              marginTop: '16px',
-              width: '100%',
-              padding: '10px',
-              background: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer'
-            }}
-          >
-            Fermer
-          </button>
-        </div>
-      </div>
-    );
+const Button = ({ 
+  children, 
+  variant = 'primary', 
+  size = 'md', 
+  onClick, 
+  disabled = false, 
+  leftIcon,
+  style = {},
+  ...props 
+}) => {
+  const baseStyles = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '500',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
+    border: 'none',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+    fontSize: size === 'sm' ? '14px' : size === 'lg' ? '16px' : '14px',
+    padding: size === 'sm' ? '6px 12px' : size === 'lg' ? '12px 24px' : '8px 16px',
+    ...style
   };
 
-  // Modal d'édition (simplifié)
-  const EditProductModal = () => {
-    if (!showEditModal || !editingProduct) return null;
+  const variants = {
+    primary: {
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+    },
+    secondary: {
+      backgroundColor: '#6b7280',
+      color: 'white',
+    },
+    outline: {
+      backgroundColor: 'white',
+      color: '#374151',
+      border: '1px solid #d1d5db',
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    },
+    danger: {
+      backgroundColor: '#dc2626',
+      color: 'white',
+    },
+    success: {
+      backgroundColor: '#059669',
+      color: 'white',
+    },
+    warning: {
+      backgroundColor: '#d97706',
+      color: 'white',
+    }
+  };
 
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        background: 'rgba(0,0,0,0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000
-      }}>
-        <div style={{
-          background: isDark ? '#2d3748' : 'white',
-          padding: '24px',
-          borderRadius: '12px',
-          width: '100%',
-          maxWidth: '400px'
-        }}>
-          <h3 style={{ margin: '0 0 16px 0', color: isDark ? '#f7fafc' : '#2d3748' }}>
-            Modifier : {editingProduct.name}
-          </h3>
-          
-          <p style={{ color: isDark ? '#a0aec0' : '#718096', margin: '0 0 20px 0' }}>
-            Fonctionnalité d'édition complète à implémenter
-          </p>
-          
-          <button
-            onClick={() => {
-              setShowEditModal(false);
-              setEditingProduct(null);
-            }}
-            style={{
-              width: '100%',
-              padding: '12px',
-              background: '#6b7280',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              fontSize: '14px'
-            }}
-          >
-            Fermer
-          </button>
-        </div>
-      </div>
-    );
+  const hoverStyles = {
+    primary: { backgroundColor: '#2563eb' },
+    secondary: { backgroundColor: '#4b5563' },
+    outline: { backgroundColor: '#f9fafb' },
+    danger: { backgroundColor: '#b91c1c' },
+    success: { backgroundColor: '#047857' },
+    warning: { backgroundColor: '#b45309' }
+  };
+
+  const [isHovered, setIsHovered] = useState(false);
+
+  const finalStyles = {
+    ...baseStyles,
+    ...variants[variant],
+    ...(isHovered && !disabled ? hoverStyles[variant] : {})
   };
 
   return (
-    <div style={styles.container}>
-      {/* En-tête */}
-      <div style={styles.header}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <Package size={28} color={isDark ? '#63b3ed' : '#3182ce'} />
-          <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', color: isDark ? '#f7fafc' : '#2d3748' }}>
-            Gestion des Stocks
-          </h1>
-        </div>
-        <p style={{ margin: 0, color: isDark ? '#a0aec0' : '#64748b', fontSize: '16px' }}>
-          Gérez votre inventaire, suivez les niveaux de stock et recevez des alertes
-        </p>
-      </div>
+    <button
+      onClick={disabled ? undefined : onClick}
+      style={finalStyles}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      disabled={disabled}
+      {...props}
+    >
+      {leftIcon && <span style={{ marginRight: '8px' }}>{leftIcon}</span>}
+      {children}
+    </button>
+  );
+};
 
-      {/* Onglets */}
-      <div style={styles.tabs}>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'overview' ? styles.activeTab : {}) }}
-          onClick={() => setActiveTab('overview')}
-        >
-          Vue d'ensemble
-        </button>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'products' ? styles.activeTab : {}) }}
-          onClick={() => setActiveTab('products')}
-        >
-          Produits
-        </button>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'barcodes' ? styles.activeTab : {}) }}
-          onClick={() => setActiveTab('barcodes')}
-        >
-          Codes-barres
-        </button>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'inventory' ? styles.activeTab : {}) }}
-          onClick={() => setActiveTab('inventory')}
-        >
-          Inventaire
-        </button>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'transfer' ? styles.activeTab : {}) }}
-          onClick={() => setActiveTab('transfer')}
-        >
-          Transfert
-        </button>
-        <button
-          style={{ ...styles.tab, ...(activeTab === 'history' ? styles.activeTab : {}) }}
-          onClick={() => setActiveTab('history')}
-        >
-          Historique
-        </button>
-      </div>
+const Input = ({ 
+  label, 
+  value, 
+  onChange, 
+  placeholder, 
+  type = 'text',
+  style = {},
+  ...props 
+}) => {
+  return (
+    <div style={{ marginBottom: '16px' }}>
+      {label && (
+        <label style={{
+          display: 'block',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#374151',
+          marginBottom: '8px'
+        }}>
+          {label}
+        </label>
+      )}
+      <input
+        type={type}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        style={{
+          width: '100%',
+          padding: '12px',
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          fontSize: '14px',
+          outline: 'none',
+          transition: 'border-color 0.2s',
+          ...style
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+        {...props}
+      />
+    </div>
+  );
+};
 
-      {/* Contenu des onglets */}
-      <div>
-        {activeTab === 'overview' && <OverviewTab />}
-        {activeTab === 'products' && <ProductsTab />}
-        {activeTab === 'barcodes' && <BarcodeSystem />}
-        {activeTab === 'inventory' && <PhysicalInventory />}
-        {activeTab === 'transfer' && <TransferStock />}
-        {activeTab === 'history' && <StockMovements />}
-      </div>
-
-      {/* Modals */}
-      {showAddModal && <AddProductModal />}
-      {showEditModal && <EditProductModal />}
-      {showRestockModal && <RestockModal />}
-      {showImportModal && (
-        <ProductImportModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-        />
+const SearchInput = ({ 
+  placeholder, 
+  value, 
+  onChange, 
+  onClear 
+}) => {
+  return (
+    <div style={{ position: 'relative' }}>
+      <Search 
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: '#9ca3af',
+          width: '20px',
+          height: '20px'
+        }}
+      />
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        style={{
+          width: '100%',
+          paddingLeft: '44px',
+          paddingRight: value ? '44px' : '12px',
+          paddingTop: '12px',
+          paddingBottom: '12px',
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          fontSize: '14px',
+          outline: 'none',
+          transition: 'border-color 0.2s'
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
+      />
+      {value && (
+        <button
+          onClick={onClear}
+          style={{
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            color: '#9ca3af',
+            cursor: 'pointer',
+            padding: '0'
+          }}
+        >
+          <X style={{ width: '20px', height: '20px' }} />
+        </button>
       )}
     </div>
   );
 };
 
-export default InventoryModule;
+const Card = ({ children, style = {}, hover = false, ...props }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  const cardStyles = {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: isHovered && hover ? '0 10px 25px rgba(0, 0, 0, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #e5e7eb',
+    transition: 'all 0.3s ease',
+    ...style
+  };
+
+  return (
+    <div
+      style={cardStyles}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      {...props}
+    >
+      {children}
+    </div>
+  );
+};
+
+const Badge = ({ 
+  children, 
+  variant = 'secondary',
+  style = {}
+}) => {
+  const variants = {
+    primary: { backgroundColor: '#dbeafe', color: '#1e40af' },
+    secondary: { backgroundColor: '#f3f4f6', color: '#374151' },
+    success: { backgroundColor: '#d1fae5', color: '#065f46' },
+    warning: { backgroundColor: '#fef3c7', color: '#92400e' },
+    danger: { backgroundColor: '#fee2e2', color: '#991b1b' }
+  };
+
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '4px 12px',
+      borderRadius: '16px',
+      fontSize: '12px',
+      fontWeight: '500',
+      ...variants[variant],
+      ...style
+    }}>
+      {children}
+    </span>
+  );
+};
+
+const Modal = ({ 
+  isOpen, 
+  onClose, 
+  title, 
+  children, 
+  size = 'md' 
+}) => {
+  const sizes = {
+    sm: '400px',
+    md: '600px',
+    lg: '800px',
+    xl: '1200px'
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: '0',
+      zIndex: '50',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      padding: '16px'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 20px 25px rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        maxWidth: sizes[size],
+        maxHeight: '90vh',
+        overflow: 'auto'
+      }}>
+        <div style={{ padding: '24px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: '0'
+            }}>
+              {title}
+            </h3>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#9ca3af',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              <X style={{ width: '24px', height: '24px' }} />
+            </button>
+          </div>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Toast simplifié
+const Toast = {
+  success: (message) => {
+    const toast = document.createElement('div');
+    toast.innerHTML = `✅ ${message}`;
+    toast.style.cssText = `
+      position: fixed; top: 20px; right: 20px; z-index: 1000;
+      background: #059669; color: white; padding: 12px 20px;
+      border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-weight: 500; animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => document.body.removeChild(toast), 3000);
+  },
+  error: (message) => {
+    const toast = document.createElement('div');
+    toast.innerHTML = `❌ ${message}`;
+    toast.style.cssText = `
+      position: fixed; top: 20px; right: 20px; z-index: 1000;
+      background: #dc2626; color: white; padding: 12px 20px;
+      border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-weight: 500;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => document.body.removeChild(toast), 3000);
+  }
+};
+
+// ==================== DONNÉES MOCK ====================
+
+const mockProducts = [
+  {
+    id: 1,
+    name: "Coca-Cola 33cl",
+    category: "Boissons",
+    price: 500,
+    costPrice: 300,
+    stock: 45,
+    minStock: 10,
+    maxStock: 100,
+    sku: "COC001",
+    barcode: "1234567890",
+    supplier: "Coca-Cola Company"
+  },
+  {
+    id: 2,
+    name: "Pain de mie",
+    category: "Alimentaire",
+    price: 800,
+    costPrice: 600,
+    stock: 2,
+    minStock: 5,
+    maxStock: 20,
+    sku: "PDM001",
+    supplier: "Boulangerie Martin"
+  },
+  {
+    id: 3,
+    name: "Savon Lux",
+    category: "Hygiène",
+    price: 1200,
+    costPrice: 800,
+    stock: 0,
+    minStock: 8,
+    maxStock: 30,
+    sku: "SAV001",
+    supplier: "Unilever"
+  },
+  {
+    id: 4,
+    name: "Biscuits Oreo",
+    category: "Snacks",
+    price: 600,
+    costPrice: 400,
+    stock: 25,
+    minStock: 15,
+    maxStock: 50,
+    sku: "BIS001",
+    supplier: "Mondelez"
+  },
+  {
+    id: 5,
+    name: "Shampoing Head & Shoulders",
+    category: "Hygiène",
+    price: 2500,
+    costPrice: 1800,
+    stock: 8,
+    minStock: 5,
+    maxStock: 25,
+    sku: "SHA001",
+    supplier: "P&G"
+  }
+];
+
+const mockSalesHistory = [
+  {
+    id: 1,
+    date: "2024-01-15",
+    items: [
+      { id: 1, name: "Coca-Cola 33cl", quantity: 5, price: 500 },
+      { id: 2, name: "Pain de mie", quantity: 2, price: 800 }
+    ]
+  },
+  {
+    id: 2,
+    date: "2024-01-14",
+    items: [
+      { id: 1, name: "Coca-Cola 33cl", quantity: 3, price: 500 },
+      { id: 4, name: "Biscuits Oreo", quantity: 4, price: 600 }
+    ]
+  }
+];
+
+const mockAppSettings = {
+  currency: 'FCFA',
+  darkMode: false,
+  taxRate: 18
+};
+
+// ==================== COMPOSANT PRINCIPAL ====================
+
+const InventoryModulePro = () => {
+  // États
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filterBy, setFilterBy] = useLocalStorage('inventory-filters', {
+    stockLevel: 'all',
+    profitability: 'all'
+  });
+
+  // États des modals
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showRestockModal, setShowRestockModal] = useState(false);
+  const [restockingProduct, setRestockingProduct] = useState(null);
+
+  // États pour l'ajout de produit
+  const [newProduct, setNewProduct] = useState({
+    name: '', category: '', price: '', costPrice: '', stock: '',
+    minStock: '', maxStock: '', sku: '', barcode: '', supplier: ''
+  });
+
+  // Données
+  const [products, setProducts] = useState(mockProducts);
+  const salesHistory = mockSalesHistory;
+  const appSettings = mockAppSettings;
+
+  // Hooks personnalisés
+  const debouncedSearch = useDebounce(searchQuery, 300);
+  const categories = useCategories(products);
+  const filteredProducts = useProductSearch(products, debouncedSearch, selectedCategory);
+
+  // Raccourcis clavier
+  useKeyboardShortcuts([
+    { key: 'F1', action: () => setActiveTab('dashboard') },
+    { key: 'F2', action: () => setActiveTab('products') },
+    { key: 'F3', action: () => setShowAddModal(true) },
+    { key: 'Escape', action: () => {
+      setShowAddModal(false);
+      setShowRestockModal(false);
+    }}
+  ], []);
+
+  // Analytics
+  const analytics = useMemo(() => {
+    const totalProducts = products.length;
+    const totalValue = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0);
+    const totalSalesValue = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0);
+    const potentialProfit = totalSalesValue - totalValue;
+    
+    const alerts = {
+      outOfStock: products.filter(p => (p.stock || 0) === 0),
+      lowStock: products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5))
+    };
+    
+    const salesAnalysis = salesHistory
+      .flatMap(sale => (sale.items || []))
+      .reduce((acc, item) => {
+        const existing = acc.find(a => a.productId === item.id);
+        if (existing) {
+          existing.soldQuantity += item.quantity;
+          existing.revenue += item.price * item.quantity;
+        } else {
+          acc.push({
+            productId: item.id,
+            productName: item.name,
+            soldQuantity: item.quantity,
+            revenue: item.price * item.quantity
+          });
+        }
+        return acc;
+      }, []);
+
+    const topSellers = salesAnalysis.sort((a, b) => b.soldQuantity - a.soldQuantity).slice(0, 5);
+    const topRevenue = salesAnalysis.sort((a, b) => b.revenue - a.revenue).slice(0, 5);
+
+    return {
+      totals: { totalProducts, totalValue, totalSalesValue, potentialProfit },
+      alerts,
+      topSellers,
+      topRevenue
+    };
+  }, [products, salesHistory]);
+
+  // Fonctions
+  const handleAddProduct = useCallback(async () => {
+    if (!newProduct.name || !newProduct.price) {
+      Toast.error('Nom et prix sont obligatoires');
+      return;
+    }
+
+    const productData = {
+      ...newProduct,
+      id: Date.now(),
+      price: parseFloat(newProduct.price) || 0,
+      costPrice: parseFloat(newProduct.costPrice) || 0,
+      stock: parseInt(newProduct.stock) || 0,
+      minStock: parseInt(newProduct.minStock) || 5,
+      maxStock: parseInt(newProduct.maxStock) || 100
+    };
+
+    setProducts(prev => [...prev, productData]);
+    setNewProduct({
+      name: '', category: '', price: '', costPrice: '', stock: '',
+      minStock: '', maxStock: '', sku: '', barcode: '', supplier: ''
+    });
+    setShowAddModal(false);
+    Toast.success('Produit ajouté avec succès!');
+  }, [newProduct]);
+
+  const handleRestock = useCallback(async (productId, quantity) => {
+    setProducts(prev => prev.map(product => 
+      product.id === productId 
+        ? { ...product, stock: (product.stock || 0) + parseInt(quantity) }
+        : product
+    ));
+    
+    setRestockingProduct(null);
+    setShowRestockModal(false);
+    Toast.success(`Stock mis à jour: +${quantity} unités`);
+  }, []);
+
+  // Styles communs
+  const containerStyle = {
+    padding: '24px',
+    maxWidth: '1400px',
+    margin: '0 auto',
+    backgroundColor: '#f9fafb',
+    minHeight: '100vh'
+  };
+
+  const headerStyle = {
+    marginBottom: '32px'
+  };
+
+  const titleStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '8px'
+  };
+
+  const tabsStyle = {
+    borderBottom: '1px solid #e5e7eb',
+    marginBottom: '24px'
+  };
+
+  const tabNavStyle = {
+    display: 'flex',
+    gap: '32px',
+    marginBottom: '-1px'
+  };
+
+  const kpisGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '16px',
+    marginBottom: '24px'
+  };
+
+  const productsGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '16px'
+  };
+
+  // Rendu du Dashboard
+  const renderDashboard = () => (
+    <div>
+      {/* KPIs */}
+      <div style={kpisGridStyle}>
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
+                Produits Total
+              </p>
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
+                {analytics.totals.totalProducts}
+              </p>
+            </div>
+            <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
+          </div>
+        </Card>
+
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
+                Valeur Stock
+              </p>
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
+                {analytics.totals.totalValue.toLocaleString()} {appSettings.currency}
+              </p>
+            </div>
+            <DollarSign style={{ width: '32px', height: '32px', color: '#059669' }} />
+          </div>
+        </Card>
+
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
+                Profit Potentiel
+              </p>
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
+                {analytics.totals.potentialProfit.toLocaleString()} {appSettings.currency}
+              </p>
+            </div>
+            <TrendingUp style={{ width: '32px', height: '32px', color: '#7c3aed' }} />
+          </div>
+        </Card>
+
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
+                Alertes
+              </p>
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#dc2626', margin: '0' }}>
+                {analytics.alerts.outOfStock.length + analytics.alerts.lowStock.length}
+              </p>
+            </div>
+            <AlertTriangle style={{ width: '32px', height: '32px', color: '#dc2626' }} />
+          </div>
+        </Card>
+      </div>
+
+      {/* Alertes Stock */}
+      {(analytics.alerts.outOfStock.length > 0 || analytics.alerts.lowStock.length > 0) && (
+        <Card style={{ padding: '24px', marginBottom: '24px' }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Bell style={{ width: '20px', height: '20px', color: '#dc2626' }} />
+            Alertes Stock Critiques
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {[...analytics.alerts.outOfStock, ...analytics.alerts.lowStock].map(product => (
+              <div key={product.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px',
+                backgroundColor: '#fef2f2',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <XCircle style={{ width: '20px', height: '20px', color: '#dc2626' }} />
+                  <div>
+                    <p style={{ fontWeight: '500', color: '#7f1d1d', margin: '0' }}>{product.name}</p>
+                    <p style={{ fontSize: '14px', color: '#991b1b', margin: '0' }}>
+                      {product.stock === 0 ? 'Rupture de stock' : 'Stock faible'}
+                    </p>
+                  </div>
+                </div>
+                <Button 
+                  variant="danger" 
+                  size="sm"
+                  onClick={() => {
+                    setRestockingProduct(product);
+                    setShowRestockModal(true);
+                  }}
+                >
+                  Réapprovisionner
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Top Performers */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        <Card style={{ padding: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+            Top Ventes (Quantité)
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {analytics.topSellers.map((item, index) => (
+              <div key={item.productId} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Badge variant={index === 0 ? 'success' : 'secondary'}>
+                    #{index + 1}
+                  </Badge>
+                  <span style={{ fontWeight: '500' }}>{item.productName}</span>
+                </div>
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                  {item.soldQuantity} vendues
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card style={{ padding: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+            Top Revenus
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {analytics.topRevenue.map((item, index) => (
+              <div key={item.productId} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Badge variant={index === 0 ? 'success' : 'secondary'}>
+                   #{index + 1}
+                 </Badge>
+                 <span style={{ fontWeight: '500' }}>{item.productName}</span>
+               </div>
+               <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                 {item.revenue.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+           ))}
+         </div>
+       </Card>
+     </div>
+   </div>
+ );
+
+ // Rendu des Produits
+ const renderProducts = () => (
+   <div>
+     {/* Barre d'actions */}
+     <div style={{
+       display: 'flex',
+       flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+       gap: '16px',
+       alignItems: window.innerWidth < 768 ? 'stretch' : 'center',
+       justifyContent: 'space-between',
+       marginBottom: '24px'
+     }}>
+       <div style={{ flex: '1', maxWidth: '400px' }}>
+         <SearchInput
+           placeholder="Rechercher par nom, SKU, code-barre..."
+           value={searchQuery}
+           onChange={setSearchQuery}
+           onClear={() => setSearchQuery('')}
+         />
+       </div>
+       
+       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+         <Button
+           variant="outline"
+           onClick={() => setShowFilters(!showFilters)}
+           leftIcon={<Filter style={{ width: '16px', height: '16px' }} />}
+         >
+           Filtres
+         </Button>
+         <Button
+           variant="outline"
+           leftIcon={<Upload style={{ width: '16px', height: '16px' }} />}
+         >
+           Importer
+         </Button>
+         <Button
+           variant="primary"
+           onClick={() => setShowAddModal(true)}
+           leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
+         >
+           Ajouter Produit
+         </Button>
+       </div>
+     </div>
+
+     {/* Filtres avancés */}
+     {showFilters && (
+       <Card style={{ padding: '16px', marginBottom: '24px' }}>
+         <div style={{
+           display: 'grid',
+           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+           gap: '16px'
+         }}>
+           <div>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '500',
+               marginBottom: '8px'
+             }}>
+               Niveau de Stock
+             </label>
+             <select 
+               value={filterBy.stockLevel}
+               onChange={(e) => setFilterBy(prev => ({ ...prev, stockLevel: e.target.value }))}
+               style={{
+                 width: '100%',
+                 padding: '8px',
+                 border: '1px solid #d1d5db',
+                 borderRadius: '6px',
+                 backgroundColor: 'white'
+               }}
+             >
+               <option value="all">Tous</option>
+               <option value="out">Rupture</option>
+               <option value="low">Stock faible</option>
+               <option value="good">Stock optimal</option>
+               <option value="over">Surstock</option>
+             </select>
+           </div>
+           
+           <div>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '500',
+               marginBottom: '8px'
+             }}>
+               Catégorie
+             </label>
+             <select 
+               value={selectedCategory}
+               onChange={(e) => setSelectedCategory(e.target.value)}
+               style={{
+                 width: '100%',
+                 padding: '8px',
+                 border: '1px solid #d1d5db',
+                 borderRadius: '6px',
+                 backgroundColor: 'white'
+               }}
+             >
+               {categories.map(category => (
+                 <option key={category.id} value={category.id}>
+                   {category.name} ({category.count})
+                 </option>
+               ))}
+             </select>
+           </div>
+         </div>
+       </Card>
+     )}
+
+     {/* Grille des produits */}
+     <div style={productsGridStyle}>
+       {filteredProducts.map(product => {
+         const stock = product.stock || 0;
+         const minStock = product.minStock || 5;
+         const stockStatus = stock === 0 ? 'out' : stock <= minStock ? 'low' : 'good';
+         const margin = product.price && product.costPrice 
+           ? ((product.price - product.costPrice) / product.price) * 100 
+           : 0;
+
+         return (
+           <Card key={product.id} style={{ padding: '16px' }} hover>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+               {/* En-tête produit */}
+               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                 <div style={{ flex: '1' }}>
+                   <h4 style={{
+                     fontWeight: '600',
+                     color: '#111827',
+                     margin: '0 0 4px 0',
+                     fontSize: '16px',
+                     lineHeight: '1.4'
+                   }}>
+                     {product.name}
+                   </h4>
+                   <p style={{
+                     fontSize: '14px',
+                     color: '#6b7280',
+                     margin: '0'
+                   }}>
+                     {product.category || 'Sans catégorie'}
+                   </p>
+                 </div>
+                 <Badge 
+                   variant={
+                     stockStatus === 'out' ? 'danger' : 
+                     stockStatus === 'low' ? 'warning' : 'success'
+                   }
+                 >
+                   {stock} en stock
+                 </Badge>
+               </div>
+
+               {/* Prix et marge */}
+               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                 <div>
+                   <p style={{
+                     fontSize: '18px',
+                     fontWeight: 'bold',
+                     color: '#111827',
+                     margin: '0'
+                   }}>
+                     {product.price?.toLocaleString()} {appSettings.currency}
+                   </p>
+                   {product.costPrice && (
+                     <p style={{
+                       fontSize: '14px',
+                       color: '#6b7280',
+                       margin: '0'
+                     }}>
+                       Marge: {margin.toFixed(1)}%
+                     </p>
+                   )}
+                 </div>
+                 
+                 <div style={{ display: 'flex', gap: '4px' }}>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     style={{ padding: '6px' }}
+                   >
+                     <Edit style={{ width: '16px', height: '16px' }} />
+                   </Button>
+                   <Button
+                     variant="primary"
+                     size="sm"
+                     style={{ padding: '6px' }}
+                     onClick={() => {
+                       setRestockingProduct(product);
+                       setShowRestockModal(true);
+                     }}
+                   >
+                     <Plus style={{ width: '16px', height: '16px' }} />
+                   </Button>
+                 </div>
+               </div>
+
+               {/* Barre de progression du stock */}
+               <div>
+                 <div style={{
+                   display: 'flex',
+                   justifyContent: 'space-between',
+                   fontSize: '12px',
+                   color: '#6b7280',
+                   marginBottom: '4px'
+                 }}>
+                   <span>Stock</span>
+                   <span>{stock}/{product.maxStock || '∞'}</span>
+                 </div>
+                 <div style={{
+                   width: '100%',
+                   backgroundColor: '#e5e7eb',
+                   borderRadius: '4px',
+                   height: '8px',
+                   overflow: 'hidden'
+                 }}>
+                   <div 
+                     style={{
+                       height: '8px',
+                       borderRadius: '4px',
+                       transition: 'all 0.3s',
+                       backgroundColor: 
+                         stockStatus === 'out' ? '#dc2626' :
+                         stockStatus === 'low' ? '#d97706' : '#059669',
+                       width: `${Math.min((stock / (product.maxStock || stock + 10)) * 100, 100)}%`
+                     }}
+                   />
+                 </div>
+               </div>
+             </div>
+           </Card>
+         );
+       })}
+     </div>
+
+     {filteredProducts.length === 0 && (
+       <div style={{
+         textAlign: 'center',
+         padding: '48px 0',
+         color: '#6b7280'
+       }}>
+         <Package style={{
+           width: '48px',
+           height: '48px',
+           color: '#9ca3af',
+           margin: '0 auto 16px'
+         }} />
+         <h3 style={{
+           fontSize: '18px',
+           fontWeight: '500',
+           color: '#111827',
+           marginBottom: '8px'
+         }}>
+           Aucun produit trouvé
+         </h3>
+         <p style={{ color: '#6b7280' }}>
+           Essayez de modifier vos filtres ou d'ajouter des produits
+         </p>
+       </div>
+     )}
+   </div>
+ );
+
+ // Modal d'ajout de produit
+ const renderAddProductModal = () => (
+   <Modal
+     isOpen={showAddModal}
+     onClose={() => setShowAddModal(false)}
+     title="Ajouter un Nouveau Produit"
+     size="lg"
+   >
+     <div>
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="Nom du produit *"
+           value={newProduct.name}
+           onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+           placeholder="Ex: Coca-Cola 33cl"
+         />
+         
+         <Input
+           label="Catégorie"
+           value={newProduct.category}
+           onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+           placeholder="Ex: Boissons"
+         />
+       </div>
+
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="Prix de vente *"
+           type="number"
+           value={newProduct.price}
+           onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
+           placeholder="0"
+           min="0"
+           step="0.01"
+         />
+         
+         <Input
+           label="Prix d'achat"
+           type="number"
+           value={newProduct.costPrice}
+           onChange={(e) => setNewProduct({...newProduct, costPrice: e.target.value})}
+           placeholder="0"
+           min="0"
+           step="0.01"
+         />
+         
+         <Input
+           label="Stock initial"
+           type="number"
+           value={newProduct.stock}
+           onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
+           placeholder="0"
+           min="0"
+         />
+       </div>
+
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="Stock minimum"
+           type="number"
+           value={newProduct.minStock}
+           onChange={(e) => setNewProduct({...newProduct, minStock: e.target.value})}
+           placeholder="5"
+           min="0"
+         />
+         
+         <Input
+           label="Stock maximum"
+           type="number"
+           value={newProduct.maxStock}
+           onChange={(e) => setNewProduct({...newProduct, maxStock: e.target.value})}
+           placeholder="100"
+           min="0"
+         />
+       </div>
+
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="SKU"
+           value={newProduct.sku}
+           onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
+           placeholder="Généré automatiquement"
+         />
+         
+         <Input
+           label="Code-barre"
+           value={newProduct.barcode}
+           onChange={(e) => setNewProduct({...newProduct, barcode: e.target.value})}
+           placeholder="Optionnel"
+         />
+       </div>
+
+       <Input
+         label="Fournisseur"
+         value={newProduct.supplier}
+         onChange={(e) => setNewProduct({...newProduct, supplier: e.target.value})}
+         placeholder="Nom du fournisseur"
+       />
+
+       <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+         <Button
+           variant="outline"
+           onClick={() => setShowAddModal(false)}
+           style={{ flex: '1' }}
+         >
+           Annuler
+         </Button>
+         <Button
+           variant="primary"
+           onClick={handleAddProduct}
+           disabled={!newProduct.name || !newProduct.price}
+           style={{ flex: '1' }}
+         >
+           Ajouter le Produit
+         </Button>
+       </div>
+     </div>
+   </Modal>
+ );
+
+ // Modal de réapprovisionnement
+ const renderRestockModal = () => {
+   const [quantity, setQuantity] = useState('');
+   const [reason, setReason] = useState('Réapprovisionnement manuel');
+
+   return (
+     <Modal
+       isOpen={showRestockModal}
+       onClose={() => setShowRestockModal(false)}
+       title={`Réapprovisionner: ${restockingProduct?.name}`}
+     >
+       <div>
+         <div style={{
+           padding: '16px',
+           backgroundColor: '#f9fafb',
+           borderRadius: '8px',
+           marginBottom: '16px'
+         }}>
+           <div style={{
+             display: 'grid',
+             gridTemplateColumns: '1fr 1fr',
+             gap: '16px'
+           }}>
+             <div>
+               <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>Stock actuel</p>
+               <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0' }}>
+                 {restockingProduct?.stock || 0}
+               </p>
+             </div>
+             <div>
+               <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>Stock minimum</p>
+               <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626', margin: '0' }}>
+                 {restockingProduct?.minStock || 5}
+               </p>
+             </div>
+           </div>
+         </div>
+
+         <Input
+           label="Quantité à ajouter"
+           type="number"
+           value={quantity}
+           onChange={(e) => setQuantity(e.target.value)}
+           placeholder="0"
+           min="1"
+         />
+
+         <div style={{ marginBottom: '16px' }}>
+           <label style={{
+             display: 'block',
+             fontSize: '14px',
+             fontWeight: '500',
+             marginBottom: '8px'
+           }}>
+             Motif
+           </label>
+           <select 
+             value={reason}
+             onChange={(e) => setReason(e.target.value)}
+             style={{
+               width: '100%',
+               padding: '12px',
+               border: '1px solid #d1d5db',
+               borderRadius: '8px',
+               backgroundColor: 'white'
+             }}
+           >
+             <option value="Réapprovisionnement manuel">Réapprovisionnement manuel</option>
+             <option value="Livraison fournisseur">Livraison fournisseur</option>
+             <option value="Transfert magasin">Transfert magasin</option>
+             <option value="Correction inventaire">Correction inventaire</option>
+             <option value="Retour client">Retour client</option>
+           </select>
+         </div>
+
+         {quantity && (
+           <div style={{
+             padding: '12px',
+             backgroundColor: '#f0fdf4',
+             borderRadius: '8px',
+             marginBottom: '16px'
+           }}>
+             <p style={{ fontSize: '14px', color: '#059669', margin: '0' }}>
+               Nouveau stock: {(parseInt(restockingProduct?.stock || 0) + parseInt(quantity)).toLocaleString()} unités
+             </p>
+           </div>
+         )}
+
+         <div style={{ display: 'flex', gap: '12px' }}>
+           <Button
+             variant="outline"
+             onClick={() => setShowRestockModal(false)}
+             style={{ flex: '1' }}
+           >
+             Annuler
+           </Button>
+           <Button
+             variant="primary"
+             onClick={() => handleRestock(restockingProduct?.id, quantity)}
+             disabled={!quantity || parseInt(quantity) <= 0}
+             style={{ flex: '1' }}
+           >
+             Confirmer Réapprovisionnement
+           </Button>
+         </div>
+       </div>
+     </Modal>
+   );
+ };
+
+ return (
+   <div style={containerStyle}>
+     {/* En-tête */}
+     <div style={headerStyle}>
+       <div style={titleStyle}>
+         <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
+         <h1 style={{
+           fontSize: '32px',
+           fontWeight: 'bold',
+           color: '#111827',
+           margin: '0'
+         }}>
+           Gestion Inventaire Pro
+         </h1>
+       </div>
+       <p style={{
+         color: '#6b7280',
+         fontSize: '16px',
+         margin: '0'
+       }}>
+         Interface professionnelle avec analytics, prédictions IA et automatisations
+       </p>
+     </div>
+
+     {/* Navigation par onglets */}
+     <div style={tabsStyle}>
+       <nav style={tabNavStyle}>
+         {[
+           { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
+           { id: 'products', name: 'Produits', icon: Package },
+           { id: 'movements', name: 'Mouvements', icon: Activity },
+           { id: 'analytics', name: 'Analytics', icon: PieChart },
+           { id: 'automation', name: 'Automatisation', icon: Zap }
+         ].map((tab) => {
+           const Icon = tab.icon;
+           const isActive = activeTab === tab.id;
+           
+           return (
+             <button
+               key={tab.id}
+               onClick={() => setActiveTab(tab.id)}
+               style={{
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '8px',
+                 padding: '16px 4px',
+                 borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                 fontWeight: '500',
+                 fontSize: '14px',
+                 color: isActive ? '#3b82f6' : '#6b7280',
+                 background: 'none',
+                 border: 'none',
+                 cursor: 'pointer',
+                 transition: 'color 0.2s'
+               }}
+               onMouseEnter={(e) => {
+                 if (!isActive) e.target.style.color = '#374151';
+               }}
+               onMouseLeave={(e) => {
+                 if (!isActive) e.target.style.color = '#6b7280';
+               }}
+             >
+               <Icon style={{ width: '20px', height: '20px' }} />
+               {tab.name}
+             </button>
+           );
+         })}
+       </nav>
+     </div>
+
+     {/* Contenu des onglets */}
+     <div style={{ minHeight: '600px' }}>
+       {activeTab === 'dashboard' && renderDashboard()}
+       {activeTab === 'products' && renderProducts()}
+       {activeTab === 'movements' && (
+         <Card style={{ padding: '24px', textAlign: 'center' }}>
+           <Activity style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+           <h3>Mouvements de Stock</h3>
+           <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
+         </Card>
+       )}
+       {activeTab === 'analytics' && (
+         <Card style={{ padding: '24px', textAlign: 'center' }}>
+           <PieChart style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+           <h3>Analytics Avancés</h3>
+           <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
+         </Card>
+       )}
+       {activeTab === 'automation' && (
+         <Card style={{ padding: '24px', textAlign: 'center' }}>
+           <Zap style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+           <h3>Automatisation</h3>
+           <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
+         </Card>
+       )}
+     </div>
+
+     {/* Modals */}
+     {showAddModal && renderAddProductModal()}
+     {showRestockModal && renderRestockModal()}
+   </div>
+ );
+};
+
+export default InventoryModulePro;
