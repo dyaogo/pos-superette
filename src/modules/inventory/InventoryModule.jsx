@@ -9,7 +9,6 @@ import {
 
 // ==================== HOOKS PERSONNALISÉS ====================
 
-// Hook pour le debouncing
 const useDebounce = (value, delay) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -26,7 +25,6 @@ const useDebounce = (value, delay) => {
   return debouncedValue;
 };
 
-// Hook pour les raccourcis clavier
 const useKeyboardShortcuts = (shortcuts, deps = []) => {
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -43,7 +41,6 @@ const useKeyboardShortcuts = (shortcuts, deps = []) => {
   }, deps);
 };
 
-// Hook pour le localStorage
 const useLocalStorage = (key, initialValue) => {
   const [storedValue, setStoredValue] = useState(() => {
     try {
@@ -66,7 +63,6 @@ const useLocalStorage = (key, initialValue) => {
   return [storedValue, setValue];
 };
 
-// Hook pour la recherche de produits
 const useProductSearch = (products, searchQuery, selectedCategory) => {
   return useMemo(() => {
     return products.filter(product => {
@@ -84,7 +80,6 @@ const useProductSearch = (products, searchQuery, selectedCategory) => {
   }, [products, searchQuery, selectedCategory]);
 };
 
-// Hook pour les catégories
 const useCategories = (products) => {
   return useMemo(() => {
     const categoryCounts = products.reduce((acc, product) => {
@@ -109,7 +104,7 @@ const useCategories = (products) => {
   }, [products]);
 };
 
-// ==================== COMPOSANTS UI ====================
+// ==================== COMPOSANTS UI AVEC STYLES INLINE ====================
 
 const Button = ({ 
   children, 
@@ -118,36 +113,81 @@ const Button = ({
   onClick, 
   disabled = false, 
   leftIcon,
-  className = '',
+  style = {},
   ...props 
 }) => {
-  const baseStyles = "inline-flex items-center justify-center font-medium rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2";
-  
+  const baseStyles = {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: '500',
+    borderRadius: '8px',
+    transition: 'all 0.2s',
+    border: 'none',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.5 : 1,
+    fontSize: size === 'sm' ? '14px' : size === 'lg' ? '16px' : '14px',
+    padding: size === 'sm' ? '6px 12px' : size === 'lg' ? '12px 24px' : '8px 16px',
+    ...style
+  };
+
   const variants = {
-    primary: "bg-blue-600 hover:bg-blue-700 text-white focus:ring-blue-500",
-    secondary: "bg-gray-600 hover:bg-gray-700 text-white focus:ring-gray-500",
-    outline: "border border-gray-300 hover:bg-gray-50 text-gray-700 focus:ring-blue-500",
-    danger: "bg-red-600 hover:bg-red-700 text-white focus:ring-red-500",
-    success: "bg-green-600 hover:bg-green-700 text-white focus:ring-green-500",
-    warning: "bg-yellow-600 hover:bg-yellow-700 text-white focus:ring-yellow-500"
+    primary: {
+      backgroundColor: '#3b82f6',
+      color: 'white',
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.1)',
+    },
+    secondary: {
+      backgroundColor: '#6b7280',
+      color: 'white',
+    },
+    outline: {
+      backgroundColor: 'white',
+      color: '#374151',
+      border: '1px solid #d1d5db',
+      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+    },
+    danger: {
+      backgroundColor: '#dc2626',
+      color: 'white',
+    },
+    success: {
+      backgroundColor: '#059669',
+      color: 'white',
+    },
+    warning: {
+      backgroundColor: '#d97706',
+      color: 'white',
+    }
   };
 
-  const sizes = {
-    sm: "px-3 py-1.5 text-sm",
-    md: "px-4 py-2 text-sm",
-    lg: "px-6 py-3 text-base"
+  const hoverStyles = {
+    primary: { backgroundColor: '#2563eb' },
+    secondary: { backgroundColor: '#4b5563' },
+    outline: { backgroundColor: '#f9fafb' },
+    danger: { backgroundColor: '#b91c1c' },
+    success: { backgroundColor: '#047857' },
+    warning: { backgroundColor: '#b45309' }
   };
 
-  const disabledStyles = disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer";
+  const [isHovered, setIsHovered] = useState(false);
+
+  const finalStyles = {
+    ...baseStyles,
+    ...variants[variant],
+    ...(isHovered && !disabled ? hoverStyles[variant] : {})
+  };
 
   return (
     <button
       onClick={disabled ? undefined : onClick}
-      className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${disabledStyles} ${className}`}
+      style={finalStyles}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       disabled={disabled}
       {...props}
     >
-      {leftIcon && <span className="mr-2">{leftIcon}</span>}
+      {leftIcon && <span style={{ marginRight: '8px' }}>{leftIcon}</span>}
       {children}
     </button>
   );
@@ -159,13 +199,19 @@ const Input = ({
   onChange, 
   placeholder, 
   type = 'text',
-  className = '',
+  style = {},
   ...props 
 }) => {
   return (
-    <div className={className}>
+    <div style={{ marginBottom: '16px' }}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label style={{
+          display: 'block',
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#374151',
+          marginBottom: '8px'
+        }}>
           {label}
         </label>
       )}
@@ -174,38 +220,18 @@ const Input = ({
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        {...props}
-      />
-    </div>
-  );
-};
-
-const NumberInput = ({ 
-  label, 
-  value, 
-  onChange, 
-  placeholder, 
-  min,
-  step = "1",
-  className = '',
-  ...props 
-}) => {
-  return (
-    <div className={className}>
-      {label && (
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          {label}
-        </label>
-      )}
-      <input
-        type="number"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        min={min}
-        step={step}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        style={{
+          width: '100%',
+          padding: '12px',
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          fontSize: '14px',
+          outline: 'none',
+          transition: 'border-color 0.2s',
+          ...style
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
         {...props}
       />
     </div>
@@ -216,35 +242,80 @@ const SearchInput = ({
   placeholder, 
   value, 
   onChange, 
-  onClear,
-  className = '' 
+  onClear 
 }) => {
   return (
-    <div className={`relative ${className}`}>
-      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+    <div style={{ position: 'relative' }}>
+      <Search 
+        style={{
+          position: 'absolute',
+          left: '12px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          color: '#9ca3af',
+          width: '20px',
+          height: '20px'
+        }}
+      />
       <input
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        style={{
+          width: '100%',
+          paddingLeft: '44px',
+          paddingRight: value ? '44px' : '12px',
+          paddingTop: '12px',
+          paddingBottom: '12px',
+          border: '1px solid #d1d5db',
+          borderRadius: '8px',
+          fontSize: '14px',
+          outline: 'none',
+          transition: 'border-color 0.2s'
+        }}
+        onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
+        onBlur={(e) => e.target.style.borderColor = '#d1d5db'}
       />
       {value && (
         <button
           onClick={onClear}
-          className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+          style={{
+            position: 'absolute',
+            right: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            background: 'none',
+            border: 'none',
+            color: '#9ca3af',
+            cursor: 'pointer',
+            padding: '0'
+          }}
         >
-          <X className="h-5 w-5" />
+          <X style={{ width: '20px', height: '20px' }} />
         </button>
       )}
     </div>
   );
 };
 
-const Card = ({ children, className = '', ...props }) => {
+const Card = ({ children, style = {}, hover = false, ...props }) => {
+  const [isHovered, setIsHovered] = useState(false);
+
+  const cardStyles = {
+    backgroundColor: 'white',
+    borderRadius: '12px',
+    boxShadow: isHovered && hover ? '0 10px 25px rgba(0, 0, 0, 0.1)' : '0 1px 3px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #e5e7eb',
+    transition: 'all 0.3s ease',
+    ...style
+  };
+
   return (
     <div
-      className={`bg-white rounded-lg shadow-sm border border-gray-200 ${className}`}
+      style={cardStyles}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       {...props}
     >
       {children}
@@ -255,18 +326,27 @@ const Card = ({ children, className = '', ...props }) => {
 const Badge = ({ 
   children, 
   variant = 'secondary',
-  className = '' 
+  style = {}
 }) => {
   const variants = {
-    primary: "bg-blue-100 text-blue-800",
-    secondary: "bg-gray-100 text-gray-800",
-    success: "bg-green-100 text-green-800",
-    warning: "bg-yellow-100 text-yellow-800",
-    danger: "bg-red-100 text-red-800"
+    primary: { backgroundColor: '#dbeafe', color: '#1e40af' },
+    secondary: { backgroundColor: '#f3f4f6', color: '#374151' },
+    success: { backgroundColor: '#d1fae5', color: '#065f46' },
+    warning: { backgroundColor: '#fef3c7', color: '#92400e' },
+    danger: { backgroundColor: '#fee2e2', color: '#991b1b' }
   };
 
   return (
-    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${variants[variant]} ${className}`}>
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      padding: '4px 12px',
+      borderRadius: '16px',
+      fontSize: '12px',
+      fontWeight: '500',
+      ...variants[variant],
+      ...style
+    }}>
       {children}
     </span>
   );
@@ -280,51 +360,94 @@ const Modal = ({
   size = 'md' 
 }) => {
   const sizes = {
-    sm: 'max-w-md',
-    md: 'max-w-lg',
-    lg: 'max-w-2xl',
-    xl: 'max-w-4xl'
+    sm: '400px',
+    md: '600px',
+    lg: '800px',
+    xl: '1200px'
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={onClose} />
-        
-        <div className={`inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle ${sizes[size]} sm:w-full`}>
-          <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-medium text-gray-900">{title}</h3>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-            {children}
+    <div style={{
+      position: 'fixed',
+      inset: '0',
+      zIndex: '50',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      padding: '16px'
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        boxShadow: '0 20px 25px rgba(0, 0, 0, 0.1)',
+        width: '100%',
+        maxWidth: sizes[size],
+        maxHeight: '90vh',
+        overflow: 'auto'
+      }}>
+        <div style={{ padding: '24px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '24px'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827',
+              margin: '0'
+            }}>
+              {title}
+            </h3>
+            <button
+              onClick={onClose}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#9ca3af',
+                cursor: 'pointer',
+                padding: '4px'
+              }}
+            >
+              <X style={{ width: '24px', height: '24px' }} />
+            </button>
           </div>
+          {children}
         </div>
       </div>
     </div>
   );
 };
 
-// Composant Toast pour les notifications
+// Toast simplifié
 const Toast = {
   success: (message) => {
-    console.log('✅ Success:', message);
-    alert(`✅ ${message}`);
+    const toast = document.createElement('div');
+    toast.innerHTML = `✅ ${message}`;
+    toast.style.cssText = `
+      position: fixed; top: 20px; right: 20px; z-index: 1000;
+      background: #059669; color: white; padding: 12px 20px;
+      border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-weight: 500; animation: slideIn 0.3s ease;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => document.body.removeChild(toast), 3000);
   },
   error: (message) => {
-    console.log('❌ Error:', message);
-    alert(`❌ ${message}`);
-  },
-  info: (message) => {
-    console.log('ℹ️ Info:', message);
-    alert(`ℹ️ ${message}`);
+    const toast = document.createElement('div');
+    toast.innerHTML = `❌ ${message}`;
+    toast.style.cssText = `
+      position: fixed; top: 20px; right: 20px; z-index: 1000;
+      background: #dc2626; color: white; padding: 12px 20px;
+      border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      font-weight: 500;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => document.body.removeChild(toast), 3000);
   }
 };
 
@@ -342,8 +465,7 @@ const mockProducts = [
     maxStock: 100,
     sku: "COC001",
     barcode: "1234567890",
-    supplier: "Coca-Cola Company",
-    createdAt: "2024-01-01"
+    supplier: "Coca-Cola Company"
   },
   {
     id: 2,
@@ -355,8 +477,7 @@ const mockProducts = [
     minStock: 5,
     maxStock: 20,
     sku: "PDM001",
-    supplier: "Boulangerie Martin",
-    createdAt: "2024-01-02"
+    supplier: "Boulangerie Martin"
   },
   {
     id: 3,
@@ -368,8 +489,7 @@ const mockProducts = [
     minStock: 8,
     maxStock: 30,
     sku: "SAV001",
-    supplier: "Unilever",
-    createdAt: "2024-01-03"
+    supplier: "Unilever"
   },
   {
     id: 4,
@@ -381,8 +501,7 @@ const mockProducts = [
     minStock: 15,
     maxStock: 50,
     sku: "BIS001",
-    supplier: "Mondelez",
-    createdAt: "2024-01-04"
+    supplier: "Mondelez"
   },
   {
     id: 5,
@@ -394,8 +513,7 @@ const mockProducts = [
     minStock: 5,
     maxStock: 25,
     sku: "SHA001",
-    supplier: "P&G",
-    createdAt: "2024-01-05"
+    supplier: "P&G"
   }
 ];
 
@@ -427,306 +545,262 @@ const mockAppSettings = {
 // ==================== COMPOSANT PRINCIPAL ====================
 
 const InventoryModulePro = () => {
-  // États avec hooks optimisés
+  // États
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showFilters, setShowFilters] = useState(false);
   const [filterBy, setFilterBy] = useLocalStorage('inventory-filters', {
     stockLevel: 'all',
-    profitability: 'all',
-    movement: 'all'
+    profitability: 'all'
   });
 
   // États des modals
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showEditModal, setShowEditModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
-  const [showPredictionsModal, setShowPredictionsModal] = useState(false);
-  const [editingProduct, setEditingProduct] = useState(null);
   const [restockingProduct, setRestockingProduct] = useState(null);
 
   // États pour l'ajout de produit
   const [newProduct, setNewProduct] = useState({
-    name: '',
-    category: '',
-    price: '',
-    costPrice: '',
-    stock: '',
-    minStock: '',
-    maxStock: '',
-    sku: '',
-    barcode: '',
-    supplier: '',
-    description: ''
+    name: '', category: '', price: '', costPrice: '', stock: '',
+    minStock: '', maxStock: '', sku: '', barcode: '', supplier: ''
   });
 
-  // Données (remplacent les imports du contexte)
+  // Données
   const [products, setProducts] = useState(mockProducts);
   const salesHistory = mockSalesHistory;
   const appSettings = mockAppSettings;
-  const currentStoreId = 'store-1';
 
-  // Hooks personnalisés optimisés
+  // Hooks personnalisés
   const debouncedSearch = useDebounce(searchQuery, 300);
   const categories = useCategories(products);
   const filteredProducts = useProductSearch(products, debouncedSearch, selectedCategory);
 
-  // Raccourcis clavier professionnels
+  // Raccourcis clavier
   useKeyboardShortcuts([
     { key: 'F1', action: () => setActiveTab('dashboard') },
     { key: 'F2', action: () => setActiveTab('products') },
     { key: 'F3', action: () => setShowAddModal(true) },
-    { key: 'F4', action: () => console.log('Import modal would open') },
-    { key: 'Escape', action: () => closeAllModals() }
+    { key: 'Escape', action: () => {
+      setShowAddModal(false);
+      setShowRestockModal(false);
+    }}
   ], []);
 
-  // Analytics et statistiques avancées
+  // Analytics
   const analytics = useMemo(() => {
-    const now = new Date();
-    const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
-    
-    // Calculs de base
     const totalProducts = products.length;
     const totalValue = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0);
     const totalSalesValue = products.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0);
     const potentialProfit = totalSalesValue - totalValue;
     
-    // Alertes de stock intelligentes
     const alerts = {
       outOfStock: products.filter(p => (p.stock || 0) === 0),
-      lowStock: products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5)),
-      overStock: products.filter(p => (p.maxStock || 0) > 0 && (p.stock || 0) > (p.maxStock || 50)),
-      expiring: products.filter(p => p.expiryDate && new Date(p.expiryDate) <= new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000))
+      lowStock: products.filter(p => (p.stock || 0) > 0 && (p.stock || 0) <= (p.minStock || 5))
     };
     
-    // Analyse des ventes pour prédictions
     const salesAnalysis = salesHistory
-      .filter(sale => new Date(sale.date) >= oneMonthAgo)
       .flatMap(sale => (sale.items || []))
       .reduce((acc, item) => {
         const existing = acc.find(a => a.productId === item.id);
         if (existing) {
           existing.soldQuantity += item.quantity;
           existing.revenue += item.price * item.quantity;
-          existing.salesCount += 1;
         } else {
           acc.push({
             productId: item.id,
             productName: item.name,
             soldQuantity: item.quantity,
-            revenue: item.price * item.quantity,
-            salesCount: 1
+            revenue: item.price * item.quantity
           });
         }
         return acc;
       }, []);
 
-    // Top performers
-    const topSellers = salesAnalysis
-      .sort((a, b) => b.soldQuantity - a.soldQuantity)
-      .slice(0, 5);
-      
-    const topRevenue = salesAnalysis
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
-
-    // Prédictions de réapprovisionnement
-    const predictions = products.map(product => {
-      const sales = salesAnalysis.find(s => s.productId === product.id);
-      const avgDailySales = sales ? sales.soldQuantity / 30 : 0;
-      const daysUntilEmpty = avgDailySales > 0 ? (product.stock || 0) / avgDailySales : Infinity;
-      
-      return {
-        ...product,
-        avgDailySales,
-        daysUntilEmpty,
-        suggestedReorder: Math.ceil(avgDailySales * 14),
-        urgency: daysUntilEmpty <= 7 ? 'high' : daysUntilEmpty <= 14 ? 'medium' : 'low'
-      };
-    }).filter(p => p.urgency !== 'low' && p.avgDailySales > 0)
-      .sort((a, b) => a.daysUntilEmpty - b.daysUntilEmpty);
+    const topSellers = salesAnalysis.sort((a, b) => b.soldQuantity - a.soldQuantity).slice(0, 5);
+    const topRevenue = salesAnalysis.sort((a, b) => b.revenue - a.revenue).slice(0, 5);
 
     return {
       totals: { totalProducts, totalValue, totalSalesValue, potentialProfit },
       alerts,
-      salesAnalysis,
       topSellers,
-      topRevenue,
-      predictions
+      topRevenue
     };
   }, [products, salesHistory]);
 
-  // Fermer toutes les modals
-  const closeAllModals = useCallback(() => {
-    setShowAddModal(false);
-    setShowEditModal(false);
-    setShowRestockModal(false);
-    setShowPredictionsModal(false);
-    setEditingProduct(null);
-    setRestockingProduct(null);
-  }, []);
-
-  // Gestion de l'ajout de produit
+  // Fonctions
   const handleAddProduct = useCallback(async () => {
     if (!newProduct.name || !newProduct.price) {
-      alert('Nom et prix sont obligatoires');
+      Toast.error('Nom et prix sont obligatoires');
       return;
     }
 
-    try {
-      const productData = {
-        ...newProduct,
-        id: Date.now(),
-        price: parseFloat(newProduct.price) || 0,
-        costPrice: parseFloat(newProduct.costPrice) || 0,
-        stock: parseInt(newProduct.stock) || 0,
-        minStock: parseInt(newProduct.minStock) || 5,
-        maxStock: parseInt(newProduct.maxStock) || 100,
-        createdAt: new Date().toISOString(),
-        storeId: currentStoreId
-      };
+    const productData = {
+      ...newProduct,
+      id: Date.now(),
+      price: parseFloat(newProduct.price) || 0,
+      costPrice: parseFloat(newProduct.costPrice) || 0,
+      stock: parseInt(newProduct.stock) || 0,
+      minStock: parseInt(newProduct.minStock) || 5,
+      maxStock: parseInt(newProduct.maxStock) || 100
+    };
 
-      setProducts(prev => [...prev, productData]);
-      setNewProduct({
-        name: '', category: '', price: '', costPrice: '', stock: '',
-        minStock: '', maxStock: '', sku: '', barcode: '', supplier: '', description: ''
-      });
-      setShowAddModal(false);
-      
-      Toast.success('Produit ajouté avec succès!');
-    } catch (error) {
-      Toast.error('Erreur lors de l\'ajout du produit');
-    }
-  }, [newProduct, currentStoreId]);
-
-  // Gestion du réapprovisionnement
-  const handleRestock = useCallback(async (productId, quantity, reason = 'Réapprovisionnement') => {
-    try {
-      setProducts(prev => prev.map(product => 
-        product.id === productId 
-          ? { ...product, stock: (product.stock || 0) + parseInt(quantity) }
-          : product
-      ));
-      
-      setRestockingProduct(null);
-      setShowRestockModal(false);
-      Toast.success(`Stock mis à jour: +${quantity} unités`);
-    } catch (error) {
-      Toast.error('Erreur lors du réapprovisionnement');
-    }
-  }, []);
-  // Filtrage avancé des produits
-  const advancedFilteredProducts = useMemo(() => {
-    return filteredProducts.filter(product => {
-      // Filtre niveau de stock
-      if (filterBy.stockLevel !== 'all') {
-        const stock = product.stock || 0;
-        const minStock = product.minStock || 5;
-        const maxStock = product.maxStock || 50;
-        
-        switch (filterBy.stockLevel) {
-          case 'out': if (stock !== 0) return false; break;
-          case 'low': if (stock === 0 || stock > minStock) return false; break;
-          case 'good': if (stock <= minStock || stock > maxStock) return false; break;
-          case 'over': if (stock <= maxStock) return false; break;
-        }
-      }
-
-      // Filtre rentabilité
-      if (filterBy.profitability !== 'all') {
-        const margin = product.price && product.costPrice 
-          ? ((product.price - product.costPrice) / product.price) * 100
-          : 0;
-        
-        switch (filterBy.profitability) {
-          case 'high': if (margin < 30) return false; break;
-          case 'medium': if (margin < 15 || margin >= 30) return false; break;
-          case 'low': if (margin >= 15) return false; break;
-        }
-      }
-
-      return true;
+    setProducts(prev => [...prev, productData]);
+    setNewProduct({
+      name: '', category: '', price: '', costPrice: '', stock: '',
+      minStock: '', maxStock: '', sku: '', barcode: '', supplier: ''
     });
-  }, [filteredProducts, filterBy]);
+    setShowAddModal(false);
+    Toast.success('Produit ajouté avec succès!');
+  }, [newProduct]);
+
+  const handleRestock = useCallback(async (productId, quantity) => {
+    setProducts(prev => prev.map(product => 
+      product.id === productId 
+        ? { ...product, stock: (product.stock || 0) + parseInt(quantity) }
+        : product
+    ));
+    
+    setRestockingProduct(null);
+    setShowRestockModal(false);
+    Toast.success(`Stock mis à jour: +${quantity} unités`);
+  }, []);
+
+  // Styles communs
+  const containerStyle = {
+    padding: '24px',
+    maxWidth: '1400px',
+    margin: '0 auto',
+    backgroundColor: '#f9fafb',
+    minHeight: '100vh'
+  };
+
+  const headerStyle = {
+    marginBottom: '32px'
+  };
+
+  const titleStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '8px'
+  };
+
+  const tabsStyle = {
+    borderBottom: '1px solid #e5e7eb',
+    marginBottom: '24px'
+  };
+
+  const tabNavStyle = {
+    display: 'flex',
+    gap: '32px',
+    marginBottom: '-1px'
+  };
+
+  const kpisGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+    gap: '16px',
+    marginBottom: '24px'
+  };
+
+  const productsGridStyle = {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '16px'
+  };
 
   // Rendu du Dashboard
   const renderDashboard = () => (
-    <div className="space-y-6">
-      {/* KPIs Principaux */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
+    <div>
+      {/* KPIs */}
+      <div style={kpisGridStyle}>
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <p className="text-sm font-medium text-gray-600">
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
                 Produits Total
               </p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
                 {analytics.totals.totalProducts}
               </p>
             </div>
-            <Package className="h-8 w-8 text-blue-600" />
+            <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <p className="text-sm font-medium text-gray-600">
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
                 Valeur Stock
               </p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
                 {analytics.totals.totalValue.toLocaleString()} {appSettings.currency}
               </p>
             </div>
-            <DollarSign className="h-8 w-8 text-green-600" />
+            <DollarSign style={{ width: '32px', height: '32px', color: '#059669' }} />
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <p className="text-sm font-medium text-gray-600">
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
                 Profit Potentiel
               </p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
                 {analytics.totals.potentialProfit.toLocaleString()} {appSettings.currency}
               </p>
             </div>
-            <TrendingUp className="h-8 w-8 text-purple-600" />
+            <TrendingUp style={{ width: '32px', height: '32px', color: '#7c3aed' }} />
           </div>
         </Card>
 
-        <Card className="p-6">
-          <div className="flex items-center justify-between">
+        <Card style={{ padding: '24px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <p className="text-sm font-medium text-gray-600">
+              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
                 Alertes
               </p>
-              <p className="text-2xl font-bold text-red-600">
+              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#dc2626', margin: '0' }}>
                 {analytics.alerts.outOfStock.length + analytics.alerts.lowStock.length}
               </p>
             </div>
-            <AlertTriangle className="h-8 w-8 text-red-600" />
+            <AlertTriangle style={{ width: '32px', height: '32px', color: '#dc2626' }} />
           </div>
         </Card>
       </div>
 
-      {/* Alertes Intelligentes */}
+      {/* Alertes Stock */}
       {(analytics.alerts.outOfStock.length > 0 || analytics.alerts.lowStock.length > 0) && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Bell className="h-5 w-5 text-red-500" />
+        <Card style={{ padding: '24px', marginBottom: '24px' }}>
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            marginBottom: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Bell style={{ width: '20px', height: '20px', color: '#dc2626' }} />
             Alertes Stock Critiques
           </h3>
-          <div className="space-y-3">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[...analytics.alerts.outOfStock, ...analytics.alerts.lowStock].map(product => (
-              <div key={product.id} className="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <XCircle className="h-5 w-5 text-red-500" />
+              <div key={product.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px',
+                backgroundColor: '#fef2f2',
+                borderRadius: '8px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <XCircle style={{ width: '20px', height: '20px', color: '#dc2626' }} />
                   <div>
-                    <p className="font-medium text-red-800">{product.name}</p>
-                    <p className="text-sm text-red-600">
+                    <p style={{ fontWeight: '500', color: '#7f1d1d', margin: '0' }}>{product.name}</p>
+                    <p style={{ fontSize: '14px', color: '#991b1b', margin: '0' }}>
                       {product.stock === 0 ? 'Rupture de stock' : 'Stock faible'}
                     </p>
                   </div>
@@ -747,59 +821,26 @@ const InventoryModulePro = () => {
         </Card>
       )}
 
-      {/* Prédictions IA */}
-      {analytics.predictions.length > 0 && (
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <Zap className="h-5 w-5 text-yellow-500" />
-            Prédictions de Réapprovisionnement
-          </h3>
-          <div className="space-y-3">
-            {analytics.predictions.slice(0, 5).map(prediction => (
-              <div key={prediction.id} className="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Target className={`h-5 w-5 ${
-                    prediction.urgency === 'high' ? 'text-red-500' :
-                    prediction.urgency === 'medium' ? 'text-yellow-500' : 'text-green-500'
-                  }`} />
-                  <div>
-                    <p className="font-medium">{prediction.name}</p>
-                    <p className="text-sm text-gray-600">
-                      Épuisement estimé: {Math.ceil(prediction.daysUntilEmpty)} jours
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="font-medium">{prediction.suggestedReorder} unités</p>
-                  <p className="text-sm text-gray-600">Recommandé</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <Button 
-            variant="outline" 
-            className="mt-4 w-full"
-            onClick={() => setShowPredictionsModal(true)}
-          >
-            Voir toutes les prédictions
-          </Button>
-        </Card>
-      )}
-
       {/* Top Performers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Top Ventes (Quantité)</h3>
-          <div className="space-y-3">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
+        <Card style={{ padding: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+            Top Ventes (Quantité)
+          </h3>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {analytics.topSellers.map((item, index) => (
-              <div key={item.productId} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
+              <div key={item.productId} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <Badge variant={index === 0 ? 'success' : 'secondary'}>
                     #{index + 1}
                   </Badge>
-                  <span className="font-medium">{item.productName}</span>
+                  <span style={{ fontWeight: '500' }}>{item.productName}</span>
                 </div>
-                <span className="text-sm text-gray-600">
+                <span style={{ fontSize: '14px', color: '#6b7280' }}>
                   {item.soldQuantity} vendues
                 </span>
               </div>
@@ -807,781 +848,647 @@ const InventoryModulePro = () => {
           </div>
         </Card>
 
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Top Revenus</h3>
-          <div className="space-y-3">
-            {analytics.topRevenue.map((item, index) => (
-              <div key={item.productId} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Badge variant={index === 0 ? 'success' : 'secondary'}>
-                    #{index + 1}
-                  </Badge>
-                  <span className="font-medium">{item.productName}</span>
-                </div>
-                <span className="text-sm text-gray-600">
-                  {item.revenue.toLocaleString()} {appSettings.currency}
-                </span>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-
-  // Rendu de la liste des produits
-  const renderProducts = () => (
-    <div className="space-y-6">
-      {/* Barre d'actions */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 max-w-md">
-          <SearchInput
-            placeholder="Rechercher par nom, SKU, code-barre..."
-            value={searchQuery}
-            onChange={setSearchQuery}
-            onClear={() => setSearchQuery('')}
-          />
-        </div>
-        
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={() => setShowFilters(!showFilters)}
-            leftIcon={<Filter className="h-4 w-4" />}
-          >
-            Filtres
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => console.log('Import modal would open')}
-            leftIcon={<Upload className="h-4 w-4" />}
-          >
-            Importer
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => setShowAddModal(true)}
-            leftIcon={<Plus className="h-4 w-4" />}
-          >
-            Ajouter Produit
-          </Button>
-        </div>
-      </div>
-
-      {/* Filtres avancés */}
-      {showFilters && (
-        <Card className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Niveau de Stock</label>
-              <select 
-                value={filterBy.stockLevel}
-                onChange={(e) => setFilterBy(prev => ({ ...prev, stockLevel: e.target.value }))}
-                className="w-full p-2 border border-gray-300 rounded-lg bg-white"
-              >
-                <option value="all">Tous</option>
-                <option value="out">Rupture</option>
-                <option value="low">Stock faible</option>
-                <option value="good">Stock optimal</option>
-                <option value="over">Surstock</option>
-              </select>
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium mb-2">Rentabilité</label>
-              <select 
-                value={filterBy.profitability}
-                onChange={(e) => setFilterBy(prev => ({ ...prev, profitability: e.target.value }))}
-                className="w-full p-2 border border-gray-300 rounded-lg bg-white"
-              >
-                <option value="all">Toutes</option>
-                <option value="high">Élevée (30%+)</option>
-                <option value="medium">Moyenne (15-30%)</option>
-                <option value="low">Faible (-15%)</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Catégorie</label>
-              <select 
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full p-2 border border-gray-300 rounded-lg bg-white"
-              >
-                {categories.map(category => (
-                  <option key={category.id} value={category.id}>
-                    {category.name} ({category.count})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {/* Grille des produits */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {advancedFilteredProducts.map(product => {
-          const stock = product.stock || 0;
-          const minStock = product.minStock || 5;
-          const stockStatus = stock === 0 ? 'out' : stock <= minStock ? 'low' : 'good';
-          const margin = product.price && product.costPrice 
-            ? ((product.price - product.costPrice) / product.price) * 100 
-            : 0;
-
-          return (
-            <Card key={product.id} className="p-4 hover:shadow-lg transition-shadow">
-              <div className="space-y-3">
-                {/* En-tête produit */}
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-gray-900 line-clamp-2">
-                      {product.name}
-                    </h4>
-                    <p className="text-sm text-gray-500">
-                      {product.category || 'Sans catégorie'}
-                    </p>
-                  </div>
-                  <Badge 
-                    variant={
-                      stockStatus === 'out' ? 'danger' : 
-                      stockStatus === 'low' ? 'warning' : 'success'
-                    }
-                  >
-                    {stock} en stock
-                  </Badge>
-                </div>
-
-                {/* Prix et marge */}
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-lg font-bold text-gray-900">
-                      {product.price?.toLocaleString()} {appSettings.currency}
-                    </p>
-                    {product.costPrice && (
-                      <p className="text-sm text-gray-500">
-                        Marge: {margin.toFixed(1)}%
-                      </p>
-                    )}
-                  </div>
-                  
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setEditingProduct(product);
-                        setShowEditModal(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={() => {
-                        setRestockingProduct(product);
-                        setShowRestockModal(true);
-                      }}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                {/* Barre de progression du stock */}
-                <div className="space-y-1">
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Stock</span>
-                    <span>{stock}/{product.maxStock || '∞'}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div 
-                      className={`h-2 rounded-full transition-all ${
-                        stockStatus === 'out' ? 'bg-red-500' :
-                        stockStatus === 'low' ? 'bg-yellow-500' : 'bg-green-500'
-                      }`}
-                      style={{ 
-                        width: `${Math.min((stock / (product.maxStock || stock + 10)) * 100, 100)}%` 
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-            </Card>
-          );
-        })}
-      </div>
-
-      {advancedFilteredProducts.length === 0 && (
-        <div className="text-center py-12">
-          <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Aucun produit trouvé
+        <Card style={{ padding: '24px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
+            Top Revenus
           </h3>
-          <p className="text-gray-500">
-            Essayez de modifier vos filtres ou d'ajouter des produits
-          </p>
-        </div>
-      )}
-    </div>
-  );
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {analytics.topRevenue.map((item, index) => (
+              <div key={item.productId} style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Badge variant={index === 0 ? 'success' : 'secondary'}>
+                   #{index + 1}
+                 </Badge>
+                 <span style={{ fontWeight: '500' }}>{item.productName}</span>
+               </div>
+               <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                 {item.revenue.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+           ))}
+         </div>
+       </Card>
+     </div>
+   </div>
+ );
 
-  // Rendu Analytics avancés
-  const renderAnalytics = () => (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Graphique de distribution des stocks */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Distribution des Stocks</h3>
-          <div className="space-y-4">
-            {[
-              { label: 'Rupture', count: analytics.alerts.outOfStock.length, color: 'bg-red-500' },
-              { label: 'Stock faible', count: analytics.alerts.lowStock.length, color: 'bg-yellow-500' },
-              { label: 'Stock optimal', count: products.filter(p => (p.stock || 0) > (p.minStock || 5) && (p.stock || 0) <= (p.maxStock || 50)).length, color: 'bg-green-500' },
-              { label: 'Surstock', count: analytics.alerts.overStock.length, color: 'bg-blue-500' }
-            ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded ${item.color}`} />
-                  <span className="font-medium">{item.label}</span>
-                </div>
-                <Badge variant="secondary">{item.count}</Badge>
-              </div>
-            ))}
-          </div>
-        </Card>
+ // Rendu des Produits
+ const renderProducts = () => (
+   <div>
+     {/* Barre d'actions */}
+     <div style={{
+       display: 'flex',
+       flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+       gap: '16px',
+       alignItems: window.innerWidth < 768 ? 'stretch' : 'center',
+       justifyContent: 'space-between',
+       marginBottom: '24px'
+     }}>
+       <div style={{ flex: '1', maxWidth: '400px' }}>
+         <SearchInput
+           placeholder="Rechercher par nom, SKU, code-barre..."
+           value={searchQuery}
+           onChange={setSearchQuery}
+           onClear={() => setSearchQuery('')}
+         />
+       </div>
+       
+       <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+         <Button
+           variant="outline"
+           onClick={() => setShowFilters(!showFilters)}
+           leftIcon={<Filter style={{ width: '16px', height: '16px' }} />}
+         >
+           Filtres
+         </Button>
+         <Button
+           variant="outline"
+           leftIcon={<Upload style={{ width: '16px', height: '16px' }} />}
+         >
+           Importer
+         </Button>
+         <Button
+           variant="primary"
+           onClick={() => setShowAddModal(true)}
+           leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
+         >
+           Ajouter Produit
+         </Button>
+       </div>
+     </div>
 
-        {/* Analyse de rentabilité */}
-        <Card className="p-6">
-          <h3 className="text-lg font-semibold mb-4">Analyse de Rentabilité</h3>
-          <div className="space-y-4">
-            {products.filter(p => p.price && p.costPrice).slice(0, 5).map(product => {
-              const margin = ((product.price - product.costPrice) / product.price) * 100;
-              const revenue = (product.stock || 0) * product.price;
-              return (
-                <div key={product.id} className="border-b border-gray-200 pb-3 last:border-b-0">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-medium">{product.name}</p>
-                      <p className="text-sm text-gray-500">Marge: {margin.toFixed(1)}%</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium">{revenue.toLocaleString()} {appSettings.currency}</p>
-                      <p className="text-sm text-gray-500">Valeur stock</p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </Card>
-      </div>
+     {/* Filtres avancés */}
+     {showFilters && (
+       <Card style={{ padding: '16px', marginBottom: '24px' }}>
+         <div style={{
+           display: 'grid',
+           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+           gap: '16px'
+         }}>
+           <div>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '500',
+               marginBottom: '8px'
+             }}>
+               Niveau de Stock
+             </label>
+             <select 
+               value={filterBy.stockLevel}
+               onChange={(e) => setFilterBy(prev => ({ ...prev, stockLevel: e.target.value }))}
+               style={{
+                 width: '100%',
+                 padding: '8px',
+                 border: '1px solid #d1d5db',
+                 borderRadius: '6px',
+                 backgroundColor: 'white'
+               }}
+             >
+               <option value="all">Tous</option>
+               <option value="out">Rupture</option>
+               <option value="low">Stock faible</option>
+               <option value="good">Stock optimal</option>
+               <option value="over">Surstock</option>
+             </select>
+           </div>
+           
+           <div>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '500',
+               marginBottom: '8px'
+             }}>
+               Catégorie
+             </label>
+             <select 
+               value={selectedCategory}
+               onChange={(e) => setSelectedCategory(e.target.value)}
+               style={{
+                 width: '100%',
+                 padding: '8px',
+                 border: '1px solid #d1d5db',
+                 borderRadius: '6px',
+                 backgroundColor: 'white'
+               }}
+             >
+               {categories.map(category => (
+                 <option key={category.id} value={category.id}>
+                   {category.name} ({category.count})
+                 </option>
+               ))}
+             </select>
+           </div>
+         </div>
+       </Card>
+     )}
 
-      {/* Tendances et prévisions */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Tendances et Prévisions</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="text-3xl font-bold text-green-600 mb-2">
-              {analytics.salesAnalysis.reduce((sum, item) => sum + item.soldQuantity, 0)}
-            </div>
-            <p className="text-sm text-gray-600">Unités vendues (30j)</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">
-              {analytics.predictions.length}
-            </div>
-            <p className="text-sm text-gray-600">Prédictions actives</p>
-          </div>
-          <div className="text-center">
-            <div className="text-3xl font-bold text-purple-600 mb-2">
-              {Math.round(analytics.salesAnalysis.reduce((sum, item) => sum + item.revenue, 0))}
-            </div>
-            <p className="text-sm text-gray-600">CA généré (30j)</p>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
+     {/* Grille des produits */}
+     <div style={productsGridStyle}>
+       {filteredProducts.map(product => {
+         const stock = product.stock || 0;
+         const minStock = product.minStock || 5;
+         const stockStatus = stock === 0 ? 'out' : stock <= minStock ? 'low' : 'good';
+         const margin = product.price && product.costPrice 
+           ? ((product.price - product.costPrice) / product.price) * 100 
+           : 0;
 
-  // Rendu Automatisation
-  const renderAutomation = () => (
-    <div className="space-y-6">
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Zap className="h-5 w-5 text-yellow-500" />
-          Règles d'Automatisation
-        </h3>
-        
-        <div className="space-y-4">
-          {/* Réapprovisionnement automatique */}
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium">Réapprovisionnement Automatique</h4>
-              <Badge variant="success">Actif</Badge>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">
-              Crée automatiquement des commandes quand le stock atteint le minimum
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Configurer</Button>
-              <Button variant="outline" size="sm">Historique</Button>
-            </div>
-          </div>
+         return (
+           <Card key={product.id} style={{ padding: '16px' }} hover>
+             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+               {/* En-tête produit */}
+               <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                 <div style={{ flex: '1' }}>
+                   <h4 style={{
+                     fontWeight: '600',
+                     color: '#111827',
+                     margin: '0 0 4px 0',
+                     fontSize: '16px',
+                     lineHeight: '1.4'
+                   }}>
+                     {product.name}
+                   </h4>
+                   <p style={{
+                     fontSize: '14px',
+                     color: '#6b7280',
+                     margin: '0'
+                   }}>
+                     {product.category || 'Sans catégorie'}
+                   </p>
+                 </div>
+                 <Badge 
+                   variant={
+                     stockStatus === 'out' ? 'danger' : 
+                     stockStatus === 'low' ? 'warning' : 'success'
+                   }
+                 >
+                   {stock} en stock
+                 </Badge>
+               </div>
 
-          {/* Alertes email */}
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium">Alertes Email</h4>
-              <Badge variant="warning">En attente</Badge>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">
-              Envoie des notifications par email pour les stocks critiques
-            </p>
-            <div className="flex gap-2">
-              <Button variant="primary" size="sm">Activer</Button>
-              <Button variant="outline" size="sm">Configuration</Button>
-            </div>
-          </div>
+               {/* Prix et marge */}
+               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                 <div>
+                   <p style={{
+                     fontSize: '18px',
+                     fontWeight: 'bold',
+                     color: '#111827',
+                     margin: '0'
+                   }}>
+                     {product.price?.toLocaleString()} {appSettings.currency}
+                   </p>
+                   {product.costPrice && (
+                     <p style={{
+                       fontSize: '14px',
+                       color: '#6b7280',
+                       margin: '0'
+                     }}>
+                       Marge: {margin.toFixed(1)}%
+                     </p>
+                   )}
+                 </div>
+                 
+                 <div style={{ display: 'flex', gap: '4px' }}>
+                   <Button
+                     variant="outline"
+                     size="sm"
+                     style={{ padding: '6px' }}
+                   >
+                     <Edit style={{ width: '16px', height: '16px' }} />
+                   </Button>
+                   <Button
+                     variant="primary"
+                     size="sm"
+                     style={{ padding: '6px' }}
+                     onClick={() => {
+                       setRestockingProduct(product);
+                       setShowRestockModal(true);
+                     }}
+                   >
+                     <Plus style={{ width: '16px', height: '16px' }} />
+                   </Button>
+                 </div>
+               </div>
 
-          {/* Ajustements prix dynamiques */}
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium">Prix Dynamiques</h4>
-              <Badge variant="secondary">Désactivé</Badge>
-            </div>
-            <p className="text-sm text-gray-600 mb-3">
-              Ajuste automatiquement les prix selon la demande et le stock
-            </p>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm">Configurer</Button>
-              <Button variant="outline" size="sm">En savoir plus</Button>
-            </div>
-          </div>
-        </div>
-      </Card>
+               {/* Barre de progression du stock */}
+               <div>
+                 <div style={{
+                   display: 'flex',
+                   justifyContent: 'space-between',
+                   fontSize: '12px',
+                   color: '#6b7280',
+                   marginBottom: '4px'
+                 }}>
+                   <span>Stock</span>
+                   <span>{stock}/{product.maxStock || '∞'}</span>
+                 </div>
+                 <div style={{
+                   width: '100%',
+                   backgroundColor: '#e5e7eb',
+                   borderRadius: '4px',
+                   height: '8px',
+                   overflow: 'hidden'
+                 }}>
+                   <div 
+                     style={{
+                       height: '8px',
+                       borderRadius: '4px',
+                       transition: 'all 0.3s',
+                       backgroundColor: 
+                         stockStatus === 'out' ? '#dc2626' :
+                         stockStatus === 'low' ? '#d97706' : '#059669',
+                       width: `${Math.min((stock / (product.maxStock || stock + 10)) * 100, 100)}%`
+                     }}
+                   />
+                 </div>
+               </div>
+             </div>
+           </Card>
+         );
+       })}
+     </div>
 
-      {/* Recommandations IA */}
-      <Card className="p-6">
-        <h3 className="text-lg font-semibold mb-4">Recommandations IA</h3>
-        <div className="space-y-3">
-          <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg">
-            <Target className="h-5 w-5 text-blue-500 mt-1" />
-            <div>
-              <p className="font-medium text-blue-800">
-                Optimiser les niveaux de stock
-              </p>
-              <p className="text-sm text-blue-600">
-                Ajustez les seuils minimum pour réduire les ruptures de 23%
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3 p-3 bg-green-50 rounded-lg">
-            <TrendingUp className="h-5 w-5 text-green-500 mt-1" />
-            <div>
-              <p className="font-medium text-green-800">
-                Augmenter la marge
-              </p>
-              <p className="text-sm text-green-600">
-                5 produits peuvent supporter une hausse de prix de 10-15%
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-start gap-3 p-3 bg-purple-50 rounded-lg">
-            <Package className="h-5 w-5 text-purple-500 mt-1" />
-            <div>
-              <p className="font-medium text-purple-800">
-                Nouveaux produits suggérés
-              </p>
-              <p className="text-sm text-purple-600">
-                Basé sur les tendances de vente et les demandes clients
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
-  );
+     {filteredProducts.length === 0 && (
+       <div style={{
+         textAlign: 'center',
+         padding: '48px 0',
+         color: '#6b7280'
+       }}>
+         <Package style={{
+           width: '48px',
+           height: '48px',
+           color: '#9ca3af',
+           margin: '0 auto 16px'
+         }} />
+         <h3 style={{
+           fontSize: '18px',
+           fontWeight: '500',
+           color: '#111827',
+           marginBottom: '8px'
+         }}>
+           Aucun produit trouvé
+         </h3>
+         <p style={{ color: '#6b7280' }}>
+           Essayez de modifier vos filtres ou d'ajouter des produits
+         </p>
+       </div>
+     )}
+   </div>
+ );
 
-  // Rendu des mouvements de stock
-  const renderMovements = () => (
-    <Card className="p-6">
-      <h3 className="text-lg font-semibold mb-4">Mouvements de Stock</h3>
-      <div className="space-y-3">
-        {salesHistory.flatMap(sale => 
-          sale.items.map(item => ({
-            date: sale.date,
-            productName: item.name,
-            quantity: -item.quantity,
-            type: 'Vente',
-            reference: `V-${sale.id}`
-          }))
-        ).map((movement, index) => (
-          <div key={index} className="flex items-center justify-between p-3 border border-gray-200 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className={`w-3 h-3 rounded-full ${movement.quantity > 0 ? 'bg-green-500' : 'bg-red-500'}`} />
-              <div>
-                <p className="font-medium">{movement.productName}</p>
-                <p className="text-sm text-gray-500">{movement.type} - {movement.reference}</p>
-              </div>
-            </div>
-            <div className="text-right">
-              <p className={`font-medium ${movement.quantity > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {movement.quantity > 0 ? '+' : ''}{movement.quantity}
-              </p>
-              <p className="text-sm text-gray-500">{movement.date}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  );
+ // Modal d'ajout de produit
+ const renderAddProductModal = () => (
+   <Modal
+     isOpen={showAddModal}
+     onClose={() => setShowAddModal(false)}
+     title="Ajouter un Nouveau Produit"
+     size="lg"
+   >
+     <div>
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="Nom du produit *"
+           value={newProduct.name}
+           onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
+           placeholder="Ex: Coca-Cola 33cl"
+         />
+         
+         <Input
+           label="Catégorie"
+           value={newProduct.category}
+           onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
+           placeholder="Ex: Boissons"
+         />
+       </div>
 
-  // Modal d'ajout de produit
-  const renderAddProductModal = () => (
-    <Modal
-      isOpen={showAddModal}
-      onClose={() => setShowAddModal(false)}
-      title="Ajouter un Nouveau Produit"
-      size="lg"
-    >
-      <div className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="Nom du produit *"
-            value={newProduct.name}
-            onChange={(e) => setNewProduct({...newProduct, name: e.target.value})}
-            placeholder="Ex: Coca-Cola 33cl"
-          />
-          
-          <Input
-            label="Catégorie"
-            value={newProduct.category}
-            onChange={(e) => setNewProduct({...newProduct, category: e.target.value})}
-            placeholder="Ex: Boissons"
-          />
-        </div>
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="Prix de vente *"
+           type="number"
+           value={newProduct.price}
+           onChange={(e) => setNewProduct({...newProduct, price: e.target.value})}
+           placeholder="0"
+           min="0"
+           step="0.01"
+         />
+         
+         <Input
+           label="Prix d'achat"
+           type="number"
+           value={newProduct.costPrice}
+           onChange={(e) => setNewProduct({...newProduct, costPrice: e.target.value})}
+           placeholder="0"
+           min="0"
+           step="0.01"
+         />
+         
+         <Input
+           label="Stock initial"
+           type="number"
+           value={newProduct.stock}
+           onChange={(e) => setNewProduct({...newProduct, stock: e.target.value})}
+           placeholder="0"
+           min="0"
+         />
+       </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <NumberInput
-            label="Prix de vente *"
-            value={newProduct.price}
-            onChange={(value) => setNewProduct({...newProduct, price: value})}
-            placeholder="0"
-            min="0"
-            step="0.01"
-          />
-          
-          <NumberInput
-            label="Prix d'achat"
-            value={newProduct.costPrice}
-            onChange={(value) => setNewProduct({...newProduct, costPrice: value})}
-            placeholder="0"
-            min="0"
-            step="0.01"
-          />
-          
-          <NumberInput
-            label="Stock initial"
-            value={newProduct.stock}
-            onChange={(value) => setNewProduct({...newProduct, stock: value})}
-            placeholder="0"
-            min="0"
-          />
-        </div>
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="Stock minimum"
+           type="number"
+           value={newProduct.minStock}
+           onChange={(e) => setNewProduct({...newProduct, minStock: e.target.value})}
+           placeholder="5"
+           min="0"
+         />
+         
+         <Input
+           label="Stock maximum"
+           type="number"
+           value={newProduct.maxStock}
+           onChange={(e) => setNewProduct({...newProduct, maxStock: e.target.value})}
+           placeholder="100"
+           min="0"
+         />
+       </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <NumberInput
-            label="Stock minimum"
-            value={newProduct.minStock}
-            onChange={(value) => setNewProduct({...newProduct, minStock: value})}
-            placeholder="5"
-            min="0"
-          />
-          
-          <NumberInput
-            label="Stock maximum"
-            value={newProduct.maxStock}
-            onChange={(value) => setNewProduct({...newProduct, maxStock: value})}
-            placeholder="100"
-            min="0"
-          />
-        </div>
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: window.innerWidth < 768 ? '1fr' : '1fr 1fr',
+         gap: '16px'
+       }}>
+         <Input
+           label="SKU"
+           value={newProduct.sku}
+           onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
+           placeholder="Généré automatiquement"
+         />
+         
+         <Input
+           label="Code-barre"
+           value={newProduct.barcode}
+           onChange={(e) => setNewProduct({...newProduct, barcode: e.target.value})}
+           placeholder="Optionnel"
+         />
+       </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Input
-            label="SKU"
-            value={newProduct.sku}
-            onChange={(e) => setNewProduct({...newProduct, sku: e.target.value})}
-            placeholder="Généré automatiquement"
-          />
-          
-          <Input
-            label="Code-barre"
-            value={newProduct.barcode}
-            onChange={(e) => setNewProduct({...newProduct, barcode: e.target.value})}
-            placeholder="Optionnel"
-          />
-        </div>
+       <Input
+         label="Fournisseur"
+         value={newProduct.supplier}
+         onChange={(e) => setNewProduct({...newProduct, supplier: e.target.value})}
+         placeholder="Nom du fournisseur"
+       />
 
-        <Input
-          label="Fournisseur"
-          value={newProduct.supplier}
-          onChange={(e) => setNewProduct({...newProduct, supplier: e.target.value})}
-          placeholder="Nom du fournisseur"
-        />
+       <div style={{ display: 'flex', gap: '12px', marginTop: '24px' }}>
+         <Button
+           variant="outline"
+           onClick={() => setShowAddModal(false)}
+           style={{ flex: '1' }}
+         >
+           Annuler
+         </Button>
+         <Button
+           variant="primary"
+           onClick={handleAddProduct}
+           disabled={!newProduct.name || !newProduct.price}
+           style={{ flex: '1' }}
+         >
+           Ajouter le Produit
+         </Button>
+       </div>
+     </div>
+   </Modal>
+ );
 
-        <div>
-          <label className="block text-sm font-medium mb-2">Description</label>
-          <textarea
-            value={newProduct.description}
-            onChange={(e) => setNewProduct({...newProduct, description: e.target.value})}
-            placeholder="Description détaillée du produit..."
-            rows="3"
-            className="w-full p-3 border border-gray-300 rounded-lg bg-white"
-          />
-        </div>
-      </div>
+ // Modal de réapprovisionnement
+ const renderRestockModal = () => {
+   const [quantity, setQuantity] = useState('');
+   const [reason, setReason] = useState('Réapprovisionnement manuel');
 
-      <div className="flex gap-3 mt-6">
-        <Button
-          variant="outline"
-          onClick={() => setShowAddModal(false)}
-          className="flex-1"
-        >
-          Annuler
-        </Button>
-        <Button
-          variant="primary"
-          onClick={handleAddProduct}
-          disabled={!newProduct.name || !newProduct.price}
-          className="flex-1"
-        >
-          Ajouter le Produit
-        </Button>
-      </div>
-    </Modal>
-  );
+   return (
+     <Modal
+       isOpen={showRestockModal}
+       onClose={() => setShowRestockModal(false)}
+       title={`Réapprovisionner: ${restockingProduct?.name}`}
+     >
+       <div>
+         <div style={{
+           padding: '16px',
+           backgroundColor: '#f9fafb',
+           borderRadius: '8px',
+           marginBottom: '16px'
+         }}>
+           <div style={{
+             display: 'grid',
+             gridTemplateColumns: '1fr 1fr',
+             gap: '16px'
+           }}>
+             <div>
+               <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>Stock actuel</p>
+               <p style={{ fontSize: '24px', fontWeight: 'bold', margin: '0' }}>
+                 {restockingProduct?.stock || 0}
+               </p>
+             </div>
+             <div>
+               <p style={{ fontSize: '14px', color: '#6b7280', margin: '0 0 4px 0' }}>Stock minimum</p>
+               <p style={{ fontSize: '24px', fontWeight: 'bold', color: '#dc2626', margin: '0' }}>
+                 {restockingProduct?.minStock || 5}
+               </p>
+             </div>
+           </div>
+         </div>
 
-  // Modal de réapprovisionnement
-  const renderRestockModal = () => {
-    const [quantity, setQuantity] = useState('');
-    const [reason, setReason] = useState('Réapprovisionnement manuel');
+         <Input
+           label="Quantité à ajouter"
+           type="number"
+           value={quantity}
+           onChange={(e) => setQuantity(e.target.value)}
+           placeholder="0"
+           min="1"
+         />
 
-    return (
-      <Modal
-        isOpen={showRestockModal}
-        onClose={() => setShowRestockModal(false)}
-        title={`Réapprovisionner: ${restockingProduct?.name}`}
-      >
-        <div className="space-y-4">
-          <div className="p-4 bg-gray-50 rounded-lg">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-600">Stock actuel</p>
-                <p className="text-2xl font-bold">{restockingProduct?.stock || 0}</p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Stock minimum</p>
-                <p className="text-2xl font-bold text-red-600">{restockingProduct?.minStock || 5}</p>
-              </div>
-            </div>
-          </div>
+         <div style={{ marginBottom: '16px' }}>
+           <label style={{
+             display: 'block',
+             fontSize: '14px',
+             fontWeight: '500',
+             marginBottom: '8px'
+           }}>
+             Motif
+           </label>
+           <select 
+             value={reason}
+             onChange={(e) => setReason(e.target.value)}
+             style={{
+               width: '100%',
+               padding: '12px',
+               border: '1px solid #d1d5db',
+               borderRadius: '8px',
+               backgroundColor: 'white'
+             }}
+           >
+             <option value="Réapprovisionnement manuel">Réapprovisionnement manuel</option>
+             <option value="Livraison fournisseur">Livraison fournisseur</option>
+             <option value="Transfert magasin">Transfert magasin</option>
+             <option value="Correction inventaire">Correction inventaire</option>
+             <option value="Retour client">Retour client</option>
+           </select>
+         </div>
 
-          <NumberInput
-            label="Quantité à ajouter"
-            value={quantity}
-            onChange={setQuantity}
-            placeholder="0"
-            min="1"
-          />
+         {quantity && (
+           <div style={{
+             padding: '12px',
+             backgroundColor: '#f0fdf4',
+             borderRadius: '8px',
+             marginBottom: '16px'
+           }}>
+             <p style={{ fontSize: '14px', color: '#059669', margin: '0' }}>
+               Nouveau stock: {(parseInt(restockingProduct?.stock || 0) + parseInt(quantity)).toLocaleString()} unités
+             </p>
+           </div>
+         )}
 
-          <div>
-            <label className="block text-sm font-medium mb-2">Motif</label>
-            <select 
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              className="w-full p-3 border border-gray-300 rounded-lg bg-white"
-            >
-              <option value="Réapprovisionnement manuel">Réapprovisionnement manuel</option>
-              <option value="Livraison fournisseur">Livraison fournisseur</option>
-              <option value="Transfert magasin">Transfert magasin</option>
-              <option value="Correction inventaire">Correction inventaire</option>
-              <option value="Retour client">Retour client</option>
-            </select>
-          </div>
+         <div style={{ display: 'flex', gap: '12px' }}>
+           <Button
+             variant="outline"
+             onClick={() => setShowRestockModal(false)}
+             style={{ flex: '1' }}
+           >
+             Annuler
+           </Button>
+           <Button
+             variant="primary"
+             onClick={() => handleRestock(restockingProduct?.id, quantity)}
+             disabled={!quantity || parseInt(quantity) <= 0}
+             style={{ flex: '1' }}
+           >
+             Confirmer Réapprovisionnement
+           </Button>
+         </div>
+       </div>
+     </Modal>
+   );
+ };
 
-          {quantity && (
-            <div className="p-4 bg-green-50 rounded-lg">
-              <p className="text-sm text-green-600">
-                Nouveau stock: {(parseInt(restockingProduct?.stock || 0) + parseInt(quantity)).toLocaleString()} unités
-              </p>
-            </div>
-          )}
-        </div>
+ return (
+   <div style={containerStyle}>
+     {/* En-tête */}
+     <div style={headerStyle}>
+       <div style={titleStyle}>
+         <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
+         <h1 style={{
+           fontSize: '32px',
+           fontWeight: 'bold',
+           color: '#111827',
+           margin: '0'
+         }}>
+           Gestion Inventaire Pro
+         </h1>
+       </div>
+       <p style={{
+         color: '#6b7280',
+         fontSize: '16px',
+         margin: '0'
+       }}>
+         Interface professionnelle avec analytics, prédictions IA et automatisations
+       </p>
+     </div>
 
-        <div className="flex gap-3 mt-6">
-          <Button
-            variant="outline"
-            onClick={() => setShowRestockModal(false)}
-            className="flex-1"
-          >
-            Annuler
-          </Button>
-          <Button
-            variant="primary"
-            onClick={() => handleRestock(restockingProduct?.id, quantity, reason)}
-            disabled={!quantity || parseInt(quantity) <= 0}
-            className="flex-1"
-          >
-            Confirmer Réapprovisionnement
-          </Button>
-        </div>
-      </Modal>
-    );
-  };
+     {/* Navigation par onglets */}
+     <div style={tabsStyle}>
+       <nav style={tabNavStyle}>
+         {[
+           { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
+           { id: 'products', name: 'Produits', icon: Package },
+           { id: 'movements', name: 'Mouvements', icon: Activity },
+           { id: 'analytics', name: 'Analytics', icon: PieChart },
+           { id: 'automation', name: 'Automatisation', icon: Zap }
+         ].map((tab) => {
+           const Icon = tab.icon;
+           const isActive = activeTab === tab.id;
+           
+           return (
+             <button
+               key={tab.id}
+               onClick={() => setActiveTab(tab.id)}
+               style={{
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '8px',
+                 padding: '16px 4px',
+                 borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                 fontWeight: '500',
+                 fontSize: '14px',
+                 color: isActive ? '#3b82f6' : '#6b7280',
+                 background: 'none',
+                 border: 'none',
+                 cursor: 'pointer',
+                 transition: 'color 0.2s'
+               }}
+               onMouseEnter={(e) => {
+                 if (!isActive) e.target.style.color = '#374151';
+               }}
+               onMouseLeave={(e) => {
+                 if (!isActive) e.target.style.color = '#6b7280';
+               }}
+             >
+               <Icon style={{ width: '20px', height: '20px' }} />
+               {tab.name}
+             </button>
+           );
+         })}
+       </nav>
+     </div>
 
-  // Modal d'édition (simplifié)
-  const renderEditProductModal = () => (
-    <Modal
-      isOpen={showEditModal}
-      onClose={() => setShowEditModal(false)}
-      title={`Modifier: ${editingProduct?.name}`}
-    >
-      <div className="text-center py-8">
-        <Settings className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h3 className="text-lg font-medium mb-2">Fonctionnalité en Développement</h3>
-        <p className="text-gray-600 mb-6">
-          L'édition complète des produits sera disponible dans la prochaine version
-        </p>
-        <Button variant="outline" onClick={() => setShowEditModal(false)}>
-          Fermer
-        </Button>
-      </div>
-    </Modal>
-  );
+     {/* Contenu des onglets */}
+     <div style={{ minHeight: '600px' }}>
+       {activeTab === 'dashboard' && renderDashboard()}
+       {activeTab === 'products' && renderProducts()}
+       {activeTab === 'movements' && (
+         <Card style={{ padding: '24px', textAlign: 'center' }}>
+           <Activity style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+           <h3>Mouvements de Stock</h3>
+           <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
+         </Card>
+       )}
+       {activeTab === 'analytics' && (
+         <Card style={{ padding: '24px', textAlign: 'center' }}>
+           <PieChart style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+           <h3>Analytics Avancés</h3>
+           <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
+         </Card>
+       )}
+       {activeTab === 'automation' && (
+         <Card style={{ padding: '24px', textAlign: 'center' }}>
+           <Zap style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
+           <h3>Automatisation</h3>
+           <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
+         </Card>
+       )}
+     </div>
 
-  // Modal des prédictions complètes
-  const renderPredictionsModal = () => (
-    <Modal
-      isOpen={showPredictionsModal}
-      onClose={() => setShowPredictionsModal(false)}
-      title="Prédictions de Réapprovisionnement"
-      size="xl"
-    >
-      <div className="space-y-4">
-        {analytics.predictions.map(prediction => (
-          <div key={prediction.id} className="p-4 border border-gray-200 rounded-lg">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h4 className="font-medium">{prediction.name}</h4>
-                <p className="text-sm text-gray-600">
-                  Stock actuel: {prediction.stock} | Ventes/jour: {prediction.avgDailySales.toFixed(1)}
-                </p>
-              </div>
-              <Badge 
-                variant={
-                  prediction.urgency === 'high' ? 'danger' :
-                  prediction.urgency === 'medium' ? 'warning' : 'success'
-                }
-              >
-                {prediction.urgency === 'high' ? 'Urgent' :
-                 prediction.urgency === 'medium' ? 'Attention' : 'Normal'}
-              </Badge>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-4 text-sm">
-              <div>
-                <p className="text-gray-600">Épuisement estimé</p>
-                <p className="font-medium">{Math.ceil(prediction.daysUntilEmpty)} jours</p>
-              </div>
-              <div>
-                <p className="text-gray-600">Quantité recommandée</p>
-                <p className="font-medium">{prediction.suggestedReorder} unités</p>
-              </div>
-              <div className="text-right">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => {
-                    setRestockingProduct(prediction);
-                    setShowPredictionsModal(false);
-                    setShowRestockModal(true);
-                  }}
-                >
-                  Commander
-                </Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Modal>
-  );
-
-  return (
-    <div className="p-6 max-w-7xl mx-auto">
-      {/* En-tête */}
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <Package className="h-8 w-8 text-blue-600" />
-          <h1 className="text-3xl font-bold text-gray-900">
-            Gestion Inventaire Pro
-          </h1>
-        </div>
-        <p className="text-gray-600">
-          Interface professionnelle avec analytics, prédictions IA et automatisations
-        </p>
-      </div>
-
-      {/* Navigation par onglets */}
-      <div className="border-b border-gray-200 mb-6">
-        <nav className="-mb-px flex space-x-8">
-          {[
-            { id: 'dashboard', name: 'Dashboard', icon: BarChart3 },
-            { id: 'products', name: 'Produits', icon: Package },
-            { id: 'movements', name: 'Mouvements', icon: Activity },
-            { id: 'analytics', name: 'Analytics', icon: PieChart },
-            { id: 'automation', name: 'Automatisation', icon: Zap }
-          ].map((tab) => {
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <Icon className="h-5 w-5" />
-                {tab.name}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
-
-      {/* Contenu des onglets */}
-      <div className="min-h-[600px]">
-        {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'products' && renderProducts()}
-        {activeTab === 'movements' && renderMovements()}
-        {activeTab === 'analytics' && renderAnalytics()}
-        {activeTab === 'automation' && renderAutomation()}
-      </div>
-
-      {/* Modals */}
-      {showAddModal && renderAddProductModal()}
-      {showEditModal && renderEditProductModal()}
-      {showRestockModal && renderRestockModal()}
-      {showPredictionsModal && renderPredictionsModal()}
-    </div>
-  );
+     {/* Modals */}
+     {showAddModal && renderAddProductModal()}
+     {showRestockModal && renderRestockModal()}
+   </div>
+ );
 };
 
 export default InventoryModulePro;
