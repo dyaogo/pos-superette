@@ -486,45 +486,12 @@ const DashboardModule = ({ onNavigate }) => {
     </button>
   );
 
-  // Composant AreaChart
-  const AreaChart = ({ data, title, subtitle }) => {
-    const maxValue = Math.max(...data.map(item => Math.max(item.ventes, item.margesBrutes || 0)));
-    
-    if (maxValue === 0) {
-      return (
-        <div style={{
-          background: isDark ? '#2d3748' : 'white',
-          borderRadius: '16px',
-          padding: '24px',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
-          border: `1px solid ${isDark ? '#4a5568' : '#f1f5f9'}`,
-          textAlign: 'center'
-        }}>
-          <h3 style={{
-            fontSize: '18px',
-            fontWeight: '600',
-            color: isDark ? '#f7fafc' : '#1a202c',
-            margin: '0 0 8px 0'
-          }}>
-            {title}
-          </h3>
-          <p style={{
-            fontSize: '14px',
-            color: isDark ? '#a0aec0' : '#64748b',
-            margin: '0 0 20px 0'
-          }}>
-            {subtitle}
-          </p>
-          <div style={{
-            padding: '40px',
-            color: isDark ? '#a0aec0' : '#64748b'
-          }}>
-            Aucune donnée pour cette période
-          </div>
-        </div>
-      );
-    }
+  // Remplacer le composant AreaChart par ce nouveau composant :
 
+const AreaChart = ({ data, title, subtitle }) => {
+  const isDark = false; // récupérer depuis le contexte
+  
+  if (!data || data.length === 0) {
     return (
       <div style={{
         background: isDark ? '#2d3748' : 'white',
@@ -548,63 +515,192 @@ const DashboardModule = ({ onNavigate }) => {
         }}>
           {subtitle}
         </p>
-        
         <div style={{
-          position: 'relative',
-          background: isDark ? '#374151' : '#f8fafc',
-          borderRadius: '8px',
-          padding: '20px',
-          overflow: 'hidden'
+          padding: '40px',
+          color: isDark ? '#a0aec0' : '#64748b',
+          textAlign: 'center'
         }}>
-          {/* Graphique simple en barres */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'end',
-            gap: '8px',
-            height: '200px',
-            justifyContent: 'space-between'
-          }}>
-            {data.map((item, index) => (
+          Aucune donnée pour cette période
+        </div>
+      </div>
+    );
+  }
+
+  // Trouver la valeur max pour normaliser les barres
+  const maxValue = Math.max(...data.map(item => item.ventes || 0));
+
+  return (
+    <div style={{
+      background: isDark ? '#2d3748' : 'white',
+      borderRadius: '16px',
+      padding: '24px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.08)',
+      border: `1px solid ${isDark ? '#4a5568' : '#f1f5f9'}`
+    }}>
+      <h3 style={{
+        fontSize: '18px',
+        fontWeight: '600',
+        color: isDark ? '#f7fafc' : '#1a202c',
+        margin: '0 0 8px 0'
+      }}>
+        {title}
+      </h3>
+      <p style={{
+        fontSize: '14px',
+        color: isDark ? '#a0aec0' : '#64748b',
+        margin: '0 0 20px 0'
+      }}>
+        {subtitle}
+      </p>
+      
+      <div style={{
+        position: 'relative',
+        background: isDark ? '#374151' : '#f8fafc',
+        borderRadius: '8px',
+        padding: '20px',
+        overflow: 'hidden'
+      }}>
+        {/* Graphique en barres avec valeurs */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'end',
+          gap: '12px',
+          height: '250px', // ✅ Plus haut pour les valeurs
+          justifyContent: 'space-between',
+          position: 'relative'
+        }}>
+          {data.map((item, index) => {
+            const barHeight = maxValue > 0 ? (item.ventes / maxValue) * 180 : 0; // 180px max pour laisser place aux valeurs
+            
+            return (
               <div key={index} style={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
                 alignItems: 'center',
                 flex: 1,
-                gap: '4px'
+                gap: '8px',
+                position: 'relative'
               }}>
+                {/* Valeur au-dessus de la barre */}
+                <div style={{
+                  fontSize: '12px',
+                  fontWeight: '600',
+                  color: '#3b82f6',
+                  textAlign: 'center',
+                  minHeight: '16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {item.ventes > 0 ? `${item.ventes.toLocaleString()}` : ''}
+                </div>
+                
+                {/* Container de la barre */}
                 <div style={{
                   display: 'flex',
                   flexDirection: 'column',
                   alignItems: 'center',
                   width: '100%',
-                  height: '150px',
-                  justifyContent: 'end'
+                  height: '180px',
+                  justifyContent: 'end',
+                  position: 'relative'
                 }}>
+                  {/* Barre principale */}
                   <div
                     style={{
                       width: '70%',
-                      height: `${(item.ventes / maxValue) * 100}%`,
-                      background: '#3b82f6',
+                      height: `${barHeight}px`,
+                      background: 'linear-gradient(180deg, #3b82f6 0%, #1e40af 100%)',
                       borderRadius: '4px 4px 0 0',
-                      minHeight: '4px'
+                      minHeight: item.ventes > 0 ? '4px' : '0px',
+                      position: 'relative',
+                      transition: 'all 0.3s ease',
+                      boxShadow: item.ventes > 0 ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none'
                     }}
-                  />
+                  >
+                    {/* Effet de brillance sur la barre */}
+                    {item.ventes > 0 && (
+                      <div style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: '30%',
+                        background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, transparent 100%)',
+                        borderRadius: '4px 4px 0 0'
+                      }} />
+                    )}
+                  </div>
                 </div>
+                
+                {/* Label en bas */}
                 <div style={{
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: '500',
                   color: isDark ? '#a0aec0' : '#64748b',
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  maxWidth: '100%',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap'
                 }}>
                   {item.label}
                 </div>
               </div>
-            ))}
+            );
+          })}
+        </div>
+
+        {/* Statistiques en bas du graphique */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '16px',
+          marginTop: '20px',
+          paddingTop: '20px',
+          borderTop: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`
+        }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ 
+              fontSize: '18px', 
+              fontWeight: 'bold', 
+              color: '#10b981' 
+            }}>
+              {data.length > 0 ? Math.max(...data.map(d => d.ventes || 0)).toLocaleString() : '0'}
+            </div>
+            <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
+              Record
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ 
+              fontSize: '18px', 
+              fontWeight: 'bold', 
+              color: '#3b82f6' 
+            }}>
+              {data.length > 0 ? Math.round(data.reduce((sum, d) => sum + (d.ventes || 0), 0) / data.length).toLocaleString() : '0'}
+            </div>
+            <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
+              Moyenne
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ 
+              fontSize: '18px', 
+              fontWeight: 'bold', 
+              color: '#7c3aed' 
+            }}>
+              {data.reduce((sum, d) => sum + (d.ventes || 0), 0).toLocaleString()}
+            </div>
+            <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
+              Total
+            </div>
           </div>
         </div>
       </div>
-    );
-  };
+    </div>
+  );
+};
 
   return (
     <div style={{
@@ -672,12 +768,24 @@ const DashboardModule = ({ onNavigate }) => {
       </div>
 
       {/* Cartes statistiques principales */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
-        gap: '24px',
-        marginBottom: '32px'
-      }}>
+      const getGridColumns = (deviceType) => {
+  switch(deviceType) {
+    case 'mobile':
+      return 'repeat(2, 1fr)';  // 2x2 sur mobile
+    case 'tablet':
+      return 'repeat(2, 1fr)';  // 2x2 sur tablette aussi
+    case 'desktop':
+    default:
+      return 'repeat(4, 1fr)';  // 4x1 sur desktop
+  }
+};
+
+<div style={{
+  display: 'grid',
+  gridTemplateColumns: getGridColumns(deviceType),
+  gap: isMobile ? '16px' : '24px',
+  marginBottom: '32px'
+}}>
         <StatCard 
           title="Chiffre d'Affaires"
           value={`${formatNumber(getMetricsForPeriod.revenue)} FCFA`}
