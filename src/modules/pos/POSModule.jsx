@@ -1,13 +1,14 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { 
   Search, ShoppingCart, CreditCard, DollarSign, Smartphone, 
-  Package, User, X, Check, Scan, Plus, Minus, Trash2, Eye
+  Package, User, X, Check, Scan, Plus, Minus, Trash2, Eye,
+  AlertTriangle, Lock, Unlock, Users
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useResponsive } from '../../components/ResponsiveComponents';
+import { getCashSession } from '../../services/cash.service';
 import toast from 'react-hot-toast';
 
-// Import des hooks personnalisés EXISTANTS
 import { 
   useCart, 
   useProductSearch, 
@@ -15,7 +16,7 @@ import {
   useKeyboardShortcuts 
 } from '../../hooks';
 
-const POSModule = () => {
+const POSModule = ({ onNavigate }) => {
   const { 
     globalProducts, 
     processSale, 
@@ -25,6 +26,14 @@ const POSModule = () => {
   
   const { isMobile } = useResponsive();
   
+  // ==================== VÉRIFICATION CAISSE ====================
+  const [cashSession, setCashSession] = useState(null);
+  
+  useEffect(() => {
+    const session = getCashSession();
+    setCashSession(session);
+  }, []);
+
   // ==================== HOOKS PERSONNALISÉS ====================
   const { 
     cart, 
@@ -45,8 +54,9 @@ const POSModule = () => {
   // États modaux
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showCustomerModal, setShowCustomerModal] = useState(false);
   
-  // États de paiement - CORRECTION: Utiliser useRef pour éviter les re-renders
+  // États de paiement
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const amountReceivedRef = useRef('');
   const [amountDisplay, setAmountDisplay] = useState('');
@@ -66,10 +76,8 @@ const POSModule = () => {
     const bills = [500, 1000, 2000, 5000, 10000];
     const suggestions = new Set();
     
-    // Montant exact
     suggestions.add(total);
     
-    // Prochain billet supérieur
     for (const bill of bills) {
       if (bill >= total) {
         suggestions.add(bill);
@@ -77,12 +85,10 @@ const POSModule = () => {
       }
     }
     
-    // Combinaisons intelligentes pour minimiser la monnaie
     const findMinimalChange = (target) => {
       let minChange = Infinity;
       let bestAmount = target;
       
-      // Essayer différentes combinaisons de billets
       for (let i = 0; i < bills.length; i++) {
         for (let j = i; j < bills.length; j++) {
           const amount = bills[i] + bills[j];
@@ -100,7 +106,6 @@ const POSModule = () => {
     
     suggestions.add(findMinimalChange(total));
     
-    // Arrondir au millier supérieur
     const roundedUp = Math.ceil(total / 1000) * 1000;
     if (roundedUp > total) {
       suggestions.add(roundedUp);
@@ -109,7 +114,7 @@ const POSModule = () => {
     return Array.from(suggestions)
       .filter(amount => amount >= total)
       .sort((a, b) => a - b)
-      .slice(0, 4); // Limiter à 4 suggestions
+      .slice(0, 4);
   }, [cartStats.finalTotal]);
 
   // ==================== RECHERCHE AVEC HOOKS ====================
@@ -136,6 +141,10 @@ const POSModule = () => {
     { 
       key: 'F3', 
       action: () => {
+        if (!cashSession) {
+          toast.error('Veuillez d\'abord ouvrir la caisse');
+          return;
+        }
         if (cart.length > 0) {
           setShowPaymentModal(true);
         } else {
@@ -148,29 +157,37 @@ const POSModule = () => {
       action: () => {
         if (showPaymentModal) setShowPaymentModal(false);
         else if (showScanner) setShowScanner(false);
+        else if (showCustomerModal) setShowCustomerModal(false);
       }
     },
     {
       key: 'Enter',
       action: () => {
         if (searchQuery && filteredProducts.length > 0) {
+          if (!cashSession) {
+            toast.error('Veuillez d\'abord ouvrir la caisse');
+            return;
+          }
           addToCart(filteredProducts[0]);
           setSearchQuery('');
         }
       }
     }
-  ], [cart.length, searchQuery, showPaymentModal, showScanner, filteredProducts]);
+  ], [cart.length, searchQuery, showPaymentModal, showScanner, filteredProducts, cashSession]);
 
   // ==================== GESTION PAIEMENT ====================
-  // CORRECTION: Fonction pour éviter la perte de focus
   const handleAmountChange = useCallback((e) => {
     const value = e.target.value;
     amountReceivedRef.current = value;
     setAmountDisplay(value);
   }, []);
 
-  // CORRECTION: Fonction processSale corrigée avec les bons paramètres
   const handleCheckout = useCallback(() => {
+    if (!cashSession) {
+      toast.error('Caisse fermée ! Impossible de finaliser la vente.');
+      return;
+    }
+
     if (cart.length === 0) {
       toast.error('Panier vide!');
       return;
@@ -185,55 +202,33 @@ const POSModule = () => {
     }
 
     try {
-      // CORRECTION: Appel avec les paramètres que processSale attend
-      // processSale(cart, paymentMethod, amountReceived, customerId)
       const result = processSale(
-        cart, // Le panier complet avec les objets produits
+        cart,
         paymentMethod,
         paymentMethod === 'cash' ? amountReceived : cartStats.finalTotal,
         selectedCustomer.id
       );
 
       if (result) {
-        // Réinitialiser TOUS les états
         clearCart();
         setShowPaymentModal(false);
         amountReceivedRef.current = '';
         setAmountDisplay('');
         setNotes('');
         setPaymentMethod('cash');
+        setSelectedCustomer(customers?.[0] || { id: 1, name: 'Client Comptant' });
         
-        // CORRECTION: Toast qui s'estompe automatiquement
         toast.success(
           `✅ Vente confirmée! Reçu: ${result.receiptNumber}`, 
-          { 
-            duration: 4000,
-            position: 'top-center',
-            style: {
-              background: '#10b981',
-              color: 'white',
-              fontWeight: '600'
-            }
-          }
+          { duration: 4000 }
         );
         
         if (paymentMethod === 'cash' && amountReceived > cartStats.finalTotal) {
           toast.info(
             `💰 Monnaie: ${(amountReceived - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`, 
-            { 
-              duration: 6000,
-              position: 'top-center',
-              style: {
-                background: '#3b82f6',
-                color: 'white',
-                fontSize: '16px'
-              }
-            }
+            { duration: 6000 }
           );
         }
-        
-        // Log pour debug
-        console.log('✅ Vente enregistrée:', result);
         
       } else {
         throw new Error('Échec de l\'enregistrement');
@@ -241,28 +236,35 @@ const POSModule = () => {
       
     } catch (error) {
       console.error('❌ Erreur lors de la vente:', error);
-      toast.error('Erreur lors de la vente: ' + error.message, {
-        duration: 5000
-      });
+      toast.error('Erreur lors de la vente: ' + error.message);
     }
-  }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart]);
+  }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart, cashSession, customers]);
+
+  // ==================== GESTIONNAIRE D'AJOUT AU PANIER ====================
+  const handleAddToCart = useCallback((product) => {
+    if (!cashSession) {
+      toast.error('Veuillez d\'abord ouvrir la caisse pour commencer les ventes');
+      return;
+    }
+    addToCart(product);
+  }, [addToCart, cashSession]);
 
   // ==================== COMPOSANTS UI ====================
   const ProductCard = ({ product }) => (
     <div
-      onClick={() => addToCart(product)}
+      onClick={() => handleAddToCart(product)}
       style={{
         background: isDark ? '#374151' : 'white',
         border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
         borderRadius: '12px',
         padding: '16px',
-        cursor: product.stock === 0 ? 'not-allowed' : 'pointer',
+        cursor: (!cashSession || product.stock === 0) ? 'not-allowed' : 'pointer',
         transition: 'all 0.2s',
         position: 'relative',
-        opacity: product.stock === 0 ? 0.6 : 1
+        opacity: (!cashSession || product.stock === 0) ? 0.6 : 1
       }}
       onMouseEnter={(e) => {
-        if (product.stock > 0) {
+        if (cashSession && product.stock > 0) {
           e.currentTarget.style.transform = 'translateY(-2px)';
           e.currentTarget.style.boxShadow = '0 8px 25px rgba(0,0,0,0.15)';
         }
@@ -272,6 +274,23 @@ const POSModule = () => {
         e.currentTarget.style.boxShadow = 'none';
       }}
     >
+      {!cashSession && (
+        <div style={{
+          position: 'absolute',
+          top: '8px',
+          right: '8px',
+          background: '#ef4444',
+          color: 'white',
+          fontSize: '10px',
+          padding: '2px 6px',
+          borderRadius: '4px',
+          fontWeight: '600'
+        }}>
+          <Lock size={10} style={{ marginRight: '2px' }} />
+          CAISSE FERMÉE
+        </div>
+      )}
+      
       {product.stock === 0 && (
         <div style={{
           position: 'absolute',
@@ -438,19 +457,82 @@ const POSModule = () => {
         padding: '24px',
         overflowY: 'auto'
       }}>
-        {/* Header */}
+        {/* Header avec statut caisse */}
         <div style={{ marginBottom: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-            <Package size={28} color="#3b82f6" />
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: '24px', 
-              fontWeight: '700',
-              color: isDark ? '#f7fafc' : '#1f2937'
-            }}>
-              Point de Vente
-            </h1>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Package size={28} color="#3b82f6" />
+              <h1 style={{ 
+                margin: 0, 
+                fontSize: '24px', 
+                fontWeight: '700',
+                color: isDark ? '#f7fafc' : '#1f2937'
+              }}>
+                Point de Vente
+              </h1>
+            </div>
+
+            {/* Statut caisse + actions */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {/* Statut caisse */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 12px',
+                borderRadius: '8px',
+                background: cashSession ? '#10b98115' : '#ef444415',
+                color: cashSession ? '#10b981' : '#ef4444',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}>
+                {cashSession ? <Unlock size={16} /> : <Lock size={16} />}
+                {cashSession ? 'Caisse Ouverte' : 'Caisse Fermée'}
+              </div>
+
+              {/* Bouton caisse */}
+              {!cashSession && (
+                <button
+                  onClick={() => onNavigate('cash')}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <Unlock size={16} />
+                  Ouvrir Caisse
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Alerte caisse fermée */}
+          {!cashSession && (
+            <div style={{
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              borderRadius: '8px',
+              padding: '12px',
+              marginBottom: '16px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <AlertTriangle size={20} color="#ef4444" />
+              <span style={{ color: '#dc2626', fontSize: '14px', fontWeight: '500' }}>
+                La caisse doit être ouverte avant de pouvoir effectuer des ventes.
+              </span>
+            </div>
+          )}
           
           {/* Recherche */}
           <div style={{ position: 'relative', marginBottom: '16px' }}>
@@ -467,16 +549,18 @@ const POSModule = () => {
               placeholder="Rechercher un produit... (F2)"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              disabled={!cashSession}
               style={{
                 width: '100%',
                 padding: '14px 16px 14px 48px',
                 border: `2px solid ${searchQuery ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0')}`,
                 borderRadius: '12px',
                 fontSize: '16px',
-                background: isDark ? '#374151' : 'white',
+                background: (!cashSession || isDark) ? '#374151' : 'white',
                 color: isDark ? '#f7fafc' : '#1f2937',
                 outline: 'none',
-                transition: 'border-color 0.2s'
+                transition: 'border-color 0.2s',
+                opacity: !cashSession ? 0.6 : 1
               }}
             />
           </div>
@@ -485,13 +569,15 @@ const POSModule = () => {
           <select
             value={selectedCategory}
             onChange={(e) => setSelectedCategory(e.target.value)}
+            disabled={!cashSession}
             style={{
               padding: '8px 12px',
               border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
               borderRadius: '8px',
               background: isDark ? '#374151' : 'white',
               color: isDark ? '#f7fafc' : '#1f2937',
-              fontSize: '14px'
+              fontSize: '14px',
+              opacity: !cashSession ? 0.6 : 1
             }}
           >
             {categories.map(category => (
@@ -524,7 +610,7 @@ const POSModule = () => {
         )}
       </div>
 
-      {/* Section Panier */}
+      {/* ✅ CORRECTION 1: Section Panier avec boutons adaptés à la hauteur */}
       <div style={{
         background: isDark ? '#2d3748' : 'white',
         borderLeft: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
@@ -532,10 +618,11 @@ const POSModule = () => {
         flexDirection: 'column',
         height: '100vh'
       }}>
-        {/* Header Panier */}
+        {/* Header Panier avec sélection client */}
         <div style={{
           padding: '24px',
-          borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+          borderBottom: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          flexShrink: 0
         }}>
           <h2 style={{
             fontSize: '20px',
@@ -545,26 +632,85 @@ const POSModule = () => {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '8px'
+            gap: '8px',
+            marginBottom: '12px'
           }}>
             <ShoppingCart size={20} />
             Panier
           </h2>
+          
+          {/* ✅ CORRECTION 2: Sélection du client */}
+          <div style={{ marginBottom: '12px' }}>
+            <label style={{
+              display: 'block',
+              fontSize: '12px',
+              fontWeight: '500',
+              color: isDark ? '#a0aec0' : '#6b7280',
+              marginBottom: '6px'
+            }}>
+              Client
+            </label>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <select
+                value={selectedCustomer.id}
+                onChange={(e) => {
+                  const customer = customers.find(c => c.id == e.target.value);
+                  setSelectedCustomer(customer || customers[0]);
+                }}
+                style={{
+                  flex: 1,
+                  padding: '8px',
+                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '6px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f7fafc' : '#1f2937',
+                  fontSize: '12px'
+                }}
+              >
+                {customers.map(customer => (
+                  <option key={customer.id} value={customer.id}>
+                    {customer.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                onClick={() => setShowCustomerModal(true)}
+                style={{
+                  padding: '8px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}
+              >
+                <Users size={14} />
+              </button>
+            </div>
+          </div>
+
           <div style={{
             fontSize: '14px',
             color: isDark ? '#a0aec0' : '#6b7280',
-            marginTop: '4px',
             textAlign: 'center'
           }}>
             {cartStats.totalItems} article{cartStats.totalItems > 1 ? 's' : ''}
           </div>
         </div>
 
-        {/* Items du panier */}
+        {/* Items du panier - zone scrollable */}
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '16px'
+          padding: '16px',
+          minHeight: 0 // Important pour permettre le flex shrink
         }}>
           {cart.length === 0 ? (
             <div style={{
@@ -574,7 +720,9 @@ const POSModule = () => {
             }}>
               <ShoppingCart size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
               <p>Panier vide</p>
-              <p style={{ fontSize: '12px' }}>Cliquez sur un produit pour l'ajouter</p>
+              <p style={{ fontSize: '12px' }}>
+                {!cashSession ? 'Ouvrez la caisse pour commencer' : 'Cliquez sur un produit pour l\'ajouter'}
+              </p>
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -585,11 +733,13 @@ const POSModule = () => {
           )}
         </div>
 
-        {/* Footer Panier */}
+        {/* ✅ CORRECTION 1: Footer Panier FIXÉ avec hauteur adaptative */}
         {cart.length > 0 && (
           <div style={{
             padding: '24px',
-            borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+            borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+            background: isDark ? '#2d3748' : 'white',
+            flexShrink: 0 // Empêche la compression
           }}>
             <div style={{
               display: 'flex',
@@ -606,17 +756,24 @@ const POSModule = () => {
             </div>
             
             <button
-              onClick={() => setShowPaymentModal(true)}
+              onClick={() => {
+                if (!cashSession) {
+                  toast.error('Veuillez d\'abord ouvrir la caisse');
+                  return;
+                }
+                setShowPaymentModal(true);
+              }}
+              disabled={!cashSession}
               style={{
                 width: '100%',
                 padding: '16px',
-                background: '#10b981',
+                background: !cashSession ? '#6b7280' : '#10b981',
                 color: 'white',
                 border: 'none',
                 borderRadius: '12px',
                 fontSize: '16px',
                 fontWeight: '600',
-                cursor: 'pointer',
+                cursor: !cashSession ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -624,11 +781,15 @@ const POSModule = () => {
                 marginBottom: '8px',
                 transition: 'background 0.2s'
               }}
-              onMouseEnter={(e) => e.target.style.background = '#059669'}
-              onMouseLeave={(e) => e.target.style.background = '#10b981'}
+              onMouseEnter={(e) => {
+                if (cashSession) e.target.style.background = '#059669';
+              }}
+              onMouseLeave={(e) => {
+                if (cashSession) e.target.style.background = '#10b981';
+              }}
             >
               <CreditCard size={20} />
-              Finaliser la vente (F3)
+              {!cashSession ? 'Caisse Fermée' : 'Finaliser la vente (F3)'}
             </button>
             
             <button
@@ -655,7 +816,7 @@ const POSModule = () => {
       </div>
 
       {/* Modal de paiement */}
-      {showPaymentModal && (
+      {showPaymentModal && cashSession && (
         <div style={{
           position: 'fixed',
           top: 0,
@@ -687,147 +848,167 @@ const POSModule = () => {
               Finaliser la vente
             </h3>
 
-            {/* Récapitulatif */}
+            {/* Client sélectionné */}
             <div style={{
               background: isDark ? '#374151' : '#f8fafc',
-              padding: '16px',
+              padding: '12px',
               borderRadius: '8px',
-              marginBottom: '24px'
-            }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '8px'
-              }}>
-                <span>Sous-total:</span>
-                <span>{cartStats.totalAmount.toLocaleString()} {appSettings.currency}</span>
-              </div>
-              {cartStats.totalTax > 0 && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: '8px'
-                }}>
-                  <span>TVA ({appSettings.taxRate}%):</span>
-                  <span>{cartStats.totalTax.toLocaleString()} {appSettings.currency}</span>
-                </div>
-              )}
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontSize: '18px',
-                fontWeight: '700',
-                borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                paddingTop: '8px'
-              }}>
-                <span>Total:</span>
-                <span style={{ color: '#3b82f6' }}>
-                  {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
-                </span>
-              </div>
-            </div>
+              marginBottom: '24px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+           }}>
+             <User size={16} color="#3b82f6" />
+             <span style={{
+               fontSize: '14px',
+               fontWeight: '500',
+               color: isDark ? '#f7fafc' : '#1f2937'
+             }}>
+               Client: {selectedCustomer.name}
+             </span>
+           </div>
 
-            {/* Méthodes de paiement */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '12px',
-                color: isDark ? '#f7fafc' : '#374151'
-              }}>
-                Méthode de paiement
-              </label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-                {[
-                  { id: 'cash', label: 'Espèces', icon: DollarSign },
-                  { id: 'card', label: 'Carte', icon: CreditCard },
-                  { id: 'mobile', label: 'Mobile', icon: Smartphone }
-                ].map(method => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPaymentMethod(method.id)}
-                    style={{
-                      padding: '12px',
-                      border: `2px solid ${paymentMethod === method.id ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0')}`,
-                      borderRadius: '8px',
-                      background: paymentMethod === method.id ? '#3b82f6' : 'transparent',
-                      color: paymentMethod === method.id ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <method.icon size={16} />
-                    {method.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+           {/* Récapitulatif */}
+           <div style={{
+             background: isDark ? '#374151' : '#f8fafc',
+             padding: '16px',
+             borderRadius: '8px',
+             marginBottom: '24px'
+           }}>
+             <div style={{
+               display: 'flex',
+               justifyContent: 'space-between',
+               marginBottom: '8px'
+             }}>
+               <span>Sous-total:</span>
+               <span>{cartStats.totalAmount.toLocaleString()} {appSettings.currency}</span>
+             </div>
+             {cartStats.totalTax > 0 && (
+               <div style={{
+                 display: 'flex',
+                 justifyContent: 'space-between',
+                 marginBottom: '8px'
+               }}>
+                 <span>TVA ({appSettings.taxRate}%):</span>
+                 <span>{cartStats.totalTax.toLocaleString()} {appSettings.currency}</span>
+               </div>
+             )}
+             <div style={{
+               display: 'flex',
+               justifyContent: 'space-between',
+               fontSize: '18px',
+               fontWeight: '700',
+               borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+               paddingTop: '8px'
+             }}>
+               <span>Total:</span>
+               <span style={{ color: '#3b82f6' }}>
+                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+           </div>
 
-            {/* CORRECTION: Montant reçu avec suggestions CFA */}
-            {paymentMethod === 'cash' && (
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  marginBottom: '8px',
-                  color: isDark ? '#f7fafc' : '#374151'
-                }}>
-                  Montant reçu
-                </label>
-                
-                {/* Suggestions de montants CFA */}
-                {suggestedAmounts.length > 0 && (
-                  <div style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-                    gap: '8px',
-                    marginBottom: '12px'
-                  }}>
-                    {suggestedAmounts.map(amount => (
-                      <button
-                        key={amount}
-                        onClick={() => {
-                          amountReceivedRef.current = amount.toString();
-                          setAmountDisplay(amount.toString());
-                        }}
-                        style={{
-                          padding: '8px 4px',
-                          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                          borderRadius: '6px',
-                          background: parseInt(amountDisplay) === amount ? '#3b82f6' : (isDark ? '#374151' : 'white'),
-                          color: parseInt(amountDisplay) === amount ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
-                          fontSize: '12px',
-                          fontWeight: '500',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {amount.toLocaleString()}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
-                <input
-                  ref={amountInputRef}
-                  type="number"
-                  value={amountDisplay}
-                  onChange={handleAmountChange}
-                  placeholder="0"
-                  min="0"
-                  step="500"
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    border: `2px solid ${parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : (isDark ? '#4a5568' : '#e2e8f0')}`,
+           {/* Méthodes de paiement */}
+           <div style={{ marginBottom: '24px' }}>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '600',
+               marginBottom: '12px',
+               color: isDark ? '#f7fafc' : '#374151'
+             }}>
+               Méthode de paiement
+             </label>
+             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+               {[
+                 { id: 'cash', label: 'Espèces', icon: DollarSign },
+                 { id: 'card', label: 'Carte', icon: CreditCard },
+                 { id: 'mobile', label: 'Mobile', icon: Smartphone }
+               ].map(method => (
+                 <button
+                   key={method.id}
+                   onClick={() => setPaymentMethod(method.id)}
+                   style={{
+                     padding: '12px',
+                     border: `2px solid ${paymentMethod === method.id ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0')}`,
+                     borderRadius: '8px',
+                     background: paymentMethod === method.id ? '#3b82f6' : 'transparent',
+                     color: paymentMethod === method.id ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
+                     cursor: 'pointer',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     alignItems: 'center',
+                     gap: '4px',
+                     fontSize: '12px',
+                     fontWeight: '500',
+                     transition: 'all 0.2s'
+                   }}
+                 >
+                   <method.icon size={16} />
+                   {method.label}
+                 </button>
+               ))}
+             </div>
+           </div>
+
+           {/* Montant reçu avec suggestions CFA */}
+           {paymentMethod === 'cash' && (
+             <div style={{ marginBottom: '24px' }}>
+               <label style={{
+                 display: 'block',
+                 fontSize: '14px',
+                 fontWeight: '600',
+                 marginBottom: '8px',
+                 color: isDark ? '#f7fafc' : '#374151'
+               }}>
+                 Montant reçu
+               </label>
+               
+               {/* Suggestions de montants CFA */}
+               {suggestedAmounts.length > 0 && (
+                 <div style={{
+                   display: 'grid',
+                   gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                   gap: '8px',
+                   marginBottom: '12px'
+                 }}>
+                   {suggestedAmounts.map(amount => (
+                     <button
+                       key={amount}
+                       onClick={() => {
+                         amountReceivedRef.current = amount.toString();
+                         setAmountDisplay(amount.toString());
+                       }}
+                       style={{
+                         padding: '8px 4px',
+                         border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                         borderRadius: '6px',
+                         background: parseInt(amountDisplay) === amount ? '#3b82f6' : (isDark ? '#374151' : 'white'),
+                         color: parseInt(amountDisplay) === amount ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
+                         fontSize: '12px',
+                         fontWeight: '500',
+                         cursor: 'pointer',
+                         transition: 'all 0.2s'
+                       }}
+                     >
+                       {amount.toLocaleString()}
+                     </button>
+                   ))}
+                 </div>
+               )}
+               
+               <input
+                 ref={amountInputRef}
+                 type="number"
+                 value={amountDisplay}
+                 onChange={handleAmountChange}
+                 placeholder="0"
+                 min="0"
+                 step="500"
+                 style={{
+                   width: '100%',
+                   padding: '12px',
+                   border: `2px solid ${parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : (isDark ? '#4a5568' : '#e2e8f0')}`,
                    borderRadius: '8px',
                    fontSize: '16px',
                    background: isDark ? '#374151' : 'white',
@@ -928,26 +1109,91 @@ const POSModule = () => {
        </div>
      )}
 
-     {/* Affichage des raccourcis en mode développement */}
-     {process.env.NODE_ENV === 'development' && !isMobile && (
+     {/* Modal de sélection client */}
+     {showCustomerModal && (
        <div style={{
          position: 'fixed',
-         bottom: '16px',
-         left: '20px',
+         top: 0,
+         left: 0,
+         right: 0,
+         bottom: 0,
          background: 'rgba(0,0,0,0.8)',
-         color: 'white',
-         padding: '8px 16px',
-         borderRadius: '8px',
-         fontSize: '12px',
          display: 'flex',
-         gap: '16px',
-         pointerEvents: 'none',
-         zIndex: 100
+         alignItems: 'center',
+         justifyContent: 'center',
+         zIndex: 1000
        }}>
-         <span>F1: Vider</span>
-         <span>F2: Recherche</span>
-         <span>F3: Payer</span>
-         <span>ESC: Annuler</span>
+         <div style={{
+           background: isDark ? '#2d3748' : 'white',
+           borderRadius: '16px',
+           padding: '24px',
+           maxWidth: '400px',
+           width: '90%',
+           maxHeight: '70vh',
+           overflowY: 'auto'
+         }}>
+           <h3 style={{
+             fontSize: '20px',
+             fontWeight: '700',
+             color: isDark ? '#f7fafc' : '#1f2937',
+             margin: '0 0 20px 0',
+             textAlign: 'center'
+           }}>
+             Sélectionner un client
+           </h3>
+
+           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+             {customers.map(customer => (
+               <button
+                 key={customer.id}
+                 onClick={() => {
+                   setSelectedCustomer(customer);
+                   setShowCustomerModal(false);
+                 }}
+                 style={{
+                   padding: '12px',
+                   border: `1px solid ${selectedCustomer.id === customer.id ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0')}`,
+                   borderRadius: '8px',
+                   background: selectedCustomer.id === customer.id ? '#3b82f615' : 'transparent',
+                   color: isDark ? '#f7fafc' : '#1f2937',
+                   cursor: 'pointer',
+                   textAlign: 'left',
+                   fontSize: '14px',
+                   fontWeight: '500',
+                   transition: 'all 0.2s'
+                 }}
+               >
+                 <div>{customer.name}</div>
+                 {customer.phone && (
+                   <div style={{
+                     fontSize: '12px',
+                     color: isDark ? '#a0aec0' : '#6b7280',
+                     marginTop: '2px'
+                   }}>
+                     {customer.phone}
+                   </div>
+                 )}
+               </button>
+             ))}
+           </div>
+
+           <button
+             onClick={() => setShowCustomerModal(false)}
+             style={{
+               width: '100%',
+               padding: '12px',
+               background: 'transparent',
+               color: isDark ? '#a0aec0' : '#6b7280',
+               border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+               borderRadius: '8px',
+               fontSize: '14px',
+               cursor: 'pointer',
+               marginTop: '16px'
+             }}
+           >
+             Fermer
+           </button>
+         </div>
        </div>
      )}
    </div>
