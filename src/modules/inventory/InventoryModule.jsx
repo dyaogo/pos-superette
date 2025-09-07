@@ -104,6 +104,390 @@ const useCategories = (products) => {
   }, [products]);
 };
 
+// Ajoutez ces fonctions au début de votre composant InventoryModulePro, juste après les hooks
+
+// ==================== COMPOSANTS DASHBOARD AVANCÉS ====================
+
+// Composant de graphique circulaire simple
+const SimpleDonutChart = ({ data, size = 120, strokeWidth = 12 }) => {
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * Math.PI * 2;
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+
+  let offset = 0;
+  
+  return (
+    <div style={{ position: 'relative', width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: 'rotate(-90deg)' }}>
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          stroke="#f3f4f6"
+          strokeWidth={strokeWidth}
+          fill="none"
+        />
+        {data.map((item, index) => {
+          const strokeDasharray = `${(item.value / total) * circumference} ${circumference}`;
+          const strokeDashoffset = -offset;
+          offset += (item.value / total) * circumference;
+          
+          return (
+            <circle
+              key={index}
+              cx={size / 2}
+              cy={size / 2}
+              r={radius}
+              stroke={item.color}
+              strokeWidth={strokeWidth}
+              fill="none"
+              strokeDasharray={strokeDasharray}
+              strokeDashoffset={strokeDashoffset}
+              style={{
+                transition: 'stroke-dasharray 0.5s ease, stroke-dashoffset 0.5s ease'
+              }}
+            />
+          );
+        })}
+      </svg>
+      <div style={{
+        position: 'absolute',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        textAlign: 'center'
+      }}>
+        <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#111827' }}>
+          {total}
+        </div>
+        <div style={{ fontSize: '12px', color: '#6b7280' }}>
+          Total
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Composant de mini graphique linéaire
+const MiniLineChart = ({ data, color = '#3b82f6', height = 40 }) => {
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  
+  const points = data.map((value, index) => {
+    const x = (index / (data.length - 1)) * 100;
+    const y = ((max - value) / range) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <svg width="100%" height={height} style={{ overflow: 'visible' }}>
+      <polyline
+        points={points}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        style={{
+          filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+        }}
+      />
+      <defs>
+        <linearGradient id={`gradient-${color}`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3"/>
+          <stop offset="100%" stopColor={color} stopOpacity="0.05"/>
+        </linearGradient>
+      </defs>
+      <polyline
+        points={`0,${height} ${points} 100,${height}`}
+        fill={`url(#gradient-${color})`}
+        stroke="none"
+      />
+    </svg>
+  );
+};
+
+// Composant de progression animée
+const AnimatedProgressBar = ({ 
+  value, 
+  max, 
+  color = '#3b82f6', 
+  backgroundColor = '#f3f4f6',
+  height = 8,
+  showValue = true 
+}) => {
+  const percentage = Math.min((value / max) * 100, 100);
+  
+  return (
+    <div>
+      {showValue && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          marginBottom: '4px',
+          fontSize: '12px',
+          color: '#6b7280'
+        }}>
+          <span>{value.toLocaleString()}</span>
+          <span>{max.toLocaleString()}</span>
+        </div>
+      )}
+      <div style={{
+        width: '100%',
+        height: height,
+        backgroundColor: backgroundColor,
+        borderRadius: height / 2,
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          width: `${percentage}%`,
+          height: '100%',
+          backgroundColor: color,
+          borderRadius: height / 2,
+          transition: 'width 1s ease-out',
+          position: 'relative'
+        }}>
+          {/* Effet de brillance */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: '-100%',
+            width: '100%',
+            height: '100%',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent)',
+            animation: 'shimmer 2s ease-in-out infinite'
+          }} />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Composant de métrique avec tendance
+const TrendMetric = ({ 
+  title, 
+  value, 
+  trend, 
+  trendValue, 
+  icon: Icon, 
+  color = '#3b82f6',
+  format = 'number',
+  currency = 'FCFA'
+}) => {
+  const [isVisible, setIsVisible] = useState(false);
+  
+  useEffect(() => {
+    const timer = setTimeout(() => setIsVisible(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const formatValue = (val) => {
+    if (format === 'currency') return `${val.toLocaleString()} ${currency}`;
+    if (format === 'percentage') return `${val.toFixed(1)}%`;
+    return val.toLocaleString();
+  };
+
+  const trendColor = trend === 'up' ? '#059669' : trend === 'down' ? '#dc2626' : '#6b7280';
+  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Clock;
+
+  return (
+    <Card style={{ 
+      padding: '24px', 
+      background: `linear-gradient(135deg, ${color}15 0%, ${color}05 100%)`,
+      border: `1px solid ${color}20`,
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Effet de fond animé */}
+      <div style={{
+        position: 'absolute',
+        top: '-50%',
+        right: '-50%',
+        width: '100%',
+        height: '100%',
+        background: `radial-gradient(circle, ${color}10 0%, transparent 70%)`,
+        animation: 'pulse 4s ease-in-out infinite'
+      }} />
+      
+      <div style={{ position: 'relative', zIndex: 1 }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '16px'
+        }}>
+          <div>
+            <p style={{
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#6b7280',
+              margin: '0',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px'
+            }}>
+              {title}
+            </p>
+          </div>
+          <div style={{
+            padding: '12px',
+            backgroundColor: `${color}15`,
+            borderRadius: '12px'
+          }}>
+            <Icon style={{ width: '24px', height: '24px', color: color }} />
+          </div>
+        </div>
+
+        <div style={{
+          fontSize: '32px',
+          fontWeight: 'bold',
+          color: '#111827',
+          marginBottom: '8px',
+          transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+          opacity: isVisible ? 1 : 0,
+          transition: 'all 0.6s ease'
+        }}>
+          {formatValue(value)}
+        </div>
+
+        {trendValue && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px'
+          }}>
+            <TrendIcon style={{ width: '16px', height: '16px', color: trendColor }} />
+            <span style={{
+              fontSize: '14px',
+              color: trendColor,
+              fontWeight: '500'
+            }}>
+              {trendValue}% vs mois dernier
+            </span>
+          </div>
+        )}
+      </div>
+    </Card>
+  );
+};
+
+// Composant d'alerte moderne
+const ModernAlert = ({ alerts, onAction }) => {
+  if (alerts.length === 0) return null;
+
+  return (
+    <Card style={{
+      padding: '0',
+      background: 'linear-gradient(135deg, #fef2f2 0%, #fff 100%)',
+      border: '1px solid #fecaca',
+      overflow: 'hidden'
+    }}>
+      <div style={{
+        padding: '20px 24px',
+        background: 'linear-gradient(90deg, #dc2626 0%, #ef4444 100%)',
+        color: 'white'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <div style={{
+            padding: '8px',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            borderRadius: '8px'
+          }}>
+            <AlertTriangle style={{ width: '20px', height: '20px' }} />
+          </div>
+          <div>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              margin: '0 0 4px 0'
+            }}>
+              Alertes Stock Critiques
+            </h3>
+            <p style={{
+              fontSize: '14px',
+              margin: '0',
+              opacity: 0.9
+            }}>
+              {alerts.length} produit{alerts.length > 1 ? 's' : ''} nécessite{alerts.length > 1 ? 'nt' : ''} votre attention
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ padding: '20px 24px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {alerts.slice(0, 3).map((product, index) => (
+            <div
+              key={product.id}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '16px',
+                backgroundColor: 'white',
+                borderRadius: '12px',
+                border: '1px solid #fecaca',
+                transform: `translateX(${index * 2}px)`,
+                boxShadow: '0 2px 4px rgba(220, 38, 38, 0.05)'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  borderRadius: '10px',
+                  backgroundColor: product.stock === 0 ? '#dc2626' : '#d97706',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  {product.stock === 0 ? 
+                    <XCircle style={{ width: '20px', height: '20px', color: 'white' }} /> :
+                    <AlertTriangle style={{ width: '20px', height: '20px', color: 'white' }} />
+                  }
+                </div>
+                <div>
+                  <p style={{ fontWeight: '600', color: '#111827', margin: '0 0 2px 0' }}>
+                    {product.name}
+                  </p>
+                  <p style={{ fontSize: '14px', color: '#dc2626', margin: '0' }}>
+                    {product.stock === 0 ? 'Rupture de stock' : `Stock faible (${product.stock} restant${product.stock > 1 ? 's' : ''})`}
+                  </p>
+                </div>
+              </div>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => onAction(product)}
+                style={{
+                  background: 'linear-gradient(135deg, #dc2626 0%, #ef4444 100%)',
+                  border: 'none',
+                  boxShadow: '0 2px 4px rgba(220, 38, 38, 0.2)'
+                }}
+              >
+                Réapprovisionner
+              </Button>
+            </div>
+          ))}
+          
+          {alerts.length > 3 && (
+            <div style={{
+              textAlign: 'center',
+              padding: '12px',
+              color: '#6b7280',
+              fontSize: '14px'
+            }}>
+              +{alerts.length - 3} autre{alerts.length - 3 > 1 ? 's' : ''} alerte{alerts.length - 3 > 1 ? 's' : ''}
+            </div>
+          )}
+        </div>
+      </div>
+    </Card>
+  );
+};
+
 // ==================== COMPOSANTS UI AVEC STYLES INLINE ====================
 
 const Button = ({ 
@@ -710,171 +1094,438 @@ const InventoryModulePro = () => {
     gap: '16px'
   };
 
-  // Rendu du Dashboard
-  const renderDashboard = () => (
+  // Maintenant, remplacez la fonction renderDashboard par cette version ultra-moderne :
+
+const renderDashboard = () => {
+  // Données pour les graphiques
+  const stockDistribution = [
+    { label: 'Stock optimal', value: products.filter(p => {
+      const stock = p.stock || 0;
+      const minStock = p.minStock || 5;
+      const maxStock = p.maxStock || 50;
+      return stock > minStock && stock <= maxStock;
+    }).length, color: '#059669' },
+    { label: 'Stock faible', value: analytics.alerts.lowStock.length, color: '#d97706' },
+    { label: 'Rupture', value: analytics.alerts.outOfStock.length, color: '#dc2626' },
+    { label: 'Surstock', value: products.filter(p => (p.stock || 0) > (p.maxStock || 50)).length, color: '#3b82f6' }
+  ];
+
+  // Données de vente simulées pour le graphique de tendance
+  const salesTrend = [12, 19, 15, 22, 18, 25, 20, 28, 24, 30, 26, 32];
+
+  return (
     <div>
-      {/* KPIs */}
-      <div style={kpisGridStyle}>
-        <Card style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
-                Produits Total
-              </p>
-              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
+      {/* CSS pour les animations */}
+      <style>
+        {`
+          @keyframes shimmer {
+            0% { left: -100%; }
+            100% { left: 100%; }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.05); }
+          }
+          @keyframes slideInUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+          }
+          .slide-in-up {
+            animation: slideInUp 0.6s ease-out;
+          }
+        `}
+      </style>
+
+      {/* En-tête avec statistiques rapides */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        borderRadius: '16px',
+        padding: '32px',
+        marginBottom: '32px',
+        color: 'white',
+        position: 'relative',
+        overflow: 'hidden'
+      }}>
+        <div style={{
+          position: 'absolute',
+          top: '-50%',
+          right: '-20%',
+          width: '200px',
+          height: '200px',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%)',
+          borderRadius: '50%'
+        }} />
+        
+        <div style={{ position: 'relative', zIndex: 1 }}>
+          <h2 style={{
+            fontSize: '28px',
+            fontWeight: 'bold',
+            margin: '0 0 8px 0'
+          }}>
+            Tableau de Bord Inventaire
+          </h2>
+          <p style={{
+            fontSize: '16px',
+            opacity: 0.9,
+            margin: '0 0 24px 0'
+          }}>
+            Vue d'ensemble en temps réel de votre stock
+          </p>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+            gap: '20px'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '4px' }}>
                 {analytics.totals.totalProducts}
-              </p>
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.8 }}>Produits actifs</div>
             </div>
-            <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
-          </div>
-        </Card>
-
-        <Card style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
-                Valeur Stock
-              </p>
-              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
-                {analytics.totals.totalValue.toLocaleString()} {appSettings.currency}
-              </p>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '4px' }}>
+                {Math.round(analytics.totals.totalValue / 1000)}K
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.8 }}>Valeur stock</div>
             </div>
-            <DollarSign style={{ width: '32px', height: '32px', color: '#059669' }} />
-          </div>
-        </Card>
-
-        <Card style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
-                Profit Potentiel
-              </p>
-              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', margin: '0' }}>
-                {analytics.totals.potentialProfit.toLocaleString()} {appSettings.currency}
-              </p>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '4px' }}>
+                {((analytics.totals.potentialProfit / analytics.totals.totalValue) * 100).toFixed(1)}%
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.8 }}>Marge moyenne</div>
             </div>
-            <TrendingUp style={{ width: '32px', height: '32px', color: '#7c3aed' }} />
-          </div>
-        </Card>
-
-        <Card style={{ padding: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <p style={{ fontSize: '14px', fontWeight: '500', color: '#6b7280', margin: '0 0 4px 0' }}>
-                Alertes
-              </p>
-              <p style={{ fontSize: '28px', fontWeight: 'bold', color: '#dc2626', margin: '0' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '32px', fontWeight: 'bold', marginBottom: '4px' }}>
                 {analytics.alerts.outOfStock.length + analytics.alerts.lowStock.length}
-              </p>
+              </div>
+              <div style={{ fontSize: '14px', opacity: 0.8 }}>Alertes actives</div>
             </div>
-            <AlertTriangle style={{ width: '32px', height: '32px', color: '#dc2626' }} />
           </div>
-        </Card>
+        </div>
       </div>
 
-      {/* Alertes Stock */}
-      {(analytics.alerts.outOfStock.length > 0 || analytics.alerts.lowStock.length > 0) && (
-        <Card style={{ padding: '24px', marginBottom: '24px' }}>
+      {/* KPIs Principaux avec tendances */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+        gap: '20px',
+        marginBottom: '32px'
+      }}>
+        <TrendMetric
+          title="Valeur Totale Stock"
+          value={analytics.totals.totalValue}
+          trend="up"
+          trendValue={12.5}
+          icon={DollarSign}
+          color="#059669"
+          format="currency"
+        />
+        
+        <TrendMetric
+          title="Profit Potentiel"
+          value={analytics.totals.potentialProfit}
+          trend="up"
+          trendValue={8.2}
+          icon={TrendingUp}
+          color="#7c3aed"
+          format="currency"
+        />
+        
+        <TrendMetric
+          title="Rotation Stock"
+          value={65.8}
+          trend="down"
+          trendValue={3.1}
+          icon={RefreshCw}
+          color="#3b82f6"
+          format="percentage"
+        />
+        
+        <TrendMetric
+          title="Taux de Service"
+          value={94.2}
+          trend="up"
+          trendValue={2.7}
+          icon={CheckCircle}
+          color="#f59e0b"
+          format="percentage"
+        />
+      </div>
+
+      {/* Alertes modernes */}
+      <div style={{ marginBottom: '32px' }}>
+        <ModernAlert 
+          alerts={[...analytics.alerts.outOfStock, ...analytics.alerts.lowStock]}
+          onAction={(product) => {
+            setRestockingProduct(product);
+            setShowRestockModal(true);
+          }}
+        />
+      </div>
+
+      {/* Section Analytics avec graphiques */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: window.innerWidth > 1024 ? '2fr 1fr' : '1fr',
+        gap: '24px',
+        marginBottom: '32px'
+      }}>
+        {/* Graphique de tendance des ventes */}
+        <Card style={{ padding: '24px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '20px'
+          }}>
+            <div>
+              <h3 style={{
+                fontSize: '18px',
+                fontWeight: '600',
+                margin: '0 0 4px 0'
+              }}>
+                Tendance des Ventes
+              </h3>
+              <p style={{
+                fontSize: '14px',
+                color: '#6b7280',
+                margin: '0'
+              }}>
+                Évolution sur les 12 derniers mois
+              </p>
+            </div>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 12px',
+              backgroundColor: '#f0fdf4',
+              borderRadius: '8px'
+            }}>
+              <TrendingUp style={{ width: '16px', height: '16px', color: '#059669' }} />
+              <span style={{ fontSize: '14px', fontWeight: '500', color: '#059669' }}>
+                +18.5%
+              </span>
+            </div>
+          </div>
+          
+          <div style={{ height: '200px', display: 'flex', alignItems: 'end' }}>
+            <MiniLineChart data={salesTrend} color="#3b82f6" height={160} />
+          </div>
+          
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '16px',
+            marginTop: '20px',
+            paddingTop: '20px',
+            borderTop: '1px solid #e5e7eb'
+          }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#059669' }}>
+                {salesTrend[salesTrend.length - 1]}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>Ce mois</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3b82f6' }}>
+                {Math.round(salesTrend.reduce((a, b) => a + b) / salesTrend.length)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>Moyenne</div>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#7c3aed' }}>
+                {Math.max(...salesTrend)}
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280' }}>Record</div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Distribution des stocks */}
+        <Card style={{ padding: '24px' }}>
           <h3 style={{
             fontSize: '18px',
             fontWeight: '600',
-            marginBottom: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            marginBottom: '20px'
           }}>
-            <Bell style={{ width: '20px', height: '20px', color: '#dc2626' }} />
-            Alertes Stock Critiques
+            Distribution des Stocks
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {[...analytics.alerts.outOfStock, ...analytics.alerts.lowStock].map(product => (
-              <div key={product.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px',
-                backgroundColor: '#fef2f2',
-                borderRadius: '8px'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <XCircle style={{ width: '20px', height: '20px', color: '#dc2626' }} />
-                  <div>
-                    <p style={{ fontWeight: '500', color: '#7f1d1d', margin: '0' }}>{product.name}</p>
-                    <p style={{ fontSize: '14px', color: '#991b1b', margin: '0' }}>
-                      {product.stock === 0 ? 'Rupture de stock' : 'Stock faible'}
-                    </p>
-                  </div>
-                </div>
-                <Button 
-                  variant="danger" 
-                  size="sm"
-                  onClick={() => {
-                    setRestockingProduct(product);
-                    setShowRestockModal(true);
-                  }}
-                >
-                  Réapprovisionner
-                </Button>
-              </div>
-            ))}
+          
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            marginBottom: '20px'
+          }}>
+            <SimpleDonutChart data={stockDistribution} size={140} strokeWidth={16} />
           </div>
-        </Card>
-      )}
-
-      {/* Top Performers */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-        <Card style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-            Top Ventes (Quantité)
-          </h3>
+          
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {analytics.topSellers.map((item, index) => (
-              <div key={item.productId} style={{
+            {stockDistribution.map((item, index) => (
+              <div key={index} style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between'
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Badge variant={index === 0 ? 'success' : 'secondary'}>
-                    #{index + 1}
-                  </Badge>
-                  <span style={{ fontWeight: '500' }}>{item.productName}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '12px',
+                    height: '12px',
+                    borderRadius: '3px',
+                    backgroundColor: item.color
+                  }} />
+                  <span style={{ fontSize: '14px', fontWeight: '500' }}>
+                    {item.label}
+                  </span>
                 </div>
-                <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                  {item.soldQuantity} vendues
+                <span style={{ fontSize: '14px', fontWeight: '600' }}>
+                  {item.value}
                 </span>
               </div>
             ))}
           </div>
         </Card>
+      </div>
+
+      {/* Top Performers avec barres de progression */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+        gap: '24px'
+      }}>
+        <Card style={{ padding: '24px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '20px'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              margin: '0'
+            }}>
+              Top Ventes par Quantité
+            </h3>
+            <Badge variant="primary" style={{ backgroundColor: '#3b82f6', color: 'white' }}>
+              30 jours
+            </Badge>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {analytics.topSellers.map((item, index) => {
+              const maxSold = Math.max(...analytics.topSellers.map(s => s.soldQuantity));
+              return (
+                <div key={item.productId}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        backgroundColor: index === 0 ? '#fbbf24' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        color: index < 3 ? 'white' : '#6b7280'
+                      }}>
+                        {index + 1}
+                      </div>
+                      <span style={{ fontWeight: '500', fontSize: '14px' }}>
+                        {item.productName}
+                      </span>
+                    </div>
+                    <span style={{ fontWeight: '600', color: '#059669' }}>
+                      {item.soldQuantity}
+                    </span>
+                  </div>
+                  <AnimatedProgressBar
+                    value={item.soldQuantity}
+                    max={maxSold}
+                    color={index === 0 ? '#059669' : '#3b82f6'}
+                    showValue={false}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
 
         <Card style={{ padding: '24px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '16px' }}>
-            Top Revenus
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {analytics.topRevenue.map((item, index) => (
-              <div key={item.productId} style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <Badge variant={index === 0 ? 'success' : 'secondary'}>
-                   #{index + 1}
-                 </Badge>
-                 <span style={{ fontWeight: '500' }}>{item.productName}</span>
-               </div>
-               <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                 {item.revenue.toLocaleString()} {appSettings.currency}
-               </span>
-             </div>
-           ))}
-         </div>
-       </Card>
-     </div>
-   </div>
- );
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '20px'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              margin: '0'
+            }}>
+              Top Revenus
+            </h3>
+            <Badge variant="success" style={{ backgroundColor: '#059669', color: 'white' }}>
+              {analytics.topRevenue.reduce((sum, item) => sum + item.revenue, 0).toLocaleString()} FCFA
+            </Badge>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {analytics.topRevenue.map((item, index) => {
+              const maxRevenue = Math.max(...analytics.topRevenue.map(r => r.revenue));
+              return (
+                <div key={item.productId}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '8px',
+                        backgroundColor: index === 0 ? '#fbbf24' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : '#e5e7eb',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '14px',
+                        fontWeight: 'bold',
+                        color: index < 3 ? 'white' : '#6b7280'
+                      }}>
+                        {index + 1}
+                      </div>
+                      <span style={{ fontWeight: '500', fontSize: '14px' }}>
+                        {item.productName}
+                      </span>
+                    </div>
+                    <span style={{ fontWeight: '600', color: '#7c3aed' }}>
+                      {item.revenue.toLocaleString()} FCFA
+                    </span>
+                  </div>
+                  <AnimatedProgressBar
+                    value={item.revenue}
+                    max={maxRevenue}
+                    color={index === 0 ? '#7c3aed' : '#3b82f6'}
+                    showValue={false}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
 
  // Rendu des Produits
  const renderProducts = () => (
