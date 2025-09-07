@@ -190,27 +190,93 @@ const InventoryHistoryModule = () => {
     };
   }, [filteredMovements]);
 
-  // Export des données
+  // Export des données - CORRIGÉ
   const handleExport = () => {
-    const csvContent = "data:text/csv;charset=utf-8," + 
-      "Date,Type,Produit,Quantité,Motif,Référence,Utilisateur\n" +
-      filteredMovements.map(movement => [
+    try {
+      // Créer les en-têtes CSV
+      const headers = ['Date', 'Type', 'Produit', 'Quantité', 'Motif', 'Référence', 'Utilisateur'];
+      
+      // Créer les lignes de données
+      const csvData = filteredMovements.map(movement => [
         new Date(movement.date).toLocaleDateString('fr-FR'),
         movement.type === 'in' ? 'Entrée' : movement.type === 'out' ? 'Sortie' : 'Transfert',
-        movement.productName,
+        `"${movement.productName.replace(/"/g, '""')}"`, // Échapper les guillemets
         movement.quantity,
-        movement.reason,
+        `"${movement.reason.replace(/"/g, '""')}"`, // Échapper les guillemets
         movement.reference,
         movement.user
-      ].join(",")).join("\n");
+      ]);
 
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `mouvements_stock_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+      // Combiner headers et données
+      const allRows = [headers, ...csvData];
+      
+      // Créer le contenu CSV
+      const csvContent = allRows.map(row => row.join(',')).join('\n');
+      
+      // Créer le BOM UTF-8 pour l'encoding correct
+      const BOM = '\uFEFF';
+      const csvWithBOM = BOM + csvContent;
+      
+      // Créer le blob et télécharger
+      const blob = new Blob([csvWithBOM], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `mouvements_stock_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+      
+      // Notification de succès
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #10b981;
+        color: white;
+        padding: 16px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      `;
+      toast.textContent = `Export réussi! ${filteredMovements.length} mouvements exportés.`;
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 3000);
+      
+    } catch (error) {
+      console.error('Erreur lors de l\'export:', error);
+      
+      // Notification d'erreur
+      const toast = document.createElement('div');
+      toast.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: #ef4444;
+        color: white;
+        padding: 16px;
+        border-radius: 8px;
+        z-index: 10000;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      `;
+      toast.textContent = 'Erreur lors de l\'export CSV';
+      document.body.appendChild(toast);
+      setTimeout(() => {
+        if (document.body.contains(toast)) {
+          document.body.removeChild(toast);
+        }
+      }, 3000);
+    }
   };
 
   return (
@@ -469,22 +535,23 @@ const InventoryHistoryModule = () => {
           <div>
             <button
               onClick={handleExport}
+              disabled={filteredMovements.length === 0}
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
                 padding: '8px 16px',
-                backgroundColor: '#059669',
+                backgroundColor: filteredMovements.length > 0 ? '#059669' : '#9ca3af',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
-                cursor: 'pointer',
+                cursor: filteredMovements.length > 0 ? 'pointer' : 'not-allowed',
                 fontSize: '14px',
                 fontWeight: '500'
               }}
             >
               <Download style={{ width: '16px', height: '16px' }} />
-              Export CSV
+              Export CSV ({filteredMovements.length})
             </button>
           </div>
         </div>
@@ -513,10 +580,10 @@ const InventoryHistoryModule = () => {
                     transition: 'background-color 0.2s'
                   }}
                   onMouseEnter={(e) => {
-                    e.target.style.backgroundColor = isDark ? '#4a5568' : '#f9fafb';
+                    e.currentTarget.style.backgroundColor = isDark ? '#4a5568' : '#f9fafb';
                   }}
                   onMouseLeave={(e) => {
-                    e.target.style.backgroundColor = 'transparent';
+                    e.currentTarget.style.backgroundColor = 'transparent';
                   }}
                 >
                   {/* Icône */}
