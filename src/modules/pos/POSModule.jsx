@@ -21,7 +21,9 @@ const POSModule = ({ onNavigate }) => {
     globalProducts, 
     processSale, 
     customers, 
-    appSettings 
+    appSettings,
+    credits,        // ✅ AJOUT
+    setCredits      // ✅ AJOUT
   } = useApp();
   
   const { isMobile } = useResponsive();
@@ -182,6 +184,40 @@ const POSModule = ({ onNavigate }) => {
     setAmountDisplay(value);
   }, []);
 
+  // ✅ CORRECTION: Fonction pour ajouter un crédit
+  const addCreditSale = useCallback(() => {
+    const credit = {
+      id: Date.now(),
+      customerId: selectedCustomer.id,
+      customerName: selectedCustomer.name,
+      amount: cartStats.finalTotal,
+      originalAmount: cartStats.finalTotal,
+      description: `Vente à crédit du ${new Date().toLocaleDateString('fr-FR')}`,
+      createdAt: new Date().toISOString(),
+      dueDate: (() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 30); // 30 jours par défaut
+        return date.toISOString();
+      })(),
+      status: 'pending',
+      payments: [],
+      remainingAmount: cartStats.finalTotal,
+      items: cart.map(item => ({
+        productId: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.price * item.quantity
+      }))
+    };
+
+    // ✅ Ajouter aux crédits
+    setCredits(prevCredits => [...prevCredits, credit]);
+    
+    return credit;
+  }, [cartStats.finalTotal, selectedCustomer, cart, setCredits]);
+
+  // ✅ CORRECTION: Fonction handleCheckout avec gestion crédit
   const handleCheckout = useCallback(() => {
     if (!cashSession) {
       toast.error('Caisse fermée ! Impossible de finaliser la vente.');
@@ -195,50 +231,101 @@ const POSModule = ({ onNavigate }) => {
 
     const amountReceived = parseFloat(amountReceivedRef.current) || 0;
 
+    // ✅ Validation spécifique pour espèces
     if (paymentMethod === 'cash' && amountReceived < cartStats.finalTotal) {
       toast.error('Montant reçu insuffisant!');
       amountInputRef.current?.focus();
       return;
     }
 
-    try {
-      const result = processSale(
-        cart,
-        paymentMethod,
-        paymentMethod === 'cash' ? amountReceived : cartStats.finalTotal,
-        selectedCustomer.id
-      );
+    // ✅ Validation spécifique pour crédit
+    if (paymentMethod === 'credit' && selectedCustomer.id === 1) {
+      toast.error('Sélectionnez un client pour la vente à crédit');
+      return;
+    }
 
-      if (result) {
-        clearCart();
-        setShowPaymentModal(false);
-        amountReceivedRef.current = '';
-        setAmountDisplay('');
-        setNotes('');
-        setPaymentMethod('cash');
-        setSelectedCustomer(customers?.[0] || { id: 1, name: 'Client Comptant' });
+    try {
+      // ✅ GESTION SPÉCIALE POUR VENTE À CRÉDIT
+      if (paymentMethod === 'credit') {
+        // Créer le crédit
+        const credit = addCreditSale();
         
-        toast.success(
-          `✅ Vente confirmée! Reçu: ${result.receiptNumber}`, 
-          { duration: 4000 }
+        // Enregistrer quand même la vente pour l'historique
+        const result = processSale(
+          cart,
+          'credit',
+          0, // Montant reçu = 0 pour crédit
+          selectedCustomer.id
         );
-        
-        if (paymentMethod === 'cash' && amountReceived > cartStats.finalTotal) {
+
+        if (result && credit) {
+          clearCart();
+          setShowPaymentModal(false);
+          amountReceivedRef.current = '';
+          setAmountDisplay('');
+          setNotes('');
+          setPaymentMethod('cash');
+          setSelectedCustomer(customers?.[0] || { id: 1, name: 'Client Comptant' });
+          
+          toast.success(
+            `✅ Vente à crédit confirmée! Client: ${selectedCustomer.name}`, 
+            { 
+              duration: 4000,
+              style: {
+                background: '#8b5cf6',
+                color: 'white'
+              }
+            }
+          );
+          
           toast.info(
-            `💰 Monnaie: ${(amountReceived - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`, 
-            { duration: 6000 }
+            `📋 Crédit ajouté: ${cartStats.finalTotal.toLocaleString()} ${appSettings.currency}`, 
+            { 
+              duration: 5000,
+              style: {
+                background: '#3b82f6',
+                color: 'white'
+              }
+            }
           );
         }
-        
       } else {
-        throw new Error('Échec de l\'enregistrement');
+        // ✅ GESTION NORMALE POUR AUTRES MODES
+        const result = processSale(
+          cart,
+          paymentMethod,
+          paymentMethod === 'cash' ? amountReceived : cartStats.finalTotal,
+          selectedCustomer.id
+        );
+
+        if (result) {
+          clearCart();
+          setShowPaymentModal(false);
+          amountReceivedRef.current = '';
+          setAmountDisplay('');
+          setNotes('');
+          setPaymentMethod('cash');
+          setSelectedCustomer(customers?.[0] || { id: 1, name: 'Client Comptant' });
+          
+          toast.success(
+            `✅ Vente confirmée! Reçu: ${result.receiptNumber}`, 
+            { duration: 4000 }
+          );
+          
+          if (paymentMethod === 'cash' && amountReceived > cartStats.finalTotal) {
+            toast.info(
+              `💰 Monnaie: ${(amountReceived - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`, 
+              { duration: 6000 }
+            );
+          }
+        }
       }
-      
+        
     } catch (error) {
       console.error('❌ Erreur lors de la vente:', error);
       toast.error('Erreur lors de la vente: ' + error.message);
     }
-  }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart, cashSession, customers]);
+  }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart, cashSession, customers, addCreditSale]);
 
   // ==================== GESTIONNAIRE D'AJOUT AU PANIER ====================
   const handleAddToCart = useCallback((product) => {
@@ -474,7 +561,7 @@ const POSModule = ({ onNavigate }) => {
 
             {/* Statut caisse + actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Statut caisse */}
+              {/* ✅ CORRECTION: Statut caisse cliquable pour fermeture */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -484,16 +571,35 @@ const POSModule = ({ onNavigate }) => {
                 background: cashSession ? '#10b98115' : '#ef444415',
                 color: cashSession ? '#10b981' : '#ef4444',
                 fontSize: '14px',
-                fontWeight: '500'
-              }}>
+                fontWeight: '500',
+                cursor: cashSession ? 'pointer' : 'default',
+                transition: 'all 0.2s'
+              }}
+              onClick={() => {
+                if (cashSession) {
+                  // ✅ CORRECTION: Navigation vers module caisse pour fermeture
+                  onNavigate('cash');
+                }
+              }}
+              onMouseEnter={(e) => {
+                if (cashSession) {
+                  e.target.style.background = '#10b98125';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (cashSession) {
+                  e.target.style.background = '#10b98115';
+                }
+              }}
+              >
                 {cashSession ? <Unlock size={16} /> : <Lock size={16} />}
-                {cashSession ? 'Caisse Ouverte' : 'Caisse Fermée'}
+                {cashSession ? 'Caisse Ouverte • Cliquer pour fermer' : 'Caisse Fermée'}
               </div>
 
-              {/* Bouton caisse */}
+              {/* ✅ CORRECTION: Bouton caisse fonctionnel */}
               {!cashSession && (
                 <button
-                  onClick={() => onNavigate('cash')}
+                  onClick={() => onNavigate('cash')} // ✅ Navigation fonctionnelle
                   style={{
                     padding: '8px 16px',
                     background: '#3b82f6',
@@ -610,7 +716,7 @@ const POSModule = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* ✅ CORRECTION 1: Section Panier avec boutons adaptés à la hauteur */}
+      {/* Section Panier avec boutons adaptés à la hauteur */}
       <div style={{
         background: isDark ? '#2d3748' : 'white',
         borderLeft: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
@@ -639,7 +745,7 @@ const POSModule = ({ onNavigate }) => {
             Panier
           </h2>
           
-          {/* ✅ CORRECTION 2: Sélection du client */}
+          {/* Sélection du client */}
           <div style={{ marginBottom: '12px' }}>
             <label style={{
               display: 'block',
@@ -710,7 +816,7 @@ const POSModule = ({ onNavigate }) => {
           flex: 1,
           overflowY: 'auto',
           padding: '16px',
-          minHeight: 0 // Important pour permettre le flex shrink
+          minHeight: 0
         }}>
           {cart.length === 0 ? (
             <div style={{
@@ -733,13 +839,13 @@ const POSModule = ({ onNavigate }) => {
           )}
         </div>
 
-        {/* ✅ CORRECTION 1: Footer Panier FIXÉ avec hauteur adaptative */}
+        {/* Footer Panier FIXÉ avec hauteur adaptative */}
         {cart.length > 0 && (
           <div style={{
             padding: '24px',
             borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
             background: isDark ? '#2d3748' : 'white',
-            flexShrink: 0 // Empêche la compression
+            flexShrink: 0
           }}>
             <div style={{
               display: 'flex',
@@ -753,7 +859,7 @@ const POSModule = ({ onNavigate }) => {
               <span style={{ color: '#3b82f6' }}>
                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
               </span>
-            </div>
+              </div>
             
             <button
               onClick={() => {
@@ -857,347 +963,415 @@ const POSModule = ({ onNavigate }) => {
               display: 'flex',
               alignItems: 'center',
               gap: '8px'
-           }}>
-             <User size={16} color="#3b82f6" />
-             <span style={{
-               fontSize: '14px',
-               fontWeight: '500',
-               color: isDark ? '#f7fafc' : '#1f2937'
-             }}>
-               Client: {selectedCustomer.name}
-             </span>
-           </div>
+            }}>
+              <User size={16} color="#3b82f6" />
+              <span style={{
+                fontSize: '14px',
+                fontWeight: '500',
+                color: isDark ? '#f7fafc' : '#1f2937'
+              }}>
+                Client: {selectedCustomer.name}
+              </span>
+            </div>
 
-           {/* Récapitulatif */}
-           <div style={{
-             background: isDark ? '#374151' : '#f8fafc',
-             padding: '16px',
-             borderRadius: '8px',
-             marginBottom: '24px'
-           }}>
-             <div style={{
-               display: 'flex',
-               justifyContent: 'space-between',
-               marginBottom: '8px'
-             }}>
-               <span>Sous-total:</span>
-               <span>{cartStats.totalAmount.toLocaleString()} {appSettings.currency}</span>
-             </div>
-             {cartStats.totalTax > 0 && (
-               <div style={{
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 marginBottom: '8px'
-               }}>
-                 <span>TVA ({appSettings.taxRate}%):</span>
-                 <span>{cartStats.totalTax.toLocaleString()} {appSettings.currency}</span>
-               </div>
-             )}
-             <div style={{
-               display: 'flex',
-               justifyContent: 'space-between',
-               fontSize: '18px',
-               fontWeight: '700',
-               borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-               paddingTop: '8px'
-             }}>
-               <span>Total:</span>
-               <span style={{ color: '#3b82f6' }}>
-                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
-               </span>
-             </div>
-           </div>
+            {/* Récapitulatif */}
+            <div style={{
+              background: isDark ? '#374151' : '#f8fafc',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '24px'
+            }}>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                marginBottom: '8px'
+              }}>
+                <span>Sous-total:</span>
+                <span>{cartStats.totalAmount.toLocaleString()} {appSettings.currency}</span>
+              </div>
+              {cartStats.totalTax > 0 && (
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  marginBottom: '8px'
+                }}>
+                  <span>TVA ({appSettings.taxRate}%):</span>
+                  <span>{cartStats.totalTax.toLocaleString()} {appSettings.currency}</span>
+                </div>
+              )}
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                fontSize: '18px',
+                fontWeight: '700',
+                borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                paddingTop: '8px'
+              }}>
+                <span>Total:</span>
+                <span style={{ color: '#3b82f6' }}>
+                  {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
+                </span>
+              </div>
+            </div>
 
-           {/* Méthodes de paiement */}
-           <div style={{ marginBottom: '24px' }}>
-             <label style={{
-               display: 'block',
-               fontSize: '14px',
-               fontWeight: '600',
-               marginBottom: '12px',
-               color: isDark ? '#f7fafc' : '#374151'
-             }}>
-               Méthode de paiement
-             </label>
-             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-               {[
-                 { id: 'cash', label: 'Espèces', icon: DollarSign },
-                 { id: 'card', label: 'Carte', icon: CreditCard },
-                 { id: 'mobile', label: 'Mobile', icon: Smartphone }
-               ].map(method => (
-                 <button
-                   key={method.id}
-                   onClick={() => setPaymentMethod(method.id)}
-                   style={{
-                     padding: '12px',
-                     border: `2px solid ${paymentMethod === method.id ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0')}`,
-                     borderRadius: '8px',
-                     background: paymentMethod === method.id ? '#3b82f6' : 'transparent',
-                     color: paymentMethod === method.id ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
-                     cursor: 'pointer',
-                     display: 'flex',
-                     flexDirection: 'column',
-                     alignItems: 'center',
-                     gap: '4px',
-                     fontSize: '12px',
-                     fontWeight: '500',
-                     transition: 'all 0.2s'
-                   }}
-                 >
-                   <method.icon size={16} />
-                   {method.label}
-                 </button>
-               ))}
-             </div>
-           </div>
+            {/* ✅ CORRECTION: Modes de paiement sans "Carte", avec "Crédit" */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '12px',
+                color: isDark ? '#f7fafc' : '#374151'
+              }}>
+                Méthode de paiement
+              </label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
+                {[
+                  { id: 'cash', label: 'Espèces', icon: DollarSign },
+                  { id: 'mobile', label: 'Mobile', icon: Smartphone },
+                  { 
+                    id: 'credit', 
+                    label: 'Crédit', 
+                    icon: CreditCard,
+                    disabled: selectedCustomer.id === 1
+                  }
+                ].map(method => (
+                  <button
+                    key={method.id}
+                    onClick={() => {
+                      if (!method.disabled) {
+                        setPaymentMethod(method.id);
+                      }
+                    }}
+                    disabled={method.disabled}
+                    style={{
+                      padding: '12px',
+                      border: `2px solid ${
+                        method.disabled 
+                          ? '#6b7280' 
+                          : paymentMethod === method.id 
+                            ? (method.id === 'credit' ? '#8b5cf6' : '#3b82f6')
+                            : (isDark ? '#4a5568' : '#e2e8f0')
+                      }`,
+                      borderRadius: '8px',
+                      background: method.disabled 
+                        ? '#f3f4f6' 
+                        : paymentMethod === method.id 
+                          ? (method.id === 'credit' ? '#8b5cf6' : '#3b82f6')
+                          : 'transparent',
+                      color: method.disabled 
+                        ? '#9ca3af' 
+                        : paymentMethod === method.id 
+                          ? 'white' 
+                          : (isDark ? '#f7fafc' : '#1f2937'),
+                      cursor: method.disabled ? 'not-allowed' : 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      fontSize: '12px',
+                      fontWeight: '500',
+                      transition: 'all 0.2s',
+                      opacity: method.disabled ? 0.5 : 1
+                    }}
+                  >
+                    <method.icon size={16} />
+                    {method.label}
+                    {method.disabled && (
+                      <span style={{ fontSize: '10px', marginTop: '2px' }}>
+                        (Sélectionnez un client)
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              
+              {/* Message informatif pour le crédit */}
+              {selectedCustomer.id === 1 && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px',
+                  background: '#fef3c7',
+                  border: '1px solid #f59e0b',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#92400e',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <AlertTriangle size={14} />
+                  Sélectionnez un client spécifique pour activer le paiement à crédit
+                </div>
+              )}
+              
+              {/* Message informatif quand crédit sélectionné */}
+              {paymentMethod === 'credit' && selectedCustomer.id !== 1 && (
+                <div style={{
+                  marginTop: '8px',
+                  padding: '8px',
+                  background: '#f3e8ff',
+                  border: '1px solid #8b5cf6',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  color: '#6b46c1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <Check size={14} />
+                  Vente à crédit pour {selectedCustomer.name} • Échéance: 30 jours
+                </div>
+              )}
+            </div>
 
-           {/* Montant reçu avec suggestions CFA */}
-           {paymentMethod === 'cash' && (
-             <div style={{ marginBottom: '24px' }}>
-               <label style={{
-                 display: 'block',
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 marginBottom: '8px',
-                 color: isDark ? '#f7fafc' : '#374151'
-               }}>
-                 Montant reçu
-               </label>
-               
-               {/* Suggestions de montants CFA */}
-               {suggestedAmounts.length > 0 && (
-                 <div style={{
-                   display: 'grid',
-                   gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
-                   gap: '8px',
-                   marginBottom: '12px'
-                 }}>
-                   {suggestedAmounts.map(amount => (
-                     <button
-                       key={amount}
-                       onClick={() => {
-                         amountReceivedRef.current = amount.toString();
-                         setAmountDisplay(amount.toString());
-                       }}
-                       style={{
-                         padding: '8px 4px',
-                         border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                         borderRadius: '6px',
-                         background: parseInt(amountDisplay) === amount ? '#3b82f6' : (isDark ? '#374151' : 'white'),
-                         color: parseInt(amountDisplay) === amount ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
-                         fontSize: '12px',
-                         fontWeight: '500',
-                         cursor: 'pointer',
-                         transition: 'all 0.2s'
-                       }}
-                     >
-                       {amount.toLocaleString()}
-                     </button>
-                   ))}
-                 </div>
-               )}
-               
-               <input
-                 ref={amountInputRef}
-                 type="number"
-                 value={amountDisplay}
-                 onChange={handleAmountChange}
-                 placeholder="0"
-                 min="0"
-                 step="500"
-                 style={{
-                   width: '100%',
-                   padding: '12px',
-                   border: `2px solid ${parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : (isDark ? '#4a5568' : '#e2e8f0')}`,
-                   borderRadius: '8px',
-                   fontSize: '16px',
-                   background: isDark ? '#374151' : 'white',
-                   color: isDark ? '#f7fafc' : '#1f2937',
-                   outline: 'none'
-                 }}
-                 autoFocus
-               />
-               {amountDisplay && (
-                 <div style={{ 
-                   marginTop: '8px', 
-                   fontSize: '14px', 
-                   color: parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : '#ef4444',
-                   fontWeight: '500'
-                 }}>
-                   {parseFloat(amountDisplay) >= cartStats.finalTotal ? (
-                     `✅ Monnaie à rendre: ${Math.max(0, parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`
-                   ) : (
-                     `❌ Manque: ${(cartStats.finalTotal - parseFloat(amountDisplay)).toLocaleString()} ${appSettings.currency}`
-                   )}
-                 </div>
-               )}
-             </div>
-           )}
+            {/* Montant reçu seulement pour espèces */}
+            {paymentMethod === 'cash' && (
+              <div style={{ marginBottom: '24px' }}>
+                <label style={{
+                  display: 'block',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  marginBottom: '8px',
+                  color: isDark ? '#f7fafc' : '#374151'
+                }}>
+                  Montant reçu
+                </label>
+                
+                {/* Suggestions de montants CFA */}
+                {suggestedAmounts.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                    gap: '8px',
+                    marginBottom: '12px'
+                  }}>
+                    {suggestedAmounts.map(amount => (
+                      <button
+                        key={amount}
+                        onClick={() => {
+                          amountReceivedRef.current = amount.toString();
+                          setAmountDisplay(amount.toString());
+                        }}
+                        style={{
+                          padding: '8px 4px',
+                          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          background: parseInt(amountDisplay) === amount ? '#3b82f6' : (isDark ? '#374151' : 'white'),
+                          color: parseInt(amountDisplay) === amount ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {amount.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
+                <input
+                  ref={amountInputRef}
+                  type="number"
+                  value={amountDisplay}
+                  onChange={handleAmountChange}
+                  placeholder="0"
+                  min="0"
+                  step="500"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: `2px solid ${parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : (isDark ? '#4a5568' : '#e2e8f0')}`,
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    background: isDark ? '#374151' : 'white',
+                    color: isDark ? '#f7fafc' : '#1f2937',
+                    outline: 'none'
+                  }}
+                  autoFocus
+                />
+                {amountDisplay && (
+                  <div style={{ 
+                    marginTop: '8px', 
+                    fontSize: '14px', 
+                    color: parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : '#ef4444',
+                    fontWeight: '500'
+                  }}>
+                    {parseFloat(amountDisplay) >= cartStats.finalTotal ? (
+                      `✅ Monnaie à rendre: ${Math.max(0, parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`
+                    ) : (
+                      `❌ Manque: ${(cartStats.finalTotal - parseFloat(amountDisplay)).toLocaleString()} ${appSettings.currency}`
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
 
-           {/* Notes */}
-           <div style={{ marginBottom: '24px' }}>
-             <label style={{
-               display: 'block',
-               fontSize: '14px',
-               fontWeight: '600',
-               marginBottom: '8px',
-               color: isDark ? '#f7fafc' : '#374151'
-             }}>
-               Notes (optionnel)
-             </label>
-             <input
-               type="text"
-               value={notes}
-               onChange={(e) => setNotes(e.target.value)}
-               placeholder="Ajouter une note..."
-               style={{
-                 width: '100%',
-                 padding: '12px',
-                 border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                 borderRadius: '8px',
-                 fontSize: '16px',
-                 background: isDark ? '#374151' : 'white',
-                 color: isDark ? '#f7fafc' : '#1f2937',
-                 outline: 'none'
-               }}
-             />
-           </div>
+            {/* Notes */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: isDark ? '#f7fafc' : '#374151'
+              }}>
+                Notes (optionnel)
+              </label>
+              <input
+                type="text"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ajouter une note..."
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f7fafc' : '#1f2937',
+                  outline: 'none'
+                }}
+              />
+            </div>
 
-           {/* Boutons d'action */}
-           <div style={{ display: 'flex', gap: '12px' }}>
-             <button
-               onClick={() => setShowPaymentModal(false)}
-               style={{
-                 flex: 1,
-                 padding: '14px',
-                 background: 'transparent',
-                 color: isDark ? '#a0aec0' : '#6b7280',
-                 border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                 borderRadius: '8px',
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 cursor: 'pointer'
-               }}
-             >
-               Annuler
-             </button>
-             <button
-               onClick={handleCheckout}
-               disabled={paymentMethod === 'cash' && (!amountDisplay || parseFloat(amountDisplay) < cartStats.finalTotal)}
-               style={{
-                 flex: 2,
-                 padding: '14px',
-                 background: (paymentMethod === 'cash' && (!amountDisplay || parseFloat(amountDisplay) < cartStats.finalTotal)) ? '#6b7280' : '#10b981',
-                 color: 'white',
-                 border: 'none',
-                 borderRadius: '8px',
-                 fontSize: '16px',
-                 fontWeight: '600',
-                 cursor: (paymentMethod === 'cash' && (!amountDisplay || parseFloat(amountDisplay) < cartStats.finalTotal)) ? 'not-allowed' : 'pointer',
-                 display: 'flex',
-                 alignItems: 'center',
-                 justifyContent: 'center',
-                 gap: '8px',
-                 transition: 'background 0.2s'
-               }}
-             >
-               <Check size={16} />
-               Confirmer la vente
-             </button>
-           </div>
-         </div>
-       </div>
-     )}
+            {/* Boutons d'action */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: 'transparent',
+                  color: isDark ? '#a0aec0' : '#6b7280',
+                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleCheckout}
+                disabled={paymentMethod === 'cash' && (!amountDisplay || parseFloat(amountDisplay) < cartStats.finalTotal)}
+                style={{
+                  flex: 2,
+                  padding: '14px',
+                  background: (paymentMethod === 'cash' && (!amountDisplay || parseFloat(amountDisplay) < cartStats.finalTotal)) ? '#6b7280' : '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: (paymentMethod === 'cash' && (!amountDisplay || parseFloat(amountDisplay) < cartStats.finalTotal)) ? 'not-allowed' : 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  transition: 'background 0.2s'
+                }}
+              >
+                <Check size={16} />
+                Confirmer la vente
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-     {/* Modal de sélection client */}
-     {showCustomerModal && (
-       <div style={{
-         position: 'fixed',
-         top: 0,
-         left: 0,
-         right: 0,
-         bottom: 0,
-         background: 'rgba(0,0,0,0.8)',
-         display: 'flex',
-         alignItems: 'center',
-         justifyContent: 'center',
-         zIndex: 1000
-       }}>
-         <div style={{
-           background: isDark ? '#2d3748' : 'white',
-           borderRadius: '16px',
-           padding: '24px',
-           maxWidth: '400px',
-           width: '90%',
-           maxHeight: '70vh',
-           overflowY: 'auto'
-         }}>
-           <h3 style={{
-             fontSize: '20px',
-             fontWeight: '700',
-             color: isDark ? '#f7fafc' : '#1f2937',
-             margin: '0 0 20px 0',
-             textAlign: 'center'
-           }}>
-             Sélectionner un client
-           </h3>
+      {/* Modal de sélection client */}
+      {showCustomerModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: isDark ? '#2d3748' : 'white',
+            borderRadius: '16px',
+            padding: '24px',
+            maxWidth: '400px',
+            width: '90%',
+            maxHeight: '70vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{
+              fontSize: '20px',
+              fontWeight: '700',
+              color: isDark ? '#f7fafc' : '#1f2937',
+              margin: '0 0 20px 0',
+              textAlign: 'center'
+            }}>
+              Sélectionner un client
+            </h3>
 
-           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-             {customers.map(customer => (
-               <button
-                 key={customer.id}
-                 onClick={() => {
-                   setSelectedCustomer(customer);
-                   setShowCustomerModal(false);
-                 }}
-                 style={{
-                   padding: '12px',
-                   border: `1px solid ${selectedCustomer.id === customer.id ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0')}`,
-                   borderRadius: '8px',
-                   background: selectedCustomer.id === customer.id ? '#3b82f615' : 'transparent',
-                   color: isDark ? '#f7fafc' : '#1f2937',
-                   cursor: 'pointer',
-                   textAlign: 'left',
-                   fontSize: '14px',
-                   fontWeight: '500',
-                   transition: 'all 0.2s'
-                 }}
-               >
-                 <div>{customer.name}</div>
-                 {customer.phone && (
-                   <div style={{
-                     fontSize: '12px',
-                     color: isDark ? '#a0aec0' : '#6b7280',
-                     marginTop: '2px'
-                   }}>
-                     {customer.phone}
-                   </div>
-                 )}
-               </button>
-             ))}
-           </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {customers.map(customer => (
+                <button
+                  key={customer.id}
+                  onClick={() => {
+                    setSelectedCustomer(customer);
+                    setShowCustomerModal(false);
+                  }}
+                  style={{
+                    padding: '12px',
+                    border: `1px solid ${selectedCustomer.id === customer.id ? '#3b82f6' : (isDark ? '#4a5568' : '#e2e8f0')}`,
+                    borderRadius: '8px',
+                    background: selectedCustomer.id === customer.id ? '#3b82f615' : 'transparent',
+                    color: isDark ? '#f7fafc' : '#1f2937',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    fontSize: '14px',
+                    fontWeight: '500',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div>{customer.name}</div>
+                  {customer.phone && (
+                    <div style={{
+                      fontSize: '12px',
+                      color: isDark ? '#a0aec0' : '#6b7280',
+                      marginTop: '2px'
+                    }}>
+                      {customer.phone}
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
 
-           <button
-             onClick={() => setShowCustomerModal(false)}
-             style={{
-               width: '100%',
-               padding: '12px',
-               background: 'transparent',
-               color: isDark ? '#a0aec0' : '#6b7280',
-               border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-               borderRadius: '8px',
-               fontSize: '14px',
-               cursor: 'pointer',
-               marginTop: '16px'
-             }}
-           >
-             Fermer
-           </button>
-         </div>
-       </div>
-     )}
-   </div>
- );
+            <button
+              onClick={() => setShowCustomerModal(false)}
+              style={{
+                width: '100%',
+                padding: '12px',
+                background: 'transparent',
+                color: isDark ? '#a0aec0' : '#6b7280',
+                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                borderRadius: '8px',
+                fontSize: '14px',
+                cursor: 'pointer',
+                marginTop: '16px'
+              }}
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default POSModule;
