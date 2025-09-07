@@ -1,6 +1,4 @@
-{/* Modals */}
-      {renderAddProductModal()}
-      {renderRestimport React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Package, AlertTriangle, TrendingDown, TrendingUp, BarChart3,
   Search, Plus, Minus, Edit, Save, X, Bell, Clock, Eye,
@@ -12,6 +10,8 @@ import {
 
 // Import du contexte pour utiliser les données réelles
 import { useApp } from '../../contexts/AppContext';
+import ProductImportModal from './ProductImportModal';
+import InventoryHistoryModule from './InventoryHistoryModule';
 
 // ==================== HOOKS PERSONNALISÉS ====================
 
@@ -256,6 +256,7 @@ const InventoryModule = () => {
   // États des modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [restockingProduct, setRestockingProduct] = useState(null);
 
   // États pour l'ajout de produit
@@ -578,6 +579,13 @@ const InventoryModule = () => {
             Filtres
           </Button>
           <Button
+            variant="outline"
+            onClick={() => setShowImportModal(true)}
+            leftIcon={<Upload style={{ width: '16px', height: '16px' }} />}
+          >
+            Importer Excel
+          </Button>
+          <Button
             variant="primary"
             onClick={() => setShowAddModal(true)}
             leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
@@ -752,346 +760,352 @@ const InventoryModule = () => {
                   onChange={(e) => setNewProduct(prev => ({ ...prev, name: e.target.value }))}
                   style={{
                     width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                  required
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  Catégorie
-                </label>
-                <input
-                  type="text"
-                  value={newProduct.category}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, category: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-            </div>
+                        padding: '8px 12px',
+                   border: '1px solid #d1d5db',
+                   borderRadius: '6px',
+                   fontSize: '14px'
+                 }}
+                 required
+               />
+             </div>
+             <div>
+               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                 Catégorie
+               </label>
+               <input
+                 type="text"
+                 value={newProduct.category}
+                 onChange={(e) => setNewProduct(prev => ({ ...prev, category: e.target.value }))}
+                 style={{
+                   width: '100%',
+                   padding: '8px 12px',
+                   border: '1px solid #d1d5db',
+                   borderRadius: '6px',
+                   fontSize: '14px'
+                 }}
+               />
+             </div>
+           </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  Prix de vente (FCFA) *
-                </label>
-                <input
-                  type="number"
-                  value={newProduct.price}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                  required
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  Prix d'achat (FCFA) *
-                </label>
-                <input
-                  type="number"
-                  value={newProduct.costPrice}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, costPrice: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                  required
-                />
-              </div>
-            </div>
+           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+             <div>
+               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                 Prix de vente (FCFA) *
+               </label>
+               <input
+                 type="number"
+                 value={newProduct.price}
+                 onChange={(e) => setNewProduct(prev => ({ ...prev, price: e.target.value }))}
+                 style={{
+                   width: '100%',
+                   padding: '8px 12px',
+                   border: '1px solid #d1d5db',
+                   borderRadius: '6px',
+                   fontSize: '14px'
+                 }}
+                 required
+               />
+             </div>
+             <div>
+               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                 Prix d'achat (FCFA) *
+               </label>
+               <input
+                 type="number"
+                 value={newProduct.costPrice}
+                 onChange={(e) => setNewProduct(prev => ({ ...prev, costPrice: e.target.value }))}
+                 style={{
+                   width: '100%',
+                   padding: '8px 12px',
+                   border: '1px solid #d1d5db',
+                   borderRadius: '6px',
+                   fontSize: '14px'
+                 }}
+                 required
+               />
+             </div>
+           </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  Stock initial
-                </label>
-                <input
-                  type="number"
-                  value={newProduct.stock}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, stock: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  Stock minimum
-                </label>
-                <input
-                  type="number"
-                  value={newProduct.minStock}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, minStock: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  Stock maximum
-                </label>
-                <input
-                  type="number"
-                  value={newProduct.maxStock}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, maxStock: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                />
-              </div>
-            </div>
+           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '24px' }}>
+             <div>
+               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                 Stock initial
+               </label>
+               <input
+                 type="number"
+                 value={newProduct.stock}
+                 onChange={(e) => setNewProduct(prev => ({ ...prev, stock: e.target.value }))}
+                 style={{
+                   width: '100%',
+                   padding: '8px 12px',
+                   border: '1px solid #d1d5db',
+                   borderRadius: '6px',
+                   fontSize: '14px'
+                 }}
+               />
+             </div>
+             <div>
+               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                 Stock minimum
+               </label>
+               <input
+                 type="number"
+                 value={newProduct.minStock}
+                 onChange={(e) => setNewProduct(prev => ({ ...prev, minStock: e.target.value }))}
+                 style={{
+                   width: '100%',
+                   padding: '8px 12px',
+                   border: '1px solid #d1d5db',
+                   borderRadius: '6px',
+                   fontSize: '14px'
+                 }}
+               />
+             </div>
+             <div>
+               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                 Stock maximum
+               </label>
+               <input
+                 type="number"
+                 value={newProduct.maxStock}
+                 onChange={(e) => setNewProduct(prev => ({ ...prev, maxStock: e.target.value }))}
+                 style={{
+                   width: '100%',
+                   padding: '8px 12px',
+                   border: '1px solid #d1d5db',
+                   borderRadius: '6px',
+                   fontSize: '14px'
+                 }}
+               />
+             </div>
+           </div>
 
-            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-              <Button
-                variant="outline"
-                onClick={() => setShowAddModal(false)}
-                type="button"
-              >
-                Annuler
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                leftIcon={<Save style={{ width: '16px', height: '16px' }} />}
-              >
-                Ajouter le produit
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
+           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+             <Button
+               variant="outline"
+               onClick={() => setShowAddModal(false)}
+               type="button"
+             >
+               Annuler
+             </Button>
+             <Button
+               variant="primary"
+               type="submit"
+               leftIcon={<Save style={{ width: '16px', height: '16px' }} />}
+             >
+               Ajouter le produit
+             </Button>
+           </div>
+         </form>
+       </div>
+     </div>
+   );
+ };
 
-  // Modal de réapprovisionnement
-  const renderRestockModal = () => {
-    if (!showRestockModal || !restockingProduct) return null;
+ // Modal de réapprovisionnement
+ const renderRestockModal = () => {
+   if (!showRestockModal || !restockingProduct) return null;
 
-    const [quantity, setQuantity] = useState('');
-    const [reason, setReason] = useState('Réapprovisionnement');
+   const [quantity, setQuantity] = useState('');
+   const [reason, setReason] = useState('Réapprovisionnement');
 
-    return (
-      <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.5)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000
-      }}>
-        <div style={{
-          backgroundColor: 'white',
-          borderRadius: '12px',
-          padding: '24px',
-          width: '100%',
-          maxWidth: '400px'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Réapprovisionner</h2>
-            <button
-              onClick={() => setShowRestockModal(false)}
-              style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-            >
-              <X style={{ width: '20px', height: '20px' }} />
-            </button>
-          </div>
+   return (
+     <div style={{
+       position: 'fixed',
+       top: 0,
+       left: 0,
+       right: 0,
+       bottom: 0,
+       backgroundColor: 'rgba(0, 0, 0, 0.5)',
+       display: 'flex',
+       alignItems: 'center',
+       justifyContent: 'center',
+       zIndex: 1000
+     }}>
+       <div style={{
+         backgroundColor: 'white',
+         borderRadius: '12px',
+         padding: '24px',
+         width: '100%',
+         maxWidth: '400px'
+       }}>
+         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Réapprovisionner</h2>
+           <button
+             onClick={() => setShowRestockModal(false)}
+             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+           >
+             <X style={{ width: '20px', height: '20px' }} />
+           </button>
+         </div>
 
-          <div style={{ marginBottom: '16px' }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '500' }}>
-              {restockingProduct.name}
-            </h3>
-            <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
-              Stock actuel: {(stockByStore[currentStoreId] || {})[restockingProduct.id] || 0} unités
-            </p>
-          </div>
+         <div style={{ marginBottom: '16px' }}>
+           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '500' }}>
+             {restockingProduct.name}
+           </h3>
+           <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+             Stock actuel: {(stockByStore[currentStoreId] || {})[restockingProduct.id] || 0} unités
+           </p>
+         </div>
 
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            if (quantity && parseInt(quantity) > 0) {
-              handleRestock(restockingProduct.id, quantity, reason);
-            }
-          }}>
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                Quantité à ajouter *
-              </label>
-              <input
-                type="number"
-                value={quantity}
-                onChange={(e) => setQuantity(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-                min="1"
-                required
-              />
-            </div>
+         <form onSubmit={(e) => {
+           e.preventDefault();
+           if (quantity && parseInt(quantity) > 0) {
+             handleRestock(restockingProduct.id, quantity, reason);
+           }
+         }}>
+           <div style={{ marginBottom: '16px' }}>
+             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+               Quantité à ajouter *
+             </label>
+             <input
+               type="number"
+               value={quantity}
+               onChange={(e) => setQuantity(e.target.value)}
+               style={{
+                 width: '100%',
+                 padding: '8px 12px',
+                 border: '1px solid #d1d5db',
+                 borderRadius: '6px',
+                 fontSize: '14px'
+               }}
+               min="1"
+               required
+             />
+           </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                Motif
-              </label>
-              <input
-                type="text"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
+           <div style={{ marginBottom: '20px' }}>
+             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+               Motif
+             </label>
+             <input
+               type="text"
+               value={reason}
+               onChange={(e) => setReason(e.target.value)}
+               style={{
+                 width: '100%',
+                 padding: '8px 12px',
+                 border: '1px solid #d1d5db',
+                 borderRadius: '6px',
+                 fontSize: '14px'
+               }}
+             />
+           </div>
 
-            <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-              <Button
-                variant="outline"
-                onClick={() => setShowRestockModal(false)}
-                type="button"
-              >
-                Annuler
-              </Button>
-              <Button
-                variant="primary"
-                type="submit"
-                leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
-              >
-                Réapprovisionner
-              </Button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
+           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+             <Button
+               variant="outline"
+               onClick={() => setShowRestockModal(false)}
+               type="button"
+             >
+               Annuler
+             </Button>
+             <Button
+               variant="primary"
+               type="submit"
+               leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
+             >
+               Réapprovisionner
+             </Button>
+           </div>
+         </form>
+       </div>
+     </div>
+   );
+ };
 
-  // Onglets de navigation
-  const tabs = [
-    { id: 'dashboard', name: 'Tableau de bord', icon: BarChart3 },
-    { id: 'products', name: 'Produits', icon: Package },
-    { id: 'movements', name: 'Mouvements', icon: Activity }
-  ];
+ // Onglets de navigation
+ const tabs = [
+   { id: 'dashboard', name: 'Tableau de bord', icon: BarChart3 },
+   { id: 'products', name: 'Produits', icon: Package },
+   { id: 'movements', name: 'Mouvements', icon: Activity }
+ ];
 
-  // Interface utilisateur principale
-  return (
-    <div style={containerStyle}>
-      {/* En-tête */}
-      <div style={{ marginBottom: '32px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-          <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
-          <div>
-            <h1 style={{ 
-              margin: 0, 
-              fontSize: '32px', 
-              fontWeight: 'bold',
-              color: appSettings.darkMode ? '#f7fafc' : '#1f2937'
-            }}>
-              Gestion des Stocks
-            </h1>
-            <p style={{
-              margin: '4px 0 0 0',
-              fontSize: '16px',
-              color: appSettings.darkMode ? '#a0aec0' : '#6b7280'
-            }}>
-              Magasin: {stores.find(s => s.id === currentStoreId)?.name || 'Non sélectionné'}
-            </p>
-          </div>
-        </div>
-      </div>
+ // Interface utilisateur principale
+ return (
+   <div style={containerStyle}>
+     {/* En-tête */}
+     <div style={{ marginBottom: '32px' }}>
+       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+         <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
+         <div>
+           <h1 style={{ 
+             margin: 0, 
+             fontSize: '32px', 
+             fontWeight: 'bold',
+             color: appSettings.darkMode ? '#f7fafc' : '#1f2937'
+           }}>
+             Gestion des Stocks
+           </h1>
+           <p style={{
+             margin: '4px 0 0 0',
+             fontSize: '16px',
+             color: appSettings.darkMode ? '#a0aec0' : '#6b7280'
+           }}>
+             Magasin: {stores.find(s => s.id === currentStoreId)?.name || 'Non sélectionné'}
+           </p>
+         </div>
+       </div>
+     </div>
 
-      {/* Navigation par onglets */}
-      <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: '24px' }}>
-        <nav style={{ display: 'flex', gap: '32px', marginBottom: '-1px' }}>
-          {tabs.map(tab => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.id;
-            
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '12px 24px',
-                  borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
-                  fontWeight: '500',
-                  fontSize: '14px',
-                  color: isActive ? '#3b82f6' : '#6b7280',
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => {
-                  if (!isActive) e.target.style.color = '#374151';
-                }}
-                onMouseLeave={(e) => {
-                  if (!isActive) e.target.style.color = '#6b7280';
-                }}
-              >
-                <Icon style={{ width: '20px', height: '20px' }} />
-                {tab.name}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+     {/* Navigation par onglets */}
+     <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: '24px' }}>
+       <nav style={{ display: 'flex', gap: '32px', marginBottom: '-1px' }}>
+         {tabs.map(tab => {
+           const Icon = tab.icon;
+           const isActive = activeTab === tab.id;
+           
+           return (
+             <button
+               key={tab.id}
+               onClick={() => setActiveTab(tab.id)}
+               style={{
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '8px',
+                 padding: '12px 24px',
+                 borderBottom: isActive ? '2px solid #3b82f6' : '2px solid transparent',
+                 fontWeight: '500',
+                 fontSize: '14px',
+                 color: isActive ? '#3b82f6' : '#6b7280',
+                 background: 'none',
+                 border: 'none',
+                 cursor: 'pointer',
+                 transition: 'color 0.2s'
+               }}
+               onMouseEnter={(e) => {
+                 if (!isActive) e.target.style.color = '#374151';
+               }}
+               onMouseLeave={(e) => {
+                 if (!isActive) e.target.style.color = '#6b7280';
+               }}
+             >
+               <Icon style={{ width: '20px', height: '20px' }} />
+               {tab.name}
+             </button>
+           );
+         })}
+       </nav>
+     </div>
 
-      {/* Contenu des onglets */}
-      <div style={{ minHeight: '600px' }}>
-        {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'products' && renderProducts()}
-        {activeTab === 'movements' && <InventoryHistoryModule />}
-      </div>
+     {/* Contenu des onglets */}
+     <div style={{ minHeight: '600px' }}>
+       {activeTab === 'dashboard' && renderDashboard()}
+       {activeTab === 'products' && renderProducts()}
+       {activeTab === 'movements' && <InventoryHistoryModule />}
+     </div>
 
-      {/* Modals */}
-      {renderAddProductModal()}
-      {renderRestockModal()}
-    </div>
-  );
+     {/* Modals */}
+     {renderAddProductModal()}
+     {renderRestockModal()}
+     
+     {/* Modal d'import Excel */}
+     <ProductImportModal
+       isOpen={showImportModal}
+       onClose={() => setShowImportModal(false)}
+     />
+   </div>
+ );
 };
 
 export default InventoryModule;
