@@ -790,6 +790,8 @@ const DashboardModule = ({ onNavigate }) => {
           gap: '8px'
         }}>
           <Zap size={20} color="#6366f1" />
+          Actions Rapides
+</h3>
           <div style={{
       display: 'grid',
       gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
