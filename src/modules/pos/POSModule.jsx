@@ -6,7 +6,14 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useResponsive } from '../../components/ResponsiveComponents';
-import { getCashSession } from '../../services/cash.service';
+import { 
+  getCashSession, 
+  saveCashSession, 
+  getCashOperations, 
+  saveCashOperations, 
+  addCashReport, 
+  clearCashData 
+} from '../../services/cash.service';
 import toast from 'react-hot-toast';
 
 import { 
@@ -22,19 +29,158 @@ const POSModule = ({ onNavigate }) => {
     processSale, 
     customers, 
     appSettings,
-    credits,        // ✅ AJOUT
-    setCredits      // ✅ AJOUT
+    credits,
+    setCredits,
+    salesHistory
   } = useApp();
   
   const { isMobile } = useResponsive();
   
   // ==================== VÉRIFICATION CAISSE ====================
   const [cashSession, setCashSession] = useState(null);
+  const [cashOperations, setCashOperations] = useState([]);
+  
+  // États pour modals d'ouverture/fermeture
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [openingAmount, setOpeningAmount] = useState('50000');
+  const [closingCash, setClosingCash] = useState('');
+  const [notes, setNotes] = useState('');
   
   useEffect(() => {
     const session = getCashSession();
+    const operations = getCashOperations();
     setCashSession(session);
+    if (operations.length) {
+      setCashOperations(operations);
+    }
   }, []);
+
+  // ==================== FONCTIONS CAISSE ====================
+  // Calculer les ventes de la session actuelle
+  const getSessionSales = () => {
+    if (!cashSession) return [];
+    
+    return salesHistory.filter(sale => 
+      new Date(sale.date) >= new Date(cashSession.openedAt)
+    );
+  };
+
+  // Calculer les totaux de la session
+  const getSessionTotals = () => {
+    const sessionSales = getSessionSales();
+    const cashSales = sessionSales.filter(s => s.paymentMethod === 'cash');
+    const cardSales = sessionSales.filter(s => s.paymentMethod === 'card');
+    
+    return {
+      totalSales: sessionSales.reduce((sum, s) => sum + s.total, 0),
+      cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
+      cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
+      transactionCount: sessionSales.length,
+      cashTransactions: cashSales.length,
+      cardTransactions: cardSales.length
+    };
+  };
+
+  // ✅ FONCTION D'OUVERTURE DIRECTE
+  const openRegister = useCallback(() => {
+    const session = {
+      id: Date.now(),
+      openedAt: new Date().toISOString(),
+      openedBy: 'Caissier Principal',
+      openingAmount: parseFloat(openingAmount),
+      status: 'open'
+    };
+    
+    setCashSession(session);
+    saveCashSession(session);
+    
+    // Ajouter l'opération d'ouverture
+    const operation = {
+      id: Date.now(),
+      type: 'opening',
+      amount: parseFloat(openingAmount),
+      timestamp: new Date().toISOString(),
+      description: 'Ouverture de caisse',
+      user: 'Caissier Principal'
+    };
+    
+    const newOperations = [operation];
+    setCashOperations(newOperations);
+    saveCashOperations(newOperations);
+    
+    setShowOpenModal(false);
+    setOpeningAmount('50000');
+    
+    toast.success(
+      `✅ Caisse ouverte! Fond initial: ${parseFloat(openingAmount).toLocaleString()} ${appSettings.currency}`,
+      { 
+        duration: 4000,
+        position: 'top-center',
+        style: {
+          background: '#10b981',
+          color: 'white'
+        }
+      }
+    );
+  }, [openingAmount, appSettings.currency]);
+
+  // ✅ FONCTION DE FERMETURE DIRECTE
+  const closeRegister = useCallback(() => {
+    if (!cashSession || !closingCash) return;
+    
+    const totals = getSessionTotals();
+    const expectedCash = cashSession.openingAmount + totals.cashSales;
+    const actualCash = parseFloat(closingCash);
+    const difference = actualCash - expectedCash;
+    
+    // Créer le rapport de clôture
+    const closingReport = {
+      sessionId: cashSession.id,
+      closedAt: new Date().toISOString(),
+      closedBy: 'Caissier Principal',
+      openingAmount: cashSession.openingAmount,
+      expectedCash,
+      actualCash,
+      difference,
+      totals,
+      notes,
+      operations: cashOperations
+    };
+    
+    // Sauvegarder le rapport
+    addCashReport(closingReport);
+    
+    // Fermer la session
+    setCashSession(null);
+    setCashOperations([]);
+    clearCashData();
+    
+    setShowCloseModal(false);
+    setClosingCash('');
+    setNotes('');
+    
+    // Toast de confirmation
+    toast.success(
+      `✅ Caisse fermée! Écart: ${difference.toLocaleString()} ${appSettings.currency}`,
+      { 
+        duration: 5000,
+        position: 'top-center',
+        style: {
+          background: difference === 0 ? '#10b981' : difference > 0 ? '#f59e0b' : '#ef4444',
+          color: 'white'
+        }
+      }
+    );
+    
+    toast.info(
+      `📊 ${difference === 0 ? 'Parfait!' : difference > 0 ? 'Surplus détecté' : 'Manque détecté'}`,
+      { 
+        duration: 3000,
+        position: 'top-center'
+      }
+    );
+  }, [cashSession, closingCash, notes, cashOperations, appSettings.currency, getSessionTotals]);
 
   // ==================== HOOKS PERSONNALISÉS ====================
   const { 
@@ -62,7 +208,6 @@ const POSModule = ({ onNavigate }) => {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const amountReceivedRef = useRef('');
   const [amountDisplay, setAmountDisplay] = useState('');
-  const [notes, setNotes] = useState('');
   
   // Références
   const searchInputRef = useRef(null);
@@ -160,6 +305,8 @@ const POSModule = ({ onNavigate }) => {
         if (showPaymentModal) setShowPaymentModal(false);
         else if (showScanner) setShowScanner(false);
         else if (showCustomerModal) setShowCustomerModal(false);
+        else if (showOpenModal) setShowOpenModal(false);
+        else if (showCloseModal) setShowCloseModal(false);
       }
     },
     {
@@ -175,7 +322,7 @@ const POSModule = ({ onNavigate }) => {
         }
       }
     }
-  ], [cart.length, searchQuery, showPaymentModal, showScanner, filteredProducts, cashSession]);
+  ], [cart.length, searchQuery, showPaymentModal, showScanner, filteredProducts, cashSession, showOpenModal, showCloseModal]);
 
   // ==================== GESTION PAIEMENT ====================
   const handleAmountChange = useCallback((e) => {
@@ -184,7 +331,6 @@ const POSModule = ({ onNavigate }) => {
     setAmountDisplay(value);
   }, []);
 
-  // ✅ CORRECTION: Fonction pour ajouter un crédit
   const addCreditSale = useCallback(() => {
     const credit = {
       id: Date.now(),
@@ -196,7 +342,7 @@ const POSModule = ({ onNavigate }) => {
       createdAt: new Date().toISOString(),
       dueDate: (() => {
         const date = new Date();
-        date.setDate(date.getDate() + 30); // 30 jours par défaut
+        date.setDate(date.getDate() + 30);
         return date.toISOString();
       })(),
       status: 'pending',
@@ -211,13 +357,10 @@ const POSModule = ({ onNavigate }) => {
       }))
     };
 
-    // ✅ Ajouter aux crédits
     setCredits(prevCredits => [...prevCredits, credit]);
-    
     return credit;
   }, [cartStats.finalTotal, selectedCustomer, cart, setCredits]);
 
-  // ✅ CORRECTION: Fonction handleCheckout avec gestion crédit
   const handleCheckout = useCallback(() => {
     if (!cashSession) {
       toast.error('Caisse fermée ! Impossible de finaliser la vente.');
@@ -231,30 +374,25 @@ const POSModule = ({ onNavigate }) => {
 
     const amountReceived = parseFloat(amountReceivedRef.current) || 0;
 
-    // ✅ Validation spécifique pour espèces
     if (paymentMethod === 'cash' && amountReceived < cartStats.finalTotal) {
       toast.error('Montant reçu insuffisant!');
       amountInputRef.current?.focus();
       return;
     }
 
-    // ✅ Validation spécifique pour crédit
     if (paymentMethod === 'credit' && selectedCustomer.id === 1) {
       toast.error('Sélectionnez un client pour la vente à crédit');
       return;
     }
 
     try {
-      // ✅ GESTION SPÉCIALE POUR VENTE À CRÉDIT
       if (paymentMethod === 'credit') {
-        // Créer le crédit
         const credit = addCreditSale();
         
-        // Enregistrer quand même la vente pour l'historique
         const result = processSale(
           cart,
           'credit',
-          0, // Montant reçu = 0 pour crédit
+          0,
           selectedCustomer.id
         );
 
@@ -263,7 +401,6 @@ const POSModule = ({ onNavigate }) => {
           setShowPaymentModal(false);
           amountReceivedRef.current = '';
           setAmountDisplay('');
-          setNotes('');
           setPaymentMethod('cash');
           setSelectedCustomer(customers?.[0] || { id: 1, name: 'Client Comptant' });
           
@@ -290,7 +427,6 @@ const POSModule = ({ onNavigate }) => {
           );
         }
       } else {
-        // ✅ GESTION NORMALE POUR AUTRES MODES
         const result = processSale(
           cart,
           paymentMethod,
@@ -303,7 +439,6 @@ const POSModule = ({ onNavigate }) => {
           setShowPaymentModal(false);
           amountReceivedRef.current = '';
           setAmountDisplay('');
-          setNotes('');
           setPaymentMethod('cash');
           setSelectedCustomer(customers?.[0] || { id: 1, name: 'Client Comptant' });
           
@@ -327,7 +462,6 @@ const POSModule = ({ onNavigate }) => {
     }
   }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart, cashSession, customers, addCreditSale]);
 
-  // ==================== GESTIONNAIRE D'AJOUT AU PANIER ====================
   const handleAddToCart = useCallback((product) => {
     if (!cashSession) {
       toast.error('Veuillez d\'abord ouvrir la caisse pour commencer les ventes');
@@ -530,7 +664,6 @@ const POSModule = ({ onNavigate }) => {
     </div>
   );
 
-  // ==================== RENDU PRINCIPAL ====================
   return (
     <div style={{
       display: 'grid',
@@ -561,7 +694,7 @@ const POSModule = ({ onNavigate }) => {
 
             {/* Statut caisse + actions */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* ✅ CORRECTION: Statut caisse cliquable pour fermeture */}
+              {/* ✅ CORRECTION: Statut caisse cliquable pour fermeture directe */}
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -577,8 +710,7 @@ const POSModule = ({ onNavigate }) => {
               }}
               onClick={() => {
                 if (cashSession) {
-                  // ✅ CORRECTION: Navigation vers module caisse pour fermeture
-                  onNavigate('cash');
+                  setShowCloseModal(true); // ✅ Ouvre directement le modal de fermeture
                 }
               }}
               onMouseEnter={(e) => {
@@ -596,10 +728,10 @@ const POSModule = ({ onNavigate }) => {
                 {cashSession ? 'Caisse Ouverte • Cliquer pour fermer' : 'Caisse Fermée'}
               </div>
 
-              {/* ✅ CORRECTION: Bouton caisse fonctionnel */}
+              {/* ✅ CORRECTION: Bouton ouverture directe */}
               {!cashSession && (
                 <button
-                  onClick={() => onNavigate('cash')} // ✅ Navigation fonctionnelle
+                  onClick={() => setShowOpenModal(true)} // ✅ Ouvre directement le modal d'ouverture
                   style={{
                     padding: '8px 16px',
                     background: '#3b82f6',
@@ -621,7 +753,6 @@ const POSModule = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Alerte caisse fermée */}
           {!cashSession && (
             <div style={{
               background: '#fef2f2',
@@ -716,7 +847,7 @@ const POSModule = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Section Panier avec boutons adaptés à la hauteur */}
+      {/* Section Panier */}
       <div style={{
         background: isDark ? '#2d3748' : 'white',
         borderLeft: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
@@ -839,7 +970,7 @@ const POSModule = ({ onNavigate }) => {
           )}
         </div>
 
-        {/* Footer Panier FIXÉ avec hauteur adaptative */}
+        {/* Footer Panier FIXÉ */}
         {cart.length > 0 && (
           <div style={{
             padding: '24px',
@@ -859,7 +990,7 @@ const POSModule = ({ onNavigate }) => {
               <span style={{ color: '#3b82f6' }}>
                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
               </span>
-              </div>
+            </div>
             
             <button
               onClick={() => {
@@ -921,7 +1052,293 @@ const POSModule = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Modal de paiement */}
+      {/* ===== MODALS ===== */}
+      
+      {/* Modal d'ouverture de caisse */}
+      {showOpenModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: isDark ? '#2d3748' : 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '400px',
+            width: '90%'
+          }}>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: isDark ? '#f7fafc' : '#1f2937',
+              margin: '0 0 24px 0',
+              textAlign: 'center'
+            }}>
+              Ouverture de Caisse
+            </h3>
+            
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: isDark ? '#f7fafc' : '#374151'
+              }}>
+                Fond de caisse initial
+              </label>
+              <input
+                type="number"
+                value={openingAmount}
+                onChange={(e) => setOpeningAmount(e.target.value)}
+                placeholder="50000"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f7fafc' : '#1f2937',
+                  outline: 'none'
+                }}
+                autoFocus
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowOpenModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: 'transparent',
+                  color: isDark ? '#a0aec0' : '#6b7280',
+                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={openRegister}
+                style={{
+                  flex: 2,
+                  padding: '14px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Ouvrir Caisse
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de fermeture de caisse */}
+      {showCloseModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.8)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: isDark ? '#2d3748' : 'white',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '500px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: isDark ? '#f7fafc' : '#1f2937',
+              margin: '0 0 24px 0',
+              textAlign: 'center'
+            }}>
+              Fermeture de Caisse
+            </h3>
+            
+            {/* Récapitulatif de session */}
+            <div style={{
+              background: isDark ? '#374151' : '#f8fafc',
+              padding: '16px',
+              borderRadius: '8px',
+              marginBottom: '24px'
+            }}>
+              <h4 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                margin: '0 0 12px 0',
+                color: isDark ? '#f7fafc' : '#1f2937'
+              }}>
+                Récapitulatif de session
+              </h4>
+              {(() => {
+                const totals = getSessionTotals();
+                const expectedCash = cashSession ? cashSession.openingAmount + totals.cashSales : 0;
+                return (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span>Fond initial:</span>
+                      <span>{cashSession ? cashSession.openingAmount.toLocaleString() : '0'} {appSettings.currency}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span>Ventes espèces:</span>
+                      <span>{totals.cashSales.toLocaleString()} {appSettings.currency}</span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span>Espèces attendues:</span>
+                      <span style={{ fontWeight: '600' }}>{expectedCash.toLocaleString()} {appSettings.currency}</span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+
+            {/* Comptage physique */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: isDark ? '#f7fafc' : '#374151'
+              }}>
+                Montant en caisse (comptage physique)
+              </label>
+              <input
+                type="number"
+                value={closingCash}
+                onChange={(e) => setClosingCash(e.target.value)}
+                placeholder="Comptez l'argent en caisse"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f7fafc' : '#1f2937',
+                  outline: 'none'
+                }}
+                autoFocus
+              />
+              {closingCash && (() => {
+                const totals = getSessionTotals();
+                const expectedCash = cashSession ? cashSession.openingAmount + totals.cashSales : 0;
+                const difference = parseFloat(closingCash) - expectedCash;
+                return (
+                  <div style={{ 
+                    marginTop: '8px', 
+                    fontSize: '14px', 
+                    color: difference === 0 ? '#10b981' : difference > 0 ? '#f59e0b' : '#ef4444',
+                    fontWeight: '500'
+                  }}>
+                    Écart: {difference.toLocaleString()} {appSettings.currency} 
+                    {difference === 0 ? ' (Parfait!)' : difference > 0 ? ' (Surplus)' : ' (Manque)'}
+                  </div>
+                );
+              })()}
+            </div>
+
+            {/* Notes */}
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                marginBottom: '8px',
+                color: isDark ? '#f7fafc' : '#374151'
+              }}>
+                Notes de clôture (optionnel)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Commentaires sur la session..."
+                rows={3}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f7fafc' : '#1f2937',
+                  outline: 'none',
+                  resize: 'vertical'
+                }}
+              />
+            </div>
+
+            {/* Boutons d'action */}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => setShowCloseModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  background: 'transparent',
+                  color: isDark ? '#a0aec0' : '#6b7280',
+                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  borderRadius: '8px',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={closeRegister}
+                disabled={!closingCash}
+                style={{
+                  flex: 2,
+                  padding: '14px',
+                  background: !closingCash ? '#6b7280' : '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  fontWeight: '600',
+                  cursor: !closingCash ? 'not-allowed' : 'pointer'
+                }}
+              >
+                Fermer Caisse
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de paiement - code existant inchangé */}
       {showPaymentModal && cashSession && (
         <div style={{
           position: 'fixed',
@@ -1014,7 +1431,7 @@ const POSModule = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* ✅ CORRECTION: Modes de paiement sans "Carte", avec "Crédit" */}
+            {/* Modes de paiement */}
             <div style={{ marginBottom: '24px' }}>
               <label style={{
                 display: 'block',
@@ -1086,7 +1503,6 @@ const POSModule = ({ onNavigate }) => {
                 ))}
               </div>
               
-              {/* Message informatif pour le crédit */}
               {selectedCustomer.id === 1 && (
                 <div style={{
                   marginTop: '8px',
@@ -1105,7 +1521,6 @@ const POSModule = ({ onNavigate }) => {
                 </div>
               )}
               
-              {/* Message informatif quand crédit sélectionné */}
               {paymentMethod === 'credit' && selectedCustomer.id !== 1 && (
                 <div style={{
                   marginTop: '8px',
@@ -1138,7 +1553,6 @@ const POSModule = ({ onNavigate }) => {
                   Montant reçu
                 </label>
                 
-                {/* Suggestions de montants CFA */}
                 {suggestedAmounts.length > 0 && (
                   <div style={{
                     display: 'grid',
@@ -1199,43 +1613,14 @@ const POSModule = ({ onNavigate }) => {
                     fontWeight: '500'
                   }}>
                     {parseFloat(amountDisplay) >= cartStats.finalTotal ? (
-                      `✅ Monnaie à rendre: ${Math.max(0, parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`
+                      `Monnaie à rendre: ${Math.max(0, parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`
                     ) : (
-                      `❌ Manque: ${(cartStats.finalTotal - parseFloat(amountDisplay)).toLocaleString()} ${appSettings.currency}`
+                      `Manque: ${(cartStats.finalTotal - parseFloat(amountDisplay)).toLocaleString()} ${appSettings.currency}`
                     )}
                   </div>
                 )}
               </div>
             )}
-
-            {/* Notes */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '8px',
-                color: isDark ? '#f7fafc' : '#374151'
-              }}>
-                Notes (optionnel)
-              </label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ajouter une note..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  background: isDark ? '#374151' : 'white',
-                  color: isDark ? '#f7fafc' : '#1f2937',
-                  outline: 'none'
-                }}
-              />
-            </div>
 
             {/* Boutons d'action */}
             <div style={{ display: 'flex', gap: '12px' }}>
