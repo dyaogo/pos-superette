@@ -88,7 +88,7 @@ function App() {
       case 'dashboard':
         return <DashboardModule onNavigate={setActiveModule} />;
       case 'pos':
-        return <POSModule />;
+        return <POSModule onNavigate={setActiveModule} />; // ✅ CORRECTION: Ajout de onNavigate
       case 'sales-history':
         return <SalesHistoryModule />;
       case 'stocks':
