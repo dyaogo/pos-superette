@@ -1,4 +1,6 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+{/* Modals */}
+      {renderAddProductModal()}
+      {renderRestimport React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Package, AlertTriangle, TrendingDown, TrendingUp, BarChart3,
   Search, Plus, Minus, Edit, Save, X, Bell, Clock, Eye,
@@ -1082,13 +1084,7 @@ const InventoryModule = () => {
       <div style={{ minHeight: '600px' }}>
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'products' && renderProducts()}
-        {activeTab === 'movements' && (
-          <Card style={{ padding: '24px', textAlign: 'center' }}>
-            <Activity style={{ width: '48px', height: '48px', color: '#9ca3af', margin: '0 auto 16px' }} />
-            <h3>Mouvements de Stock</h3>
-            <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
-          </Card>
-        )}
+        {activeTab === 'movements' && <InventoryHistoryModule />}
       </div>
 
       {/* Modals */}
