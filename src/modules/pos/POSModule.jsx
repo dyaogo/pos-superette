@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { 
   Search, ShoppingCart, CreditCard, DollarSign, Smartphone, 
   Package, User, X, Check, Scan, Plus, Minus, Trash2, Eye
@@ -58,6 +58,60 @@ const POSModule = () => {
 
   const isDark = appSettings.darkMode;
 
+  // ==================== SUGGESTIONS DE MONTANTS CFA ====================
+  const suggestedAmounts = useMemo(() => {
+    if (!cartStats.finalTotal) return [];
+    
+    const total = cartStats.finalTotal;
+    const bills = [500, 1000, 2000, 5000, 10000];
+    const suggestions = new Set();
+    
+    // Montant exact
+    suggestions.add(total);
+    
+    // Prochain billet supérieur
+    for (const bill of bills) {
+      if (bill >= total) {
+        suggestions.add(bill);
+        break;
+      }
+    }
+    
+    // Combinaisons intelligentes pour minimiser la monnaie
+    const findMinimalChange = (target) => {
+      let minChange = Infinity;
+      let bestAmount = target;
+      
+      // Essayer différentes combinaisons de billets
+      for (let i = 0; i < bills.length; i++) {
+        for (let j = i; j < bills.length; j++) {
+          const amount = bills[i] + bills[j];
+          if (amount >= target) {
+            const change = amount - target;
+            if (change < minChange) {
+              minChange = change;
+              bestAmount = amount;
+            }
+          }
+        }
+      }
+      return bestAmount;
+    };
+    
+    suggestions.add(findMinimalChange(total));
+    
+    // Arrondir au millier supérieur
+    const roundedUp = Math.ceil(total / 1000) * 1000;
+    if (roundedUp > total) {
+      suggestions.add(roundedUp);
+    }
+    
+    return Array.from(suggestions)
+      .filter(amount => amount >= total)
+      .sort((a, b) => a - b)
+      .slice(0, 4); // Limiter à 4 suggestions
+  }, [cartStats.finalTotal]);
+
   // ==================== RECHERCHE AVEC HOOKS ====================
   const filteredProducts = useProductSearch(
     globalProducts || [], 
@@ -115,7 +169,7 @@ const POSModule = () => {
     setAmountDisplay(value);
   }, []);
 
-  // CORRECTION: Fonction processSale corrigée
+  // CORRECTION: Fonction processSale corrigée avec les bons paramètres
   const handleCheckout = useCallback(() => {
     if (cart.length === 0) {
       toast.error('Panier vide!');
@@ -130,73 +184,68 @@ const POSModule = () => {
       return;
     }
 
-    // CORRECTION: Structure de données correcte pour processSale
-    const saleData = {
-      items: cart.map(item => ({
-        productId: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        total: item.price * item.quantity
-      })),
-      total: cartStats.finalTotal,
-      tax: cartStats.totalTax,
-      paymentMethod,
-      customerId: selectedCustomer.id,
-      customerName: selectedCustomer.name,
-      notes,
-      amountReceived: paymentMethod === 'cash' ? amountReceived : cartStats.finalTotal,
-      change: paymentMethod === 'cash' ? Math.max(0, amountReceived - cartStats.finalTotal) : 0,
-      date: new Date().toISOString()
-    };
-
     try {
-      // CORRECTION: Appel direct de processSale
-      processSale(saleData);
-      
-      // Réinitialiser TOUS les états
-      clearCart();
-      setShowPaymentModal(false);
-      amountReceivedRef.current = '';
-      setAmountDisplay('');
-      setNotes('');
-      setPaymentMethod('cash');
-      
-      // CORRECTION: Toast qui s'estompe automatiquement
-      toast.success(
-        `✅ Vente confirmée! Total: ${cartStats.finalTotal.toLocaleString()} ${appSettings.currency}`, 
-        { 
-          duration: 4000,
-          position: 'top-center',
-          style: {
-            background: '#10b981',
-            color: 'white',
-            fontWeight: '600'
-          }
-        }
+      // CORRECTION: Appel avec les paramètres que processSale attend
+      // processSale(cart, paymentMethod, amountReceived, customerId)
+      const result = processSale(
+        cart, // Le panier complet avec les objets produits
+        paymentMethod,
+        paymentMethod === 'cash' ? amountReceived : cartStats.finalTotal,
+        selectedCustomer.id
       );
-      
-      if (paymentMethod === 'cash' && amountReceived > cartStats.finalTotal) {
-        toast.info(
-          `💰 Monnaie à rendre: ${(amountReceived - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`, 
+
+      if (result) {
+        // Réinitialiser TOUS les états
+        clearCart();
+        setShowPaymentModal(false);
+        amountReceivedRef.current = '';
+        setAmountDisplay('');
+        setNotes('');
+        setPaymentMethod('cash');
+        
+        // CORRECTION: Toast qui s'estompe automatiquement
+        toast.success(
+          `✅ Vente confirmée! Reçu: ${result.receiptNumber}`, 
           { 
-            duration: 6000,
+            duration: 4000,
             position: 'top-center',
             style: {
-              background: '#3b82f6',
-              color: 'white'
+              background: '#10b981',
+              color: 'white',
+              fontWeight: '600'
             }
           }
         );
+        
+        if (paymentMethod === 'cash' && amountReceived > cartStats.finalTotal) {
+          toast.info(
+            `💰 Monnaie: ${(amountReceived - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`, 
+            { 
+              duration: 6000,
+              position: 'top-center',
+              style: {
+                background: '#3b82f6',
+                color: 'white',
+                fontSize: '16px'
+              }
+            }
+          );
+        }
+        
+        // Log pour debug
+        console.log('✅ Vente enregistrée:', result);
+        
+      } else {
+        throw new Error('Échec de l\'enregistrement');
       }
       
     } catch (error) {
-      console.error('Erreur lors de la vente:', error);
+      console.error('❌ Erreur lors de la vente:', error);
       toast.error('Erreur lors de la vente: ' + error.message, {
         duration: 5000
       });
     }
-  }, [cart, cartStats, paymentMethod, selectedCustomer, notes, processSale, appSettings.currency, clearCart]);
+  }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart]);
 
   // ==================== COMPOSANTS UI ====================
   const ProductCard = ({ product }) => (
@@ -721,7 +770,7 @@ const POSModule = () => {
               </div>
             </div>
 
-            {/* CORRECTION: Montant reçu avec ref pour éviter perte de focus */}
+            {/* CORRECTION: Montant reçu avec suggestions CFA */}
             {paymentMethod === 'cash' && (
               <div style={{ marginBottom: '24px' }}>
                 <label style={{
@@ -733,6 +782,40 @@ const POSModule = () => {
                 }}>
                   Montant reçu
                 </label>
+                
+                {/* Suggestions de montants CFA */}
+                {suggestedAmounts.length > 0 && (
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))',
+                    gap: '8px',
+                    marginBottom: '12px'
+                  }}>
+                    {suggestedAmounts.map(amount => (
+                      <button
+                        key={amount}
+                        onClick={() => {
+                          amountReceivedRef.current = amount.toString();
+                          setAmountDisplay(amount.toString());
+                        }}
+                        style={{
+                          padding: '8px 4px',
+                          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                          borderRadius: '6px',
+                          background: parseInt(amountDisplay) === amount ? '#3b82f6' : (isDark ? '#374151' : 'white'),
+                          color: parseInt(amountDisplay) === amount ? 'white' : (isDark ? '#f7fafc' : '#1f2937'),
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {amount.toLocaleString()}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                
                 <input
                   ref={amountInputRef}
                   type="number"
@@ -740,85 +823,85 @@ const POSModule = () => {
                   onChange={handleAmountChange}
                   placeholder="0"
                   min="0"
-                  step="100"
+                  step="500"
                   style={{
                     width: '100%',
                     padding: '12px',
                     border: `2px solid ${parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : (isDark ? '#4a5568' : '#e2e8f0')}`,
-                    borderRadius: '8px',
-                    fontSize: '16px',
-                    background: isDark ? '#374151' : 'white',
-                    color: isDark ? '#f7fafc' : '#1f2937',
-                    outline: 'none'
-                  }}
-                  autoFocus
-                />
-                {amountDisplay && (
-                  <div style={{ 
-                    marginTop: '8px', 
-                    fontSize: '14px', 
-                    color: parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : '#ef4444',
-                    fontWeight: '500'
-                  }}>
-                    {parseFloat(amountDisplay) >= cartStats.finalTotal ? (
-                      `✅ Monnaie à rendre: ${Math.max(0, parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`
-                    ) : (
-                      `❌ Manque: ${(cartStats.finalTotal - parseFloat(amountDisplay)).toLocaleString()} ${appSettings.currency}`
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                   borderRadius: '8px',
+                   fontSize: '16px',
+                   background: isDark ? '#374151' : 'white',
+                   color: isDark ? '#f7fafc' : '#1f2937',
+                   outline: 'none'
+                 }}
+                 autoFocus
+               />
+               {amountDisplay && (
+                 <div style={{ 
+                   marginTop: '8px', 
+                   fontSize: '14px', 
+                   color: parseFloat(amountDisplay) >= cartStats.finalTotal ? '#10b981' : '#ef4444',
+                   fontWeight: '500'
+                 }}>
+                   {parseFloat(amountDisplay) >= cartStats.finalTotal ? (
+                     `✅ Monnaie à rendre: ${Math.max(0, parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} ${appSettings.currency}`
+                   ) : (
+                     `❌ Manque: ${(cartStats.finalTotal - parseFloat(amountDisplay)).toLocaleString()} ${appSettings.currency}`
+                   )}
+                 </div>
+               )}
+             </div>
+           )}
 
-            {/* Notes */}
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                marginBottom: '8px',
-                color: isDark ? '#f7fafc' : '#374151'
-              }}>
-                Notes (optionnel)
-              </label>
-              <input
-                type="text"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Ajouter une note..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  fontSize: '16px',
-                  background: isDark ? '#374151' : 'white',
-                  color: isDark ? '#f7fafc' : '#1f2937',
-                  outline: 'none'
-                }}
-              />
-            </div>
+           {/* Notes */}
+           <div style={{ marginBottom: '24px' }}>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '600',
+               marginBottom: '8px',
+               color: isDark ? '#f7fafc' : '#374151'
+             }}>
+               Notes (optionnel)
+             </label>
+             <input
+               type="text"
+               value={notes}
+               onChange={(e) => setNotes(e.target.value)}
+               placeholder="Ajouter une note..."
+               style={{
+                 width: '100%',
+                 padding: '12px',
+                 border: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                 borderRadius: '8px',
+                 fontSize: '16px',
+                 background: isDark ? '#374151' : 'white',
+                 color: isDark ? '#f7fafc' : '#1f2937',
+                 outline: 'none'
+               }}
+             />
+           </div>
 
-            {/* Boutons d'action */}
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  background: 'transparent',
-                  color: isDark ? '#a0aec0' : '#6b7280',
-                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  borderRadius: '8px',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={handleCheckout}
+           {/* Boutons d'action */}
+           <div style={{ display: 'flex', gap: '12px' }}>
+             <button
+               onClick={() => setShowPaymentModal(false)}
+               style={{
+                 flex: 1,
+                 padding: '14px',
+                 background: 'transparent',
+                 color: isDark ? '#a0aec0' : '#6b7280',
+                 border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                 borderRadius: '8px',
+                 fontSize: '14px',
+                 fontWeight: '600',
+                 cursor: 'pointer'
+               }}
+             >
+               Annuler
+             </button>
+             <button
+               onClick={handleCheckout}
                disabled={paymentMethod === 'cash' && (!amountDisplay || parseFloat(amountDisplay) < cartStats.finalTotal)}
                style={{
                  flex: 2,
