@@ -4,15 +4,12 @@ import {
   Search, Plus, Minus, Edit, Save, X, Bell, Clock, Eye,
   RefreshCw, Trash, Download, Upload, Filter, Settings,
   Target, Zap, Activity, DollarSign, Truck, Calendar,
-  ArrowUpDown, CheckCircle, XCircle, PieChart, LineChart
+  ArrowUpDown, CheckCircle, XCircle, PieChart, LineChart,
+  ClipboardList
 } from 'lucide-react';
 
 // Import du contexte pour utiliser les données réelles
 import { useApp } from '../../contexts/AppContext';
-import ProductImportModal from './ProductImportModal';
-import BarcodeSystem from './BarcodeSystem';
-import PhysicalInventory from './PhysicalInventory';
-import TransferStock from './TransferStock';
 
 // ==================== HOOKS PERSONNALISÉS ====================
 
@@ -30,22 +27,6 @@ const useDebounce = (value, delay) => {
   }, [value, delay]);
 
   return debouncedValue;
-};
-
-const useKeyboardShortcuts = (shortcuts, deps = []) => {
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      shortcuts.forEach(({ key, action }) => {
-        if (event.key === key) {
-          event.preventDefault();
-          action();
-        }
-      });
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, deps);
 };
 
 const useLocalStorage = (key, initialValue) => {
@@ -209,7 +190,6 @@ const SearchInput = ({ placeholder, value, onChange, onClear }) => (
 
 const Toast = {
   success: (message) => {
-    // Implémentation simple du toast - vous pouvez remplacer par une vraie librairie
     const toast = document.createElement('div');
     toast.style.cssText = `
       position: fixed;
@@ -247,18 +227,18 @@ const Toast = {
 
 // ==================== COMPOSANT PRINCIPAL ====================
 
-const InventoryModulePro = () => {
+const InventoryModule = () => {
   // ===== UTILISATION DU CONTEXTE RÉEL =====
   const {
-    globalProducts,
+    globalProducts = [],
     addProduct,
     addStock,
     removeProduct,
-    salesHistory,
-    appSettings,
+    salesHistory = [],
+    appSettings = {},
     currentStoreId,
-    stockByStore,
-    stores
+    stockByStore = {},
+    stores = []
   } = useApp();
 
   // États locaux du module
@@ -274,7 +254,6 @@ const InventoryModulePro = () => {
   // États des modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
   const [restockingProduct, setRestockingProduct] = useState(null);
 
   // États pour l'ajout de produit
@@ -287,18 +266,6 @@ const InventoryModulePro = () => {
   const debouncedSearch = useDebounce(searchQuery, 300);
   const categories = useCategories(globalProducts);
   const filteredProducts = useProductSearch(globalProducts, debouncedSearch, selectedCategory);
-
-  // Raccourcis clavier
-  useKeyboardShortcuts([
-    { key: 'F1', action: () => setActiveTab('dashboard') },
-    { key: 'F2', action: () => setActiveTab('products') },
-    { key: 'F3', action: () => setShowAddModal(true) },
-    { key: 'Escape', action: () => {
-      setShowAddModal(false);
-      setShowRestockModal(false);
-      setShowImportModal(false);
-    }}
-  ], []);
 
   // Analytics basés sur les vraies données
   const analytics = useMemo(() => {
@@ -392,41 +359,6 @@ const InventoryModulePro = () => {
     minHeight: '100vh'
   };
 
-  const headerStyle = {
-    marginBottom: '32px'
-  };
-
-  const titleStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '12px',
-    marginBottom: '8px'
-  };
-
-  const tabsStyle = {
-    borderBottom: '1px solid #e5e7eb',
-    marginBottom: '24px'
-  };
-
-  const tabNavStyle = {
-    display: 'flex',
-    gap: '32px',
-    marginBottom: '-1px'
-  };
-
-  const kpisGridStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-    gap: '16px',
-    marginBottom: '24px'
-  };
-
-  const productsGridStyle = {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '16px'
-  };
-
   // Rendu du Dashboard
   const renderDashboard = () => {
     const stockDistribution = [
@@ -448,7 +380,12 @@ const InventoryModulePro = () => {
     return (
       <div>
         {/* KPIs */}
-        <div style={kpisGridStyle}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+          gap: '16px',
+          marginBottom: '24px'
+        }}>
           <Card style={{
             background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
             color: 'white'
@@ -512,7 +449,7 @@ const InventoryModulePro = () => {
           </Card>
         </div>
 
-        {/* Distribution du stock */}
+        {/* Distribution du stock et Alertes */}
         <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '24px' }}>
           <Card>
             <h3 style={{ marginTop: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -639,13 +576,6 @@ const InventoryModulePro = () => {
             Filtres
           </Button>
           <Button
-            variant="outline"
-            onClick={() => setShowImportModal(true)}
-            leftIcon={<Upload style={{ width: '16px', height: '16px' }} />}
-          >
-            Importer
-          </Button>
-          <Button
             variant="primary"
             onClick={() => setShowAddModal(true)}
             leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
@@ -680,7 +610,11 @@ const InventoryModulePro = () => {
       </div>
 
       {/* Grille des produits */}
-      <div style={productsGridStyle}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+        gap: '16px'
+      }}>
         {filteredProducts.map(product => {
           const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
           const isLowStock = currentStock <= (product.minStock || 5);
@@ -765,7 +699,7 @@ const InventoryModulePro = () => {
     </div>
   );
 
-  // Rendu du modal d'ajout de produit
+  // Modal d'ajout de produit
   const renderAddProductModal = () => {
     if (!showAddModal) return null;
 
@@ -882,7 +816,7 @@ const InventoryModulePro = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '24px' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
                   Stock initial
@@ -936,63 +870,6 @@ const InventoryModulePro = () => {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '24px' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  SKU
-                </label>
-                <input
-                  type="text"
-                  value={newProduct.sku}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, sku: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                  placeholder="Généré automatiquement si vide"
-                />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                  Code-barres
-                </label>
-                <input
-                  type="text"
-                  value={newProduct.barcode}
-                  onChange={(e) => setNewProduct(prev => ({ ...prev, barcode: e.target.value }))}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px',
-                    border: '1px solid #d1d5db',
-                    borderRadius: '6px',
-                    fontSize: '14px'
-                  }}
-                  placeholder="Généré automatiquement si vide"
-                />
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '24px' }}>
-              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-                Fournisseur
-              </label>
-              <input
-                type="text"
-                value={newProduct.supplier}
-                onChange={(e) => setNewProduct(prev => ({ ...prev, supplier: e.target.value }))}
-                style={{
-                  width: '100%',
-                  padding: '8px 12px',
-                  border: '1px solid #d1d5db',
-                  borderRadius: '6px',
-                  fontSize: '14px'
-                }}
-              />
-            </div>
-
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
               <Button
                 variant="outline"
@@ -1015,7 +892,7 @@ const InventoryModulePro = () => {
     );
   };
 
-  // Rendu du modal de réapprovisionnement
+  // Modal de réapprovisionnement
   const renderRestockModal = () => {
     if (!showRestockModal || !restockingProduct) return null;
 
@@ -1131,18 +1008,15 @@ const InventoryModulePro = () => {
   const tabs = [
     { id: 'dashboard', name: 'Tableau de bord', icon: BarChart3 },
     { id: 'products', name: 'Produits', icon: Package },
-    { id: 'movements', name: 'Mouvements', icon: Activity },
-    { id: 'barcode', name: 'Code-barres', icon: Target },
-    { id: 'inventory', name: 'Inventaire physique', icon: ClipboardList },
-    { id: 'transfer', name: 'Transferts', icon: Truck }
+    { id: 'movements', name: 'Mouvements', icon: Activity }
   ];
 
   // Interface utilisateur principale
   return (
     <div style={containerStyle}>
       {/* En-tête */}
-      <div style={headerStyle}>
-        <div style={titleStyle}>
+      <div style={{ marginBottom: '32px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
           <Package style={{ width: '32px', height: '32px', color: '#3b82f6' }} />
           <div>
             <h1 style={{ 
@@ -1165,8 +1039,8 @@ const InventoryModulePro = () => {
       </div>
 
       {/* Navigation par onglets */}
-      <div style={tabsStyle}>
-        <nav style={tabNavStyle}>
+      <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: '24px' }}>
+        <nav style={{ display: 'flex', gap: '32px', marginBottom: '-1px' }}>
           {tabs.map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -1215,23 +1089,13 @@ const InventoryModulePro = () => {
             <p style={{ color: '#6b7280' }}>Fonctionnalité en développement</p>
           </Card>
         )}
-        {activeTab === 'barcode' && <BarcodeSystem />}
-        {activeTab === 'inventory' && <PhysicalInventory />}
-        {activeTab === 'transfer' && <TransferStock />}
       </div>
 
       {/* Modals */}
       {renderAddProductModal()}
       {renderRestockModal()}
-      
-      {showImportModal && (
-        <ProductImportModal
-          isOpen={showImportModal}
-          onClose={() => setShowImportModal(false)}
-        />
-      )}
     </div>
   );
 };
 
-export default InventoryModulePro;
+export default InventoryModule;
