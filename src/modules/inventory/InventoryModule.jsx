@@ -1572,6 +1572,8 @@ const InventoryModule = () => {
 
      {/* Modals */}
      {renderAddProductModal()}
+     {renderEditProductModal()}
+     {renderDeleteProductModal()}
      {renderRestockModal()}
      
      {/* Modal d'import Excel */}
