@@ -259,50 +259,62 @@ const PhysicalInventoryModule = () => {
     }
   }, [globalProducts, sessionData.productCounts, updateProductCount]);
 
-  // Finaliser l'inventaire
-  const finalizeInventory = useCallback(() => {
-    if (!inventorySession) return;
+  // Finaliser l'inventaire - VERSION CORRIGÉE COMPLÈTE
+const finalizeInventory = useCallback(() => {
+  if (!inventorySession) {
+    alert('Aucune session d\'inventaire active');
+    return;
+  }
 
-    const discrepancies = globalProducts.filter(product => {
-      const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
-      const countedStock = sessionData.productCounts[product.id];
-      return countedStock !== undefined && countedStock !== currentStock;
-    }).map(product => {
-      const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
-      const countedStock = sessionData.productCounts[product.id] || 0;
-      const difference = countedStock - currentStock;
-      return {
-        productId: product.id,
-        productName: product.name,
-        sku: product.sku,
-        currentStock,
-        countedStock,
-        difference,
-        valueImpact: difference * (product.costPrice || 0),
-        note: sessionData.productNotes[product.id] || ''
-      };
-    });
+  if (!setStockForStore) {
+    alert('Fonction setStockForStore non disponible');
+    return;
+  }
 
-    if (discrepancies.length === 0) {
-      alert('Aucune différence détectée. Inventaire terminé avec succès !');
-      setActiveView('history');
-      return;
-    }
+  const discrepancies = globalProducts.filter(product => {
+    const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
+    const countedStock = sessionData.productCounts[product.id];
+    return countedStock !== undefined && countedStock !== currentStock;
+  }).map(product => {
+    const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
+    const countedStock = sessionData.productCounts[product.id] || 0;
+    const difference = countedStock - currentStock;
+    return {
+      productId: product.id,
+      productName: product.name,
+      sku: product.sku,
+      currentStock,
+      countedStock,
+      difference,
+      valueImpact: difference * (product.costPrice || 0),
+      note: sessionData.productNotes[product.id] || ''
+    };
+  });
 
-    const shouldApply = window.confirm(
-      `${discrepancies.length} différence(s) détectée(s).\n` +
-      `Impact financier: ${sessionStats.totalDiscrepancyValue.toLocaleString()} ${appSettings.currency}\n\n` +
-      `Voulez-vous appliquer ces ajustements ?`
-    );
+  if (discrepancies.length === 0) {
+    alert('Aucune différence détectée. Inventaire terminé avec succès !');
+    setActiveView('history');
+    return;
+  }
 
-    if (shouldApply) {
-      // Appliquer les ajustements
+  const shouldApply = window.confirm(
+    `${discrepancies.length} différence(s) détectée(s).\n` +
+    `Impact financier: ${sessionStats.totalDiscrepancyValue.toLocaleString()} ${appSettings.currency}\n\n` +
+    `Voulez-vous appliquer ces ajustements ?`
+  );
+
+  if (shouldApply) {
+    try {
+      // ✅ PARTIE CORRIGÉE - Appliquer les ajustements
       const newStock = { ...(stockByStore[currentStoreId] || {}) };
       
-      Object.entries(sessionData.productCounts).forEach(([productId, count]) => {
-        newStock[parseInt(productId)] = count;
+      // Mettre à jour seulement les produits comptés
+      Object.entries(sessionData.productCounts).forEach(([productIdStr, count]) => {
+        const productId = parseInt(productIdStr);
+        newStock[productId] = parseInt(count) || 0;
       });
 
+      // Appliquer le nouveau stock
       setStockForStore(currentStoreId, newStock);
 
       // Enregistrer l'historique
@@ -330,14 +342,20 @@ const PhysicalInventoryModule = () => {
         discrepancies
       };
 
-      const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
-      const sessionIndex = sessions.findIndex(s => s.id === inventorySession.id);
-      if (sessionIndex !== -1) {
-        sessions[sessionIndex] = finalizedSession;
-        localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
+      try {
+        const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
+        const sessionIndex = sessions.findIndex(s => s.id === inventorySession.id);
+        if (sessionIndex !== -1) {
+          sessions[sessionIndex] = finalizedSession;
+          localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
+        }
+      } catch (storageError) {
+        console.warn('Erreur sauvegarde session:', storageError);
       }
 
       alert(`Inventaire finalisé avec succès !\n${discrepancies.length} ajustement(s) appliqué(s).`);
+      
+      // Réinitialiser
       setInventorySession(null);
       setSessionData({
         id: null,
@@ -355,10 +373,15 @@ const PhysicalInventoryModule = () => {
         progressPercent: 0
       });
       setActiveView('history');
+      
+    } catch (error) {
+      console.error('Erreur lors de la finalisation:', error);
+      alert('Erreur lors de la finalisation de l\'inventaire. Vérifiez la console pour plus de détails.');
     }
-  }, [inventorySession, globalProducts, sessionData, stockByStore, currentStoreId, 
-      sessionStats, setStockForStore, appSettings.currency]);
-
+  }
+}, [inventorySession, globalProducts, sessionData, stockByStore, currentStoreId, 
+    sessionStats, setStockForStore, appSettings.currency]);
+  
   // Rendu conditionnel selon la vue active
   const renderContent = () => {
     switch (activeView) {
