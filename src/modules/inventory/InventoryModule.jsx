@@ -12,6 +12,7 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import ProductImportModal from './ProductImportModal';
 import InventoryHistoryModule from './InventoryHistoryModule';
+import PhysicalInventoryModule from './PhysicalInventoryModule';
 
 // ==================== HOOKS PERSONNALISÉS ====================
 
@@ -1857,6 +1858,7 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
        {activeTab === 'dashboard' && renderDashboard()}
        {activeTab === 'products' && renderProducts()}
        {activeTab === 'movements' && <InventoryHistoryModule />}
+       {activeTab === 'physical' && <PhysicalInventoryModule />}
      </div>
 
      {/* Modals */}
