@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Package, AlertTriangle, TrendingDown, TrendingUp, BarChart3,
-  Search, Plus, Minus, Edit, Save, X, Bell, Clock, Eye,
+  Search, Plus, Search, Minus, Edit, Save, X, Bell, Clock, Eye,
   RefreshCw, Trash, Download, Upload, Filter, Settings,
   Target, Zap, Activity, DollarSign, Truck, Calendar,
-  ArrowUpDown, CheckCircle, XCircle, PieChart, LineChart,
+  ArrowUpDown, CheckCircle, XCircle, PieChart, Save, LineChart,
   ClipboardList, ImagePlus, Trash2
 } from 'lucide-react';
 
@@ -13,11 +13,6 @@ import { useApp } from '../../contexts/AppContext';
 import ProductImportModal from './ProductImportModal';
 import InventoryHistoryModule from './InventoryHistoryModule';
 import PhysicalInventoryModule from './PhysicalInventoryModule';
-import {
-  Package, Plus, Search, Filter, Upload, Download, Edit, Trash2,
-  AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Save,
-  BarChart3, Activity, ClipboardList // ⭐ AJOUTEZ ClipboardList ici
-} from 'lucide-react';
 
 // ==================== HOOKS PERSONNALISÉS ====================
 
