@@ -13,6 +13,11 @@ import { useApp } from '../../contexts/AppContext';
 import ProductImportModal from './ProductImportModal';
 import InventoryHistoryModule from './InventoryHistoryModule';
 import PhysicalInventoryModule from './PhysicalInventoryModule';
+import {
+  Package, Plus, Search, Filter, Upload, Download, Edit, Trash2,
+  AlertTriangle, CheckCircle, TrendingUp, TrendingDown, Save,
+  BarChart3, Activity, ClipboardList // ⭐ AJOUTEZ ClipboardList ici
+} from 'lucide-react';
 
 // ==================== HOOKS PERSONNALISÉS ====================
 
@@ -1784,6 +1789,7 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
    { id: 'dashboard', name: 'Tableau de bord', icon: BarChart3 },
    { id: 'products', name: 'Produits', icon: Package },
    { id: 'movements', name: 'Mouvements', icon: Activity }
+   { id: 'physical', name: 'Inventaire Physique', icon: ClipboardList }
  ];
 
  // Interface utilisateur principale
