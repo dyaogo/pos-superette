@@ -1376,118 +1376,135 @@ const InventoryModule = () => {
  };
 
  // Modal de réapprovisionnement corrigé
- const renderRestockModal = () => {
-   if (!showRestockModal || !restockingProduct) return null;
+// Modal de réapprovisionnement corrigé
+const renderRestockModal = () => {
+  if (!showRestockModal || !restockingProduct) return null;
 
-   const [quantity, setQuantity] = useState('');
-   const [reason, setReason] = useState('Réapprovisionnement');
+  // ✅ CORRECTION : Déclarer les états à l'intérieur du composant principal
+  return (
+    <RestockModalContent 
+      product={restockingProduct}
+      onClose={() => setShowRestockModal(false)}
+      onRestock={handleRestock}
+      currentStock={(stockByStore[currentStoreId] || {})[restockingProduct.id] || 0}
+    />
+  );
+};
 
-   return (
-     <div style={{
-       position: 'fixed',
-       top: 0,
-       left: 0,
-       right: 0,
-       bottom: 0,
-       backgroundColor: 'rgba(0, 0, 0, 0.5)',
-       display: 'flex',
-       alignItems: 'center',
-       justifyContent: 'center',
-       zIndex: 1000
-     }}>
-       <div style={{
-         backgroundColor: 'white',
-         borderRadius: '12px',
-         padding: '24px',
-         width: '100%',
-         maxWidth: '400px'
-       }}>
-         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-           <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Réapprovisionner</h2>
-           <button
-             onClick={() => setShowRestockModal(false)}
-             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-           >
-             <X style={{ width: '20px', height: '20px' }} />
-           </button>
-         </div>
+// Composant séparé pour le modal de réapprovisionnement
+const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
+  const [quantity, setQuantity] = useState('');
+  const [reason, setReason] = useState('Réapprovisionnement');
 
-         <div style={{ marginBottom: '16px' }}>
-           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '500' }}>
-             {restockingProduct.name}
-           </h3>
-           <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
-             Stock actuel: {(stockByStore[currentStoreId] || {})[restockingProduct.id] || 0} unités
-           </p>
-         </div>
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (quantity && parseInt(quantity) > 0) {
+      onRestock(product.id, quantity, reason);
+      setQuantity('');
+      setReason('Réapprovisionnement');
+    }
+  };
 
-         <form onSubmit={(e) => {
-           e.preventDefault();
-           if (quantity && parseInt(quantity) > 0) {
-             handleRestock(restockingProduct.id, quantity, reason);
-             setQuantity('');
-             setReason('Réapprovisionnement');
-           }
-         }}>
-           <div style={{ marginBottom: '16px' }}>
-             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-               Quantité à ajouter *
-             </label>
-             <input
-               type="number"
-               value={quantity}
-               onChange={(e) => setQuantity(e.target.value)}
-               style={{
-                 width: '100%',
-                 padding: '8px 12px',
-                 border: '1px solid #d1d5db',
-                 borderRadius: '6px',
-                 fontSize: '14px'
-               }}
-               min="1"
-               required
-             />
-           </div>
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        width: '100%',
+        maxWidth: '400px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '600' }}>Réapprovisionner</h2>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <X style={{ width: '20px', height: '20px' }} />
+          </button>
+        </div>
 
-           <div style={{ marginBottom: '20px' }}>
-             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
-               Motif
-             </label>
-             <input
-               type="text"
-               value={reason}
-               onChange={(e) => setReason(e.target.value)}
-               style={{
-                 width: '100%',
-                 padding: '8px 12px',
-                 border: '1px solid #d1d5db',
-                 borderRadius: '6px',
-                 fontSize: '14px'
-               }}
-             />
-           </div>
+        <div style={{ marginBottom: '16px' }}>
+          <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '500' }}>
+            {product.name}
+          </h3>
+          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+            Stock actuel: {currentStock} unités
+          </p>
+        </div>
 
-           <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-             <Button
-               variant="outline"
-               onClick={() => setShowRestockModal(false)}
-               type="button"
-             >
-               Annuler
-             </Button>
-             <Button
-               variant="primary"
-               type="submit"
-               leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
-             >
-               Réapprovisionner
-             </Button>
-           </div>
-         </form>
-       </div>
-     </div>
-   );
- };
+        <form onSubmit={handleSubmit}>
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+              Quantité à ajouter *
+            </label>
+            <input
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+              min="1"
+              required
+              autoFocus
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+              Motif
+            </label>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+            <Button
+              variant="outline"
+              onClick={onClose}
+              type="button"
+            >
+              Annuler
+            </Button>
+            <Button
+              variant="primary"
+              type="submit"
+              leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
+            >
+              Réapprovisionner
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
  // Onglets de navigation
  const tabs = [
