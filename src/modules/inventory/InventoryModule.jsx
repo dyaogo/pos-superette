@@ -282,6 +282,330 @@ const Toast = {
   }
 };
 
+// Composant pour le modal de modification - AJOUTER AVANT InventoryModule
+const EditModal = ({ product, onClose, onSave, appSettings }) => {
+  const [formData, setFormData] = useState({
+    name: product?.name || '',
+    category: product?.category || '',
+    price: product?.price || '',
+    costPrice: product?.costPrice || '',
+    minStock: product?.minStock || '',
+    maxStock: product?.maxStock || '',
+    sku: product?.sku || '',
+    barcode: product?.barcode || '',
+    supplier: product?.supplier || '',
+    image: product?.image || ''
+  });
+
+  const calculateMargin = (price, costPrice) => {
+    const p = parseFloat(price) || 0;
+    const c = parseFloat(costPrice) || 0;
+    if (p === 0) return 0;
+    return ((p - c) / p * 100).toFixed(1);
+  };
+
+  const handleImageUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFormData(prev => ({ ...prev, image: event.target.result }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const margin = calculateMargin(formData.price, formData.costPrice);
+  const hasInvalidPrice = parseFloat(formData.price) < parseFloat(formData.costPrice) && 
+                         formData.price && formData.costPrice;
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000
+    }}>
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        width: '100%',
+        maxWidth: '600px',
+        maxHeight: '90vh',
+        overflow: 'auto'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+          <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700' }}>Modifier le produit</h2>
+          <button
+            onClick={onClose}
+            style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+          >
+            <X style={{ width: '24px', height: '24px' }} />
+          </button>
+        </div>
+
+        {/* Aperçu de l'image */}
+        {formData.image && (
+          <div style={{ marginBottom: '16px', textAlign: 'center' }}>
+            <img
+              src={formData.image}
+              alt="Aperçu"
+              style={{
+                width: '120px',
+                height: '120px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+                border: '2px solid #e5e7eb'
+              }}
+            />
+          </div>
+        )}
+
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          if (!hasInvalidPrice) {
+            onSave(formData);
+          }
+        }}>
+          {/* Upload d'image */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+              Image du produit
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageUpload}
+                style={{ flex: 1 }}
+              />
+              <button
+                type="button"
+                onClick={() => setFormData(prev => ({ ...prev, image: '' }))}
+                style={{
+                  padding: '6px 12px',
+                  backgroundColor: '#ef4444',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '12px'
+                }}
+              >
+                ✕ Supprimer
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                Nom du produit *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+                required
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                Catégorie
+              </label>
+              <input
+                type="text"
+                value={formData.category}
+                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                Prix de vente (FCFA) *
+              </label>
+              <input
+                type="number"
+                value={formData.price}
+                onChange={(e) => setFormData(prev => ({ ...prev, price: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: hasInvalidPrice ? '2px solid #ef4444' : '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+                required
+              />
+              {hasInvalidPrice && (
+                <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#ef4444' }}>
+                  ⚠️ Prix inférieur au coût d'achat
+                </p>
+              )}
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                Prix d'achat (FCFA) *
+              </label>
+              <input
+                type="number"
+                value={formData.costPrice}
+                onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+                required
+              />
+            </div>
+          </div>
+
+          {/* Affichage de la marge en temps réel */}
+          {formData.price && formData.costPrice && (
+            <div style={{
+              padding: '12px',
+              backgroundColor: parseFloat(margin) >= 20 ? '#dcfce7' : '#fef3c7',
+              borderRadius: '8px',
+              marginBottom: '16px'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontWeight: '500' }}>Marge brute:</span>
+                <span style={{
+                  fontSize: '18px',
+                  fontWeight: 'bold',
+                  color: parseFloat(margin) >= 20 ? '#059669' : '#d97706'
+                }}>
+                  {margin}%
+                </span>
+              </div>
+              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                Profit par unité: {(parseFloat(formData.price) - parseFloat(formData.costPrice)).toLocaleString()} FCFA
+              </div>
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                Stock minimum
+              </label>
+              <input
+                type="number"
+                value={formData.minStock}
+                onChange={(e) => setFormData(prev => ({ ...prev, minStock: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                Stock maximum
+              </label>
+              <input
+                type="number"
+                value={formData.maxStock}
+                onChange={(e) => setFormData(prev => ({ ...prev, maxStock: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+                Fournisseur
+              </label>
+              <input
+                type="text"
+                value={formData.supplier}
+                onChange={(e) => setFormData(prev => ({ ...prev, supplier: e.target.value }))}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '8px 16px',
+                backgroundColor: 'white',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              disabled={hasInvalidPrice}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '8px 16px',
+                backgroundColor: hasInvalidPrice ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: hasInvalidPrice ? 'not-allowed' : 'pointer',
+                fontSize: '14px'
+              }}
+            >
+              <Save style={{ width: '16px', height: '16px' }} />
+              Sauvegarder
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 // ==================== COMPOSANT PRINCIPAL ====================
 
 const InventoryModule = () => {
@@ -1252,71 +1576,19 @@ const InventoryModule = () => {
    );
  };
 
- // Modal de modification de produit (similaire au modal d'ajout)
- const renderEditProductModal = () => {
-   if (!showEditModal || !editingProduct) return null;
+ // Modal de modification de produit - REMPLACER LA FONCTION EXISTANTE
+const renderEditProductModal = () => {
+  if (!showEditModal || !editingProduct) return null;
 
-   const margin = calculateMargin(editProduct.price, editProduct.costPrice);
-   const hasInvalidPrice = parseFloat(editProduct.price) < parseFloat(editProduct.costPrice) && 
-                          editProduct.price && editProduct.costPrice;
-
-   return (
-     <div style={{
-       position: 'fixed',
-       top: 0,
-       left: 0,
-       right: 0,
-       bottom: 0,
-       backgroundColor: 'rgba(0, 0, 0, 0.5)',
-       display: 'flex',
-       alignItems: 'center',
-       justifyContent: 'center',
-       zIndex: 1000
-     }}>
-       <div style={{
-         backgroundColor: 'white',
-         borderRadius: '12px',
-         padding: '24px',
-         width: '100%',
-         maxWidth: '600px',
-         maxHeight: '90vh',
-         overflow: 'auto'
-       }}>
-         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-           <h2 style={{ margin: 0, fontSize: '24px', fontWeight: '700' }}>Modifier le produit</h2>
-           <button
-             onClick={() => setShowEditModal(false)}
-             style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-           >
-             <X style={{ width: '24px', height: '24px' }} />
-           </button>
-         </div>
-
-         {/* Le reste du modal de modification est identique au modal d'ajout */}
-         {/* mais utilise editProduct au lieu de newProduct */}
-         {/* Code complet disponible dans l'artefact */}
-
-         <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-           <Button
-             variant="outline"
-             onClick={() => setShowEditModal(false)}
-             type="button"
-           >
-             Annuler
-           </Button>
-           <Button
-             variant="primary"
-             onClick={() => handleEditProduct(editProduct)}
-             leftIcon={<Save style={{ width: '16px', height: '16px' }} />}
-             disabled={hasInvalidPrice}
-           >
-             Sauvegarder
-           </Button>
-         </div>
-       </div>
-     </div>
-   );
- };
+  return (
+    <EditModal 
+      product={editingProduct}
+      appSettings={appSettings}
+      onClose={() => setShowEditModal(false)}
+      onSave={handleEditProduct}
+    />
+  );
+};
 
  // Modal de suppression de produit
  const renderDeleteProductModal = () => {
