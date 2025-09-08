@@ -1783,7 +1783,7 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
  const tabs = [
    { id: 'dashboard', name: 'Tableau de bord', icon: BarChart3 },
    { id: 'products', name: 'Produits', icon: Package },
-   { id: 'movements', name: 'Mouvements', icon: Activity }
+   { id: 'movements', name: 'Mouvements', icon: Activity },
    { id: 'physical', name: 'Inventaire Physique', icon: ClipboardList }
  ];
 
