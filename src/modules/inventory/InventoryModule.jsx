@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   Package, AlertTriangle, TrendingDown, TrendingUp, BarChart3,
-  Search, Plus, Search, Minus, Edit, Save, X, Bell, Clock, Eye,
+  Search, Plus, Minus, Edit, Save, X, Bell, Clock, Eye,
   RefreshCw, Trash, Download, Upload, Filter, Settings,
   Target, Zap, Activity, DollarSign, Truck, Calendar,
-  ArrowUpDown, CheckCircle, XCircle, PieChart, Save, LineChart,
+  ArrowUpDown, CheckCircle, XCircle, PieChart, LineChart,
   ClipboardList, ImagePlus, Trash2
 } from 'lucide-react';
 
