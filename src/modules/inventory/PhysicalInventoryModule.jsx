@@ -2491,43 +2491,6 @@ const finalizeInventory = useCallback(() => {
      </div>
    );
  };
-// Vue de révision (simplifiée)
-const renderReviewView = () => (
-  <div style={{ padding: '24px' }}>
-    <div style={{
-      background: isDark ? '#374151' : '#f8fafc',
-      borderRadius: '12px',
-      padding: '24px'
-    }}>
-      <h3 style={{
-        fontSize: '20px',
-        fontWeight: '700',
-        color: isDark ? '#f7fafc' : '#1f2937',
-        marginBottom: '16px'
-      }}>
-        Révision des écarts
-      </h3>
-      <p style={{
-        color: isDark ? '#a0aec0' : '#6b7280'
-      }}>
-        {sessionStats.discrepancies} écart(s) détecté(s)
-      </p>
-      <button
-        onClick={() => setActiveView('counting')}
-        style={{
-          padding: '8px 16px',
-          background: '#3b82f6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '8px',
-          marginTop: '16px'
-        }}
-      >
-        Retour au comptage
-      </button>
-    </div>
-  </div>
-);
 
 // Vue historique (simplifiée)
 const renderHistoryView = () => {
