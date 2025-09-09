@@ -1,55 +1,144 @@
-// src/modules/pos/POSModule.jsx - Version modernisée avec images et boutons catégories
+// src/modules/pos/POSModule.jsx - Version corrigée pour votre structure existante
 
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
   Package, Search, Lock, Unlock, Plus, Minus, Trash2, 
   CreditCard, Banknote, User, Calculator, Receipt,
-  ShoppingCart, X, Check, AlertCircle, Calendar,
+  ShoppingCart, X, Check, AlertTriangle, Calendar,
   Zap, Sparkles, ImageIcon
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
-import { useSales } from '../../hooks/useSales';
 import { useCart } from '../../hooks/useCart';
-import { useCustomers } from '../../hooks/useCustomers';
-import { useCashRegister } from '../../hooks/useCashRegister';
 import { useCategories } from '../../hooks/useCategories';
-import { toast } from 'react-hot-toast';
+import { 
+  getCashSession, 
+  saveCashSession, 
+  getCashOperations, 
+  saveCashOperations, 
+  addCashReport, 
+  clearCashData 
+} from '../../services/cash.service';
+import toast from 'react-hot-toast';
 
 const POSModule = ({ onNavigate }) => {
   const { 
     globalProducts = [], 
     appSettings = {}, 
     currentStoreId,
-    isDark = appSettings.darkMode 
+    customers = [],
+    processSale,
+    credits,
+    setCredits,
+    salesHistory = []
   } = useApp();
 
-  const { customers = [] } = useCustomers();
-  const { processSale, addCreditSale } = useSales();
-  const { cashSession, closeCashRegister } = useCashRegister();
-  
-  const {
-    cart,
-    cartStats,
-    addToCart,
-    updateQuantity,
-    removeFromCart,
-    clearCart
-  } = useCart();
+  const isDark = appSettings.darkMode || false;
 
-  // États locaux
+  // ==================== GESTION CAISSE ====================
+  const [cashSession, setCashSession] = useState(null);
+  const [cashOperations, setCashOperations] = useState([]);
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+  const [openingAmount, setOpeningAmount] = useState('50000');
+  const [closingCash, setClosingCash] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // Charger la session de caisse
+  useEffect(() => {
+    const session = getCashSession();
+    const operations = getCashOperations();
+    setCashSession(session);
+    if (operations.length) {
+      setCashOperations(operations);
+    }
+  }, []);
+
+  // ==================== HOOKS PERSONNALISÉS ====================
+  const { 
+    cart, 
+    cartStats, 
+    addToCart, 
+    updateQuantity, 
+    removeFromCart, 
+    clearCart 
+  } = useCart(globalProducts, appSettings);
+  
+  const categories = useCategories(globalProducts);
+
+  // ==================== ÉTATS LOCAUX ====================
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedCustomer, setSelectedCustomer] = useState(customers?.[0] || { id: 1, name: 'Client Comptant' });
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [showCloseModal, setShowCloseModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountDisplay, setAmountDisplay] = useState('');
   const amountReceivedRef = useRef('');
 
-  // Génération des catégories avec le hook
-  const categories = useCategories(globalProducts);
+  // ==================== FONCTIONS CAISSE ====================
+  const getSessionSales = () => {
+    if (!cashSession) return [];
+    return salesHistory.filter(sale => 
+      new Date(sale.date) >= new Date(cashSession.openedAt)
+    );
+  };
 
-  // Produits filtrés
+  const getSessionTotals = () => {
+    const sessionSales = getSessionSales();
+    const cashSales = sessionSales.filter(s => s.paymentMethod === 'cash');
+    const cardSales = sessionSales.filter(s => s.paymentMethod === 'card');
+    
+    return {
+      totalSales: sessionSales.reduce((sum, s) => sum + s.total, 0),
+      cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
+      cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
+      transactionCount: sessionSales.length
+    };
+  };
+
+  const openRegister = () => {
+    const session = {
+      id: Date.now(),
+      openedAt: new Date().toISOString(),
+      openedBy: 'Caissier Principal',
+      openingAmount: parseFloat(openingAmount),
+      status: 'open'
+    };
+    
+    setCashSession(session);
+    saveCashSession(session);
+    setShowOpenModal(false);
+    toast.success('Caisse ouverte avec succès!');
+  };
+
+  const closeRegister = () => {
+    if (!cashSession) return;
+
+    const totals = getSessionTotals();
+    const expectedCash = cashSession.openingAmount + totals.cashSales;
+    const actualCash = parseFloat(closingCash) || 0;
+    const difference = actualCash - expectedCash;
+
+    const report = {
+      sessionId: cashSession.id,
+      openedAt: cashSession.openedAt,
+      closedAt: new Date().toISOString(),
+      openingAmount: cashSession.openingAmount,
+      expectedCash,
+      actualCash,
+      difference,
+      ...totals,
+      notes
+    };
+
+    addCashReport(report);
+    clearCashData();
+    setCashSession(null);
+    setCashOperations([]);
+    setShowCloseModal(false);
+    toast.success('Caisse fermée avec succès!');
+  };
+
+  // ==================== FILTRAGE PRODUITS ====================
   const filteredProducts = useMemo(() => {
     let filtered = globalProducts.filter(product => {
       const matchesSearch = !searchQuery || 
@@ -62,10 +151,40 @@ const POSModule = ({ onNavigate }) => {
       return matchesSearch && matchesCategory;
     });
 
-    return filtered.slice(0, 50); // Limiter pour la performance
+    return filtered.slice(0, 50);
   }, [globalProducts, searchQuery, selectedCategory]);
 
-  // Gestion du paiement
+  // ==================== GESTION PAIEMENT ====================
+  const addCreditSale = useCallback(() => {
+    const credit = {
+      id: Date.now(),
+      customerId: selectedCustomer.id,
+      customerName: selectedCustomer.name,
+      amount: cartStats.finalTotal,
+      originalAmount: cartStats.finalTotal,
+      description: `Vente à crédit du ${new Date().toLocaleDateString('fr-FR')}`,
+      createdAt: new Date().toISOString(),
+      dueDate: (() => {
+        const date = new Date();
+        date.setDate(date.getDate() + 30);
+        return date.toISOString();
+      })(),
+      status: 'pending',
+      payments: [],
+      remainingAmount: cartStats.finalTotal,
+      items: cart.map(item => ({
+        productId: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        total: item.price * item.quantity
+      }))
+    };
+
+    setCredits(prevCredits => [...prevCredits, credit]);
+    return credit;
+  }, [cartStats.finalTotal, selectedCustomer, cart, setCredits]);
+
   const handleCompleteSale = useCallback(async () => {
     try {
       if (cart.length === 0) {
@@ -81,11 +200,7 @@ const POSModule = ({ onNavigate }) => {
       }
 
       if (paymentMethod === 'credit') {
-        const result = await addCreditSale(
-          cart,
-          cartStats.finalTotal,
-          selectedCustomer.id
-        );
+        const result = addCreditSale();
         
         if (result) {
           clearCart();
@@ -352,20 +467,6 @@ const POSModule = ({ onNavigate }) => {
             )}
           </div>
         </div>
-
-        {/* Effet de brillance au survol */}
-        <div style={{
-          position: 'absolute',
-          top: '-50%',
-          left: '-50%',
-          width: '200%',
-          height: '200%',
-          background: 'linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent)',
-          transform: 'rotate(45deg)',
-          transition: 'all 0.6s ease',
-          opacity: 0,
-          pointerEvents: 'none'
-        }} className="shine-effect" />
       </div>
     );
   };
@@ -506,25 +607,48 @@ const POSModule = ({ onNavigate }) => {
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
-              padding: '12px 24px',
-              borderRadius: '50px',
-              background: cashSession 
-                ? 'linear-gradient(135deg, #10b981, #059669)' 
-                : 'linear-gradient(135deg, #ef4444, #dc2626)',
-              color: 'white',
-              fontWeight: '600',
-              boxShadow: cashSession 
-                ? '0 8px 25px rgba(16, 185, 129, 0.3)' 
-                : '0 8px 25px rgba(239, 68, 68, 0.3)',
-              cursor: cashSession ? 'pointer' : 'default',
-              transition: 'all 0.3s ease'
-            }}
-            onClick={() => cashSession && setShowCloseModal(true)}
-            >
-              {cashSession ? <Unlock size={20} /> : <Lock size={20} />}
-              <span>{cashSession ? 'Caisse Ouverte' : 'Caisse Fermée'}</span>
-              {cashSession && <Sparkles size={16} />}
+              gap: '12px'
+            }}>
+              {!cashSession && (
+                <button
+                  onClick={() => setShowOpenModal(true)}
+                  style={{
+                    padding: '12px 24px',
+                    borderRadius: '50px',
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    color: 'white',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)'
+                  }}
+                >
+                  Ouvrir la caisse
+                </button>
+              )}
+              
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '12px 24px',
+                borderRadius: '50px',
+                background: cashSession 
+                  ? 'linear-gradient(135deg, #10b981, #059669)' 
+                  : 'linear-gradient(135deg, #ef4444, #dc2626)',
+                color: 'white',
+                fontWeight: '600',
+                boxShadow: cashSession 
+                  ? '0 8px 25px rgba(16, 185, 129, 0.3)' 
+                  : '0 8px 25px rgba(239, 68, 68, 0.3)',
+                cursor: cashSession ? 'pointer' : 'default'
+              }}
+              onClick={() => cashSession && setShowCloseModal(true)}
+              >
+                {cashSession ? <Unlock size={20} /> : <Lock size={20} />}
+                <span>{cashSession ? 'Caisse Ouverte' : 'Caisse Fermée'}</span>
+                {cashSession && <Sparkles size={16} />}
+              </div>
             </div>
           </div>
 
@@ -764,7 +888,7 @@ const POSModule = ({ onNavigate }) => {
                   gap: '8px'
                 }}>
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                    onClick={() => updateQuantity(item.id, -1)}
                     style={{
                       width: '32px',
                       height: '32px',
@@ -794,7 +918,7 @@ const POSModule = ({ onNavigate }) => {
                   </span>
                   
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                    onClick={() => updateQuantity(item.id, 1)}
                     disabled={item.quantity >= item.stock}
                     style={{
                       width: '32px',
@@ -868,21 +992,24 @@ const POSModule = ({ onNavigate }) => {
                   fontWeight: '600', 
                   color: isDark ? '#f9fafb' : '#111827' 
                 }}>
-                  {cartStats.subtotal.toLocaleString()} {appSettings.currency}
+                  {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
                 </span>
               </div>
               
-              {cartStats.discount > 0 && (
+              {cartStats.totalTax > 0 && (
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   marginBottom: '8px'
                 }}>
-                  <span style={{ color: '#10b981' }}>
-                    Remise:
+                  <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
+                    Taxe:
                   </span>
-                  <span style={{ color: '#10b981', fontWeight: '600' }}>
-                    -{cartStats.discount.toLocaleString()} {appSettings.currency}
+                  <span style={{ 
+                    fontWeight: '600', 
+                    color: isDark ? '#f9fafb' : '#111827' 
+                  }}>
+                    {cartStats.totalTax.toLocaleString()} {appSettings.currency}
                   </span>
                 </div>
               )}
@@ -937,6 +1064,108 @@ const POSModule = ({ onNavigate }) => {
               Procéder au paiement
               <Zap size={16} />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal d'ouverture de caisse */}
+      {showOpenModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          backdropFilter: 'blur(8px)'
+        }}>
+          <div style={{
+            background: isDark ? '#1f2937' : 'white',
+            borderRadius: '20px',
+            padding: '32px',
+            width: '90%',
+            maxWidth: '400px',
+            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
+          }}>
+            <h3 style={{
+              fontSize: '24px',
+              fontWeight: '700',
+              color: isDark ? '#f9fafb' : '#111827',
+              margin: '0 0 20px 0',
+              textAlign: 'center'
+            }}>
+              🔓 Ouvrir la caisse
+            </h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: isDark ? '#f9fafb' : '#111827',
+                marginBottom: '8px'
+              }}>
+                Montant d'ouverture
+              </label>
+              <input
+                type="number"
+                value={openingAmount}
+                onChange={(e) => setOpeningAmount(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f9fafb' : '#111827'
+                }}
+              />
+            </div>
+
+            <div style={{
+              display: 'flex',
+              gap: '12px'
+            }}>
+              <button
+                onClick={() => setShowOpenModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                  background: 'transparent',
+                  color: isDark ? '#d1d5db' : '#6b7280',
+                  fontSize: '14px',
+                  fontWeight: '600',
+                  cursor: 'pointer'
+                }}
+              >
+                Annuler
+              </button>
+              
+              <button
+                onClick={openRegister}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #10b981, #059669)',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)'
+                }}
+              >
+                Ouvrir
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1022,7 +1251,7 @@ const POSModule = ({ onNavigate }) => {
                   Articles ({cart.length}):
                 </span>
                 <span style={{ fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
-                  {cartStats.subtotal.toLocaleString()} {appSettings.currency}
+                  {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
                 </span>
               </div>
               
@@ -1240,38 +1469,72 @@ const POSModule = ({ onNavigate }) => {
             padding: '32px',
             width: '90%',
             maxWidth: '400px',
-            textAlign: 'center',
             boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
           }}>
-            <div style={{
-              width: '64px',
-              height: '64px',
-              borderRadius: '50%',
-              background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto 20px'
-            }}>
-              <Lock size={32} color="white" />
-            </div>
-
             <h3 style={{
               fontSize: '20px',
               fontWeight: '700',
               color: isDark ? '#f9fafb' : '#111827',
-              margin: '0 0 12px 0'
+              margin: '0 0 20px 0',
+              textAlign: 'center'
             }}>
-              Fermer la caisse ?
+              🔒 Fermer la caisse
             </h3>
             
-            <p style={{
-              color: isDark ? '#9ca3af' : '#6b7280',
-              margin: '0 0 24px 0',
-              lineHeight: '1.5'
-            }}>
-              Cette action fermera la session de caisse et générera un rapport de fin de journée.
-            </p>
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: isDark ? '#f9fafb' : '#111827',
+                marginBottom: '8px'
+              }}>
+                Espèces en caisse
+              </label>
+              <input
+                type="number"
+                value={closingCash}
+                onChange={(e) => setClosingCash(e.target.value)}
+                placeholder="Montant compté"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                  borderRadius: '12px',
+                  fontSize: '16px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f9fafb' : '#111827'
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: isDark ? '#f9fafb' : '#111827',
+                marginBottom: '8px'
+              }}>
+                Notes (optionnel)
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Remarques sur la journée..."
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                  borderRadius: '12px',
+                  fontSize: '14px',
+                  background: isDark ? '#374151' : 'white',
+                  color: isDark ? '#f9fafb' : '#111827',
+                  resize: 'vertical',
+                  minHeight: '60px'
+                }}
+              />
+            </div>
 
             <div style={{
               display: 'flex',
@@ -1295,11 +1558,7 @@ const POSModule = ({ onNavigate }) => {
               </button>
               
               <button
-                onClick={() => {
-                  closeCashRegister();
-                  setShowCloseModal(false);
-                  toast.success('Caisse fermée avec succès');
-                }}
+                onClick={closeRegister}
                 style={{
                   flex: 1,
                   padding: '12px',
@@ -1319,40 +1578,6 @@ const POSModule = ({ onNavigate }) => {
           </div>
         </div>
       )}
-
-      {/* Styles CSS pour les animations */}
-      <style>
-        {`
-          @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-          }
-          
-          .product-card:hover .shine-effect {
-            opacity: 1;
-            animation: shine 0.6s ease-in-out;
-          }
-          
-          /* Scrollbar personnalisée */
-          ::-webkit-scrollbar {
-            width: 8px;
-          }
-          
-          ::-webkit-scrollbar-track {
-            background: ${isDark ? '#374151' : '#f1f5f9'};
-            border-radius: 4px;
-          }
-          
-          ::-webkit-scrollbar-thumb {
-            background: ${isDark ? '#6b7280' : '#cbd5e1'};
-            border-radius: 4px;
-          }
-          
-          ::-webkit-scrollbar-thumb:hover {
-            background: ${isDark ? '#9ca3af' : '#94a3b8'};
-          }
-        `}
-      </style>
     </div>
   );
 };
