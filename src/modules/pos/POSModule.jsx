@@ -106,7 +106,7 @@ const POSModule = ({ onNavigate }) => {
     };
     
     setCashSession(session);
-    saveCashSession(session);
+    // saveCashSession(session); // Décommentez si vous avez le service
     setShowOpenModal(false);
     toast.success('Caisse ouverte avec succès!');
   };
@@ -131,8 +131,8 @@ const POSModule = ({ onNavigate }) => {
       notes
     };
 
-    addCashReport(report);
-    clearCashData();
+    // addCashReport(report); // Décommentez si vous avez le service
+    // clearCashData(); // Décommentez si vous avez le service
     setCashSession(null);
     setCashOperations([]);
     setShowCloseModal(false);
