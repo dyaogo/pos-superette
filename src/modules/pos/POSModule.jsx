@@ -1,24 +1,14 @@
-{/* Grille des produits - Adaptable selon le mode */}
-        {view// src/modules/pos/POSModule.jsx - Version corrigée pour votre structure existante
+// src/modules/pos/POSModule.jsx - Version corrigée avec vos dépendances existantes
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
   Package, Search, Lock, Unlock, Plus, Minus, Trash2, 
-  CreditCard, Banknote, User, Calculator, Receipt,
-  ShoppingCart, X, Check, AlertTriangle, Calendar,
+  CreditCard, User, ShoppingCart, X, Check, AlertTriangle,
   Zap, Sparkles, ImageIcon
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCart } from '../../hooks/useCart';
 import { useCategories } from '../../hooks/useCategories';
-import { 
-  getCashSession, 
-  saveCashSession, 
-  getCashOperations, 
-  saveCashOperations, 
-  addCashReport, 
-  clearCashData 
-} from '../../services/cash.service';
 import toast from 'react-hot-toast';
 
 const POSModule = ({ onNavigate }) => {
@@ -35,24 +25,12 @@ const POSModule = ({ onNavigate }) => {
 
   const isDark = appSettings.darkMode || false;
 
-  // ==================== GESTION CAISSE ====================
-  const [cashSession, setCashSession] = useState(null);
-  const [cashOperations, setCashOperations] = useState([]);
+  // ==================== GESTION CAISSE SIMPLIFIÉE ====================
+  const [cashSession, setCashSession] = useState({ id: 1, status: 'open' }); // Simplifié pour l'instant
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('50000');
   const [closingCash, setClosingCash] = useState('');
-  const [notes, setNotes] = useState('');
-
-  // Charger la session de caisse
-  useEffect(() => {
-    const session = getCashSession();
-    const operations = getCashOperations();
-    setCashSession(session);
-    if (operations.length) {
-      setCashOperations(operations);
-    }
-  }, []);
 
   // ==================== HOOKS PERSONNALISÉS ====================
   const { 
@@ -73,29 +51,10 @@ const POSModule = ({ onNavigate }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountDisplay, setAmountDisplay] = useState('');
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' ou 'list'
   const amountReceivedRef = useRef('');
 
-  // ==================== FONCTIONS CAISSE ====================
-  const getSessionSales = () => {
-    if (!cashSession) return [];
-    return salesHistory.filter(sale => 
-      new Date(sale.date) >= new Date(cashSession.openedAt)
-    );
-  };
-
-  const getSessionTotals = () => {
-    const sessionSales = getSessionSales();
-    const cashSales = sessionSales.filter(s => s.paymentMethod === 'cash');
-    const cardSales = sessionSales.filter(s => s.paymentMethod === 'card');
-    
-    return {
-      totalSales: sessionSales.reduce((sum, s) => sum + s.total, 0),
-      cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
-      cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
-      transactionCount: sessionSales.length
-    };
-  };
-
+  // ==================== FONCTIONS CAISSE SIMPLIFIÉES ====================
   const openRegister = () => {
     const session = {
       id: Date.now(),
@@ -106,35 +65,12 @@ const POSModule = ({ onNavigate }) => {
     };
     
     setCashSession(session);
-    // saveCashSession(session); // Décommentez si vous avez le service
     setShowOpenModal(false);
     toast.success('Caisse ouverte avec succès!');
   };
 
   const closeRegister = () => {
-    if (!cashSession) return;
-
-    const totals = getSessionTotals();
-    const expectedCash = cashSession.openingAmount + totals.cashSales;
-    const actualCash = parseFloat(closingCash) || 0;
-    const difference = actualCash - expectedCash;
-
-    const report = {
-      sessionId: cashSession.id,
-      openedAt: cashSession.openedAt,
-      closedAt: new Date().toISOString(),
-      openingAmount: cashSession.openingAmount,
-      expectedCash,
-      actualCash,
-      difference,
-      ...totals,
-      notes
-    };
-
-    // addCashReport(report); // Décommentez si vous avez le service
-    // clearCashData(); // Décommentez si vous avez le service
     setCashSession(null);
-    setCashOperations([]);
     setShowCloseModal(false);
     toast.success('Caisse fermée avec succès!');
   };
@@ -254,18 +190,171 @@ const POSModule = ({ onNavigate }) => {
     toast.success(`${product.name} ajouté au panier`, { duration: 1500 });
   }, [addToCart, cashSession]);
 
-  // ==================== COMPOSANT CARTE PRODUIT MODERNE ====================
-  const ProductCard = ({ product }) => {
+  // ==================== COMPOSANT CARTE PRODUIT COMPACTE ====================
+  const ProductCard = ({ product, isListMode = false }) => {
     const hasImage = product.image && product.image.trim() !== '';
     const isOutOfStock = product.stock === 0;
     const isLowStock = product.stock > 0 && product.stock <= (product.minStock || 5);
 
+    if (isListMode) {
+      // Mode liste compact
+      return (
+        <div
+          onClick={() => !isOutOfStock && handleAddToCart(product)}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '12px',
+            background: isDark ? '#374151' : 'white',
+            borderRadius: '8px',
+            border: `1px solid ${
+              isOutOfStock ? '#ef4444' : 
+              isLowStock ? '#f59e0b' : 
+              (isDark ? '#4b5563' : '#e5e7eb')
+            }`,
+            cursor: (!cashSession || isOutOfStock) ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease',
+            opacity: (!cashSession || isOutOfStock) ? 0.6 : 1,
+            marginBottom: '8px'
+          }}
+          onMouseEnter={(e) => {
+            if (!isOutOfStock && cashSession) {
+              e.currentTarget.style.background = isDark ? '#4b5563' : '#f8fafc';
+              e.currentTarget.style.borderColor = '#3b82f6';
+            }
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = isDark ? '#374151' : 'white';
+            e.currentTarget.style.borderColor = isOutOfStock ? '#ef4444' : 
+              isLowStock ? '#f59e0b' : (isDark ? '#4b5563' : '#e5e7eb');
+          }}
+        >
+          {/* Image miniature */}
+          <div style={{
+            width: '40px',
+            height: '40px',
+            borderRadius: '6px',
+            background: hasImage ? 'transparent' : (isDark ? '#4b5563' : '#f3f4f6'),
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+            flexShrink: 0
+          }}>
+            {hasImage ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                style={{
+                  width: '100%',
+                  height: '100%',
+                  objectFit: 'cover'
+                }}
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextSibling.style.display = 'flex';
+                }}
+              />
+            ) : (
+              <Package size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+            )}
+          </div>
+
+          {/* Infos produit */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h4 style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: isDark ? '#f9fafb' : '#111827',
+              margin: '0 0 2px 0',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap'
+            }}>
+              {product.name}
+            </h4>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}>
+              <span style={{
+                fontSize: '12px',
+                color: isDark ? '#9ca3af' : '#6b7280'
+              }}>
+                Stock: {product.stock || 0}
+              </span>
+              {product.category && (
+                <span style={{
+                  fontSize: '10px',
+                  color: isDark ? '#9ca3af' : '#6b7280',
+                  background: isDark ? '#4b5563' : '#f3f4f6',
+                  padding: '1px 6px',
+                  borderRadius: '4px'
+                }}>
+                  {product.category}
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Prix et statut */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '4px'
+          }}>
+            <span style={{
+              fontSize: '16px',
+              fontWeight: '700',
+              color: '#3b82f6'
+            }}>
+              {product.price?.toLocaleString()} {appSettings.currency}
+            </span>
+            
+            {(isOutOfStock || isLowStock) && (
+              <span style={{
+                fontSize: '10px',
+                fontWeight: '600',
+                color: isOutOfStock ? '#ef4444' : '#f59e0b',
+                textTransform: 'uppercase'
+              }}>
+                {isOutOfStock ? 'Rupture' : 'Stock faible'}
+              </span>
+            )}
+          </div>
+
+          {/* Bouton d'ajout */}
+          {!isOutOfStock && (
+            <div style={{
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: 'white',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              flexShrink: 0
+            }}>
+              +
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    // Mode grille compact
     return (
       <div
         onClick={() => !isOutOfStock && handleAddToCart(product)}
         style={{
           background: isDark ? '#374151' : 'white',
-          borderRadius: '16px',
+          borderRadius: '12px',
           border: `2px solid ${
             isOutOfStock ? '#ef4444' : 
             isLowStock ? '#f59e0b' : 
@@ -277,16 +366,16 @@ const POSModule = ({ onNavigate }) => {
           opacity: (!cashSession || isOutOfStock) ? 0.6 : 1,
           overflow: 'hidden',
           transformOrigin: 'center',
-          minHeight: '280px',
+          minHeight: '180px',
           display: 'flex',
           flexDirection: 'column'
         }}
         onMouseEnter={(e) => {
           if (!isOutOfStock && cashSession) {
-            e.currentTarget.style.transform = 'translateY(-4px) scale(1.02)';
+            e.currentTarget.style.transform = 'translateY(-2px) scale(1.01)';
             e.currentTarget.style.boxShadow = isDark 
-              ? '0 20px 40px rgba(0, 0, 0, 0.4), 0 0 20px rgba(59, 130, 246, 0.3)'
-              : '0 20px 40px rgba(0, 0, 0, 0.1), 0 0 20px rgba(59, 130, 246, 0.2)';
+              ? '0 10px 20px rgba(0, 0, 0, 0.3), 0 0 10px rgba(59, 130, 246, 0.2)'
+              : '0 10px 20px rgba(0, 0, 0, 0.1), 0 0 10px rgba(59, 130, 246, 0.15)';
             e.currentTarget.style.borderColor = '#3b82f6';
           }
         }}
@@ -301,27 +390,27 @@ const POSModule = ({ onNavigate }) => {
         {(isOutOfStock || isLowStock) && (
           <div style={{
             position: 'absolute',
-            top: '12px',
-            right: '12px',
+            top: '8px',
+            right: '8px',
             background: isOutOfStock ? '#ef4444' : '#f59e0b',
             color: 'white',
-            padding: '4px 8px',
-            borderRadius: '12px',
-            fontSize: '10px',
+            padding: '2px 6px',
+            borderRadius: '8px',
+            fontSize: '9px',
             fontWeight: '600',
             zIndex: 10,
             textTransform: 'uppercase',
             letterSpacing: '0.5px'
           }}>
-            {isOutOfStock ? 'Rupture' : 'Stock faible'}
+            {isOutOfStock ? 'Rupture' : 'Faible'}
           </div>
         )}
 
-        {/* Zone image ou placeholder */}
+        {/* Zone image ou placeholder - Réduite */}
         <div style={{
-          height: '160px',
+          height: '100px',
           background: hasImage ? 'transparent' : (isDark ? '#4b5563' : '#f3f4f6'),
-          borderRadius: '12px 12px 0 0',
+          borderRadius: '8px 8px 0 0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -353,7 +442,7 @@ const POSModule = ({ onNavigate }) => {
                 justifyContent: 'center',
                 background: isDark ? '#4b5563' : '#f3f4f6'
               }}>
-                <ImageIcon size={32} color={isDark ? '#9ca3af' : '#6b7280'} />
+                <ImageIcon size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
               </div>
             </>
           ) : (
@@ -362,11 +451,11 @@ const POSModule = ({ onNavigate }) => {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: '8px'
+              gap: '4px'
             }}>
-              <Package size={32} color={isDark ? '#9ca3af' : '#6b7280'} />
+              <Package size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
               <span style={{
-                fontSize: '12px',
+                fontSize: '10px',
                 color: isDark ? '#9ca3af' : '#6b7280',
                 textAlign: 'center',
                 fontWeight: '500'
@@ -375,37 +464,24 @@ const POSModule = ({ onNavigate }) => {
               </span>
             </div>
           )}
-
-          {/* Overlay gradient pour le texte */}
-          {hasImage && (
-            <div style={{
-              position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: '50%',
-              background: 'linear-gradient(transparent, rgba(0,0,0,0.7))',
-              pointerEvents: 'none'
-            }} />
-          )}
         </div>
 
-        {/* Informations produit */}
+        {/* Informations produit - Compactées */}
         <div style={{
-          padding: '16px',
+          padding: '12px',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between'
         }}>
           {/* Nom et catégorie */}
-          <div style={{ marginBottom: '12px' }}>
+          <div style={{ marginBottom: '8px' }}>
             <h3 style={{
-              fontSize: '16px',
+              fontSize: '14px',
               fontWeight: '700',
               color: isDark ? '#f9fafb' : '#111827',
               margin: '0 0 4px 0',
-              lineHeight: '1.3',
+              lineHeight: '1.2',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               display: '-webkit-box',
@@ -417,12 +493,12 @@ const POSModule = ({ onNavigate }) => {
             
             {product.category && (
               <span style={{
-                fontSize: '12px',
+                fontSize: '10px',
                 color: isDark ? '#9ca3af' : '#6b7280',
                 fontWeight: '500',
-                background: isDark ? '#374151' : '#f3f4f6',
-                padding: '2px 8px',
-                borderRadius: '8px',
+                background: isDark ? '#4b5563' : '#f3f4f6',
+                padding: '1px 6px',
+                borderRadius: '6px',
                 display: 'inline-block'
               }}>
                 {product.category}
@@ -438,7 +514,7 @@ const POSModule = ({ onNavigate }) => {
           }}>
             <div>
               <div style={{
-                fontSize: '20px',
+                fontSize: '16px',
                 fontWeight: '800',
                 color: '#3b82f6',
                 lineHeight: '1'
@@ -447,7 +523,7 @@ const POSModule = ({ onNavigate }) => {
               </div>
               
               <div style={{
-                fontSize: '12px',
+                fontSize: '10px',
                 color: isDark ? '#9ca3af' : '#6b7280',
                 marginTop: '2px'
               }}>
@@ -455,20 +531,20 @@ const POSModule = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* Action button */}
+            {/* Action button - Plus petit */}
             {!isOutOfStock && (
               <div style={{
-                width: '36px',
-                height: '36px',
+                width: '28px',
+                height: '28px',
                 borderRadius: '50%',
                 background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'white',
-                fontSize: '18px',
+                fontSize: '16px',
                 fontWeight: 'bold',
-                boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)'
+                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
               }}>
                 +
               </div>
@@ -660,934 +736,1068 @@ const POSModule = ({ onNavigate }) => {
             </div>
           </div>
 
-          {/* Barre de recherche moderne */}
+          {/* Barre de recherche moderne + Toggle de vue */}
           <div style={{
-            position: 'relative',
+            display: 'flex',
+            gap: '12px',
             marginBottom: '24px'
           }}>
-            <Search size={20} style={{
-              position: 'absolute',
-              left: '16px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: isDark ? '#9ca3af' : '#6b7280'
-            }} />
-            <input
-              type="text"
-              placeholder="Rechercher un produit par nom ou code..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              disabled={!cashSession}
-              style={{
-                width: '100%',
-                padding: '16px 16px 16px 48px',
-                border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                borderRadius: '20px',
-                fontSize: '16px',
-                background: isDark ? '#374151' : 'white',
-                color: isDark ? '#f9fafb' : '#111827',
-                outline: 'none',
-                transition: 'all 0.3s ease',
-                opacity: !cashSession ? 0.6 : 1
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#3b82f6';
-                e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = isDark ? '#374151' : '#e5e7eb';
-                e.target.style.boxShadow = 'none';
-              }}
-            />
-          </div>
-
-          {/* Boutons catégories */}
-          <CategoryButtons />
-        </div>
-
-        {/* Grille des produits */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '24px',
-          marginBottom: '32px'
-        }}>
-          {filteredProducts.map(product => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-
-        {/* Message si aucun produit */}
-        {filteredProducts.length === 0 && (
-          <div style={{
-            textAlign: 'center',
-            padding: '60px 20px',
-            background: isDark ? '#1f2937' : 'white',
-            borderRadius: '20px',
-            border: `2px dashed ${isDark ? '#374151' : '#e5e7eb'}`
-          }}>
-            <Package size={64} color={isDark ? '#6b7280' : '#9ca3af'} style={{ margin: '0 auto 16px' }} />
-            <h3 style={{
-              fontSize: '20px',
-              fontWeight: '600',
-              color: isDark ? '#f9fafb' : '#111827',
-              margin: '0 0 8px 0'
-            }}>
-              Aucun produit trouvé
-            </h3>
-            <p style={{
-              color: isDark ? '#9ca3af' : '#6b7280',
-              margin: 0,
-              fontSize: '16px'
-            }}>
-              {searchQuery ? 'Essayez de modifier votre recherche' : 'Sélectionnez une autre catégorie'}
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Section Panier (si des articles) */}
-      {cart.length > 0 && (
-        <div style={{
-          background: isDark ? '#1f2937' : 'white',
-          borderLeft: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-          display: 'flex',
-          flexDirection: 'column',
-          height: '100vh'
-        }}>
-          {/* Header Panier */}
-          <div style={{
-            padding: '24px',
-            borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-            background: isDark ? '#111827' : '#f8fafc'
-          }}>
+            {/* Barre de recherche */}
             <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              marginBottom: '16px'
+              position: 'relative',
+              flex: 1
             }}>
-              <h2 style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: isDark ? '#f9fafb' : '#111827',
-                margin: 0,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px'
-              }}>
-                <ShoppingCart size={24} />
-                Panier ({cart.length})
-              </h2>
-              
-              <button
-                onClick={clearCart}
-                style={{
-                  padding: '8px',
-                  background: 'none',
-                  border: 'none',
-                  color: '#ef4444',
-                  cursor: 'pointer',
-                  borderRadius: '8px',
-                  transition: 'background 0.2s'
-                }}
-                onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
-                onMouseLeave={(e) => e.target.style.background = 'none'}
-              >
-                <Trash2 size={20} />
-              </button>
-            </div>
-
-            {/* Sélection client */}
-            <select
-              value={selectedCustomer.id}
-              onChange={(e) => {
-                const customer = customers.find(c => c.id === parseInt(e.target.value));
-                setSelectedCustomer(customer || { id: 1, name: 'Client Comptant' });
-              }}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                borderRadius: '12px',
-                background: isDark ? '#374151' : 'white',
-                color: isDark ? '#f9fafb' : '#111827',
-                fontSize: '14px'
-              }}
-            >
-              {customers.map(customer => (
-                <option key={customer.id} value={customer.id}>
-                  👤 {customer.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Liste des articles */}
-          <div style={{
-            flex: 1,
-            overflowY: 'auto',
-            padding: '16px'
-          }}>
-            {cart.map(item => (
-              <div key={item.id} style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '16px',
-                background: isDark ? '#374151' : '#f8fafc',
-                borderRadius: '12px',
-                marginBottom: '12px',
-                border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
-              }}>
-                {/* Image ou placeholder */}
-                <div style={{
-                  width: '50px',
-                  height: '50px',
-                  borderRadius: '8px',
-                  background: isDark ? '#4b5563' : '#e5e7eb',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  overflow: 'hidden',
-                  flexShrink: 0
-                }}>
-                  {item.image ? (
-                    <img 
-                      src={item.image} 
-                      alt={item.name}
-                      style={{
-                        width: '100%',
-                        height: '100%',
-                        objectFit: 'cover'
-                      }}
-                    />
-                  ) : (
-                    <Package size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
-                  )}
-                </div>
-
-                {/* Infos produit */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <h4 style={{
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: isDark ? '#f9fafb' : '#111827',
-                    margin: '0 0 4px 0',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
-                  }}>
-                    {item.name}
-                  </h4>
-                  <p style={{
-                    fontSize: '12px',
-                    color: isDark ? '#9ca3af' : '#6b7280',
-                    margin: 0
-                  }}>
-                    {item.price.toLocaleString()} {appSettings.currency} × {item.quantity}
-                  </p>
-                </div>
-
-                {/* Contrôles quantité */}
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}>
-                  <button
-                    onClick={() => updateQuantity(item.id, -1)}
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: '#ef4444',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      fontSize: '16px',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    <Minus size={16} />
-                  </button>
-                  
-                  <span style={{
-                    fontSize: '16px',
-                    fontWeight: '600',
-                    color: isDark ? '#f9fafb' : '#111827',
-                    minWidth: '24px',
-                    textAlign: 'center'
-                  }}>
-                    {item.quantity}
-                  </span>
-                  
-                  <button
-                    onClick={() => updateQuantity(item.id, 1)}
-                    disabled={item.quantity >= item.stock}
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '8px',
-                      border: 'none',
-                      background: item.quantity >= item.stock ? '#9ca3af' : '#10b981',
-                      color: 'white',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: item.quantity >= item.stock ? 'not-allowed' : 'pointer',
-                      fontSize: '16px',
-                      fontWeight: 'bold'
-                    }}
-                  >
-                    <Plus size={16} />
-                  </button>
-                </div>
-
-                {/* Prix total et suppression */}
-                <div style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-end',
-                  gap: '4px'
-                }}>
-                  <span style={{
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    color: '#3b82f6'
-                  }}>
-                    {(item.price * item.quantity).toLocaleString()} {appSettings.currency}
-                  </span>
-                  
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: '#ef4444',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      borderRadius: '4px'
-                    }}
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Résumé et paiement */}
-          <div style={{
-            padding: '24px',
-            background: isDark ? '#111827' : '#f8fafc',
-            borderTop: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
-          }}>
-            {/* Totaux */}
-            <div style={{ marginBottom: '24px' }}>
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '8px'
-              }}>
-                <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
-                  Sous-total:
-                </span>
-                <span style={{ 
-                  fontWeight: '600', 
-                  color: isDark ? '#f9fafb' : '#111827' 
-                }}>
-                  {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
-                </span>
-              </div>
-              
-              {cartStats.totalTax > 0 && (
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  marginBottom: '8px'
-                }}>
-                  <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
-                    Taxe:
-                  </span>
-                  <span style={{ 
-                    fontWeight: '600', 
-                    color: isDark ? '#f9fafb' : '#111827' 
-                  }}>
-                    {cartStats.totalTax.toLocaleString()} {appSettings.currency}
-                  </span>
-                </div>
-              )}
-              
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '16px 0',
-                borderTop: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                marginTop: '12px'
-              }}>
-                <span style={{ 
-                  fontSize: '20px',
-                  fontWeight: '700',
-                  color: isDark ? '#f9fafb' : '#111827' 
-                }}>
-                  Total:
-                </span>
-                <span style={{ 
-                  fontSize: '24px',
-                  fontWeight: '800',
-                  color: '#3b82f6'
-                }}>
-                  {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
-                </span>
-              </div>
-            </div>
-
-            {/* Bouton paiement */}
-            <button
-              onClick={() => setShowPaymentModal(true)}
-              disabled={cart.length === 0}
-              style={{
-                width: '100%',
-                padding: '16px',
-                borderRadius: '16px',
-                border: 'none',
-                background: cart.length === 0 ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
-                color: 'white',
-                fontSize: '18px',
-                fontWeight: '700',
-                cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                transition: 'all 0.3s ease',
-                boxShadow: cart.length === 0 ? 'none' : '0 8px 25px rgba(16, 185, 129, 0.3)'
-              }}
-            >
-              <CreditCard size={20} />
-              Procéder au paiement
-              <Zap size={16} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Modal d'ouverture de caisse */}
-      {showOpenModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(8px)'
-        }}>
-          <div style={{
-            background: isDark ? '#1f2937' : 'white',
-            borderRadius: '20px',
-            padding: '32px',
-            width: '90%',
-            maxWidth: '400px',
-            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
-          }}>
-            <h3 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              color: isDark ? '#f9fafb' : '#111827',
-              margin: '0 0 20px 0',
-              textAlign: 'center'
-            }}>
-              🔓 Ouvrir la caisse
-            </h3>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: isDark ? '#f9fafb' : '#111827',
-                marginBottom: '8px'
-              }}>
-                Montant d'ouverture
-              </label>
+              <Search size={20} style={{
+                position: 'absolute',
+                left: '16px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                color: isDark ? '#9ca3af' : '#6b7280'
+              }} />
               <input
-                type="number"
-                value={openingAmount}
-                onChange={(e) => setOpeningAmount(e.target.value)}
+                type="text"
+                placeholder="Rechercher un produit par nom ou code..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                disabled={!cashSession}
                 style={{
                   width: '100%',
-                  padding: '12px',
+                  padding: '16px 16px 16px 48px',
                   border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                  borderRadius: '12px',
+                  borderRadius: '20px',
                   fontSize: '16px',
                   background: isDark ? '#374151' : 'white',
-                  color: isDark ? '#f9fafb' : '#111827'
+                  color: isDark ? '#f9fafb' : '#111827',
+                  outline: 'none',
+                  transition: 'all 0.3s ease',
+                  opacity: !cashSession ? 0.6 : 1
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = isDark ? '#374151' : '#e5e7eb';
+                  e.target.style.boxShadow = 'none';
                 }}
               />
             </div>
 
+            {/* Boutons de vue */}
             <div style={{
               display: 'flex',
-              gap: '12px'
-            }}>
-              <button
-                onClick={() => setShowOpenModal(false)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '12px',
-                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                  background: 'transparent',
-                  color: isDark ? '#d1d5db' : '#6b7280',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Annuler
-              </button>
-              
-              <button
-                onClick={openRegister}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)'
-                }}
-              >
-                Ouvrir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de paiement */}
-      {showPaymentModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(8px)'
-        }}>
-          <div style={{
-            background: isDark ? '#1f2937' : 'white',
-            borderRadius: '20px',
-            padding: '32px',
-            width: '90%',
-            maxWidth: '500px',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
-          }}>
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '24px'
-            }}>
-              <h3 style={{
-                fontSize: '24px',
-                fontWeight: '700',
-                color: isDark ? '#f9fafb' : '#111827',
-                margin: 0
-              }}>
-                💳 Paiement
-              </h3>
-              
-              <button
-                onClick={() => setShowPaymentModal(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: '8px',
-                  borderRadius: '8px',
-                  color: isDark ? '#9ca3af' : '#6b7280'
-                }}
-              >
-                <X size={24} />
-              </button>
-            </div>
-
-            {/* Résumé de la commande */}
-            <div style={{
               background: isDark ? '#374151' : '#f8fafc',
               borderRadius: '12px',
-              padding: '20px',
-              marginBottom: '24px'
-            }}>
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: isDark ? '#f9fafb' : '#111827',
-                margin: '0 0 12px 0'
-              }}>
-                Résumé de la commande
-              </h4>
-              
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                marginBottom: '8px'
-              }}>
-                <span style={{ color: isDark ? '#d1d5db' : '#6b7280' }}>
-                  Articles ({cart.length}):
-                </span>
-                <span style={{ fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
-                  {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
-                </span>
-              </div>
-              
-              <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: '12px 0',
-                borderTop: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-                marginTop: '8px'
-              }}>
-                <span style={{ 
-                  fontSize: '18px',
-                  fontWeight: '700',
-                  color: isDark ? '#f9fafb' : '#111827' 
-                }}>
-                  Total à payer:
-                </span>
-                <span style={{ 
-                  fontSize: '20px',
-                  fontWeight: '800',
-                  color: '#3b82f6'
-                }}>
-                  {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
-                </span>
-              </div>
-            </div>
-
-            {/* Méthodes de paiement */}
-            <div style={{ marginBottom: '24px' }}>
-              <h4 style={{
-                fontSize: '16px',
-                fontWeight: '600',
-                color: isDark ? '#f9fafb' : '#111827',
-                margin: '0 0 16px 0'
-              }}>
-                Méthode de paiement
-              </h4>
-              
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr 1fr',
-                gap: '12px'
-              }}>
-                {[
-                  { id: 'cash', label: 'Espèces', icon: Banknote, color: '#10b981' },
-                  { id: 'card', label: 'Carte', icon: CreditCard, color: '#3b82f6' },
-                  { id: 'credit', label: 'Crédit', icon: User, color: '#f59e0b' }
-                ].map(method => (
-                  <button
-                    key={method.id}
-                    onClick={() => setPaymentMethod(method.id)}
-                    style={{
-                      padding: '16px 12px',
-                      borderRadius: '12px',
-                      border: `2px solid ${paymentMethod === method.id ? method.color : (isDark ? '#374151' : '#e5e7eb')}`,
-                      background: paymentMethod === method.id 
-                        ? `${method.color}15` 
-                        : (isDark ? '#374151' : 'white'),
-                      color: paymentMethod === method.id 
-                        ? method.color 
-                        : (isDark ? '#d1d5db' : '#6b7280'),
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      gap: '8px',
-                      fontSize: '14px',
-                      fontWeight: '600',
-                      transition: 'all 0.3s ease'
-                    }}
-                  >
-                    <method.icon size={24} />
-                    {method.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Montant reçu (pour espèces) */}
-            {paymentMethod === 'cash' && (
-              <div style={{ marginBottom: '24px' }}>
-                <label style={{
-                  display: 'block',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: isDark ? '#f9fafb' : '#111827',
-                  marginBottom: '8px'
-                }}>
-                  Montant reçu
-                </label>
-                
-                <input
-                  type="number"
-                  placeholder="0"
-                  value={amountDisplay}
-                  onChange={(e) => {
-                    setAmountDisplay(e.target.value);
-                    amountReceivedRef.current = e.target.value;
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '16px',
-                    border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                    borderRadius: '12px',
-                    fontSize: '18px',
-                    fontWeight: '600',
-                    background: isDark ? '#374151' : 'white',
-                    color: isDark ? '#f9fafb' : '#111827',
-                    textAlign: 'center'
-                  }}
-                  onFocus={(e) => {
-                    e.target.style.borderColor = '#3b82f6';
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.borderColor = isDark ? '#374151' : '#e5e7eb';
-                  }}
-                />
-
-                {/* Montant de la monnaie */}
-                {amountReceivedRef.current && parseFloat(amountReceivedRef.current) >= cartStats.finalTotal && (
-                  <div style={{
-                    marginTop: '12px',
-                    padding: '12px',
-                    background: 'rgba(16, 185, 129, 0.1)',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ 
-                      color: '#10b981',
-                      fontWeight: '600' 
-                    }}>
-                      Monnaie à rendre:
-                    </span>
-                    <span style={{ 
-                      fontSize: '18px',
-                      fontWeight: '700',
-                      color: '#10b981'
-                    }}>
-                      {(parseFloat(amountReceivedRef.current) - cartStats.finalTotal).toLocaleString()} {appSettings.currency}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Boutons d'action */}
-            <div style={{
-              display: 'flex',
-              gap: '12px'
+              padding: '4px',
+              border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
             }}>
               <button
-                onClick={() => setShowPaymentModal(false)}
+                onClick={() => setViewMode('grid')}
                 style={{
-                  flex: 1,
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                  background: 'transparent',
-                  color: isDark ? '#d1d5db' : '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Annuler
-              </button>
-              
-              <button
-                onClick={handleCompleteSale}
-                style={{
-                  flex: 2,
-                  padding: '16px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #10b981, #059669)',
-                  color: 'white',
-                  fontSize: '16px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)'
-                }}
-              >
-                <Check size={20} />
-                Confirmer le paiement
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                  padding: '12px 16px',
+                 borderRadius: '8px',
+                 border: 'none',
+                 background: viewMode === 'grid' 
+                   ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' 
+                   : 'transparent',
+                 color: viewMode === 'grid' 
+                   ? 'white' 
+                   : (isDark ? '#d1d5db' : '#6b7280'),
+                 cursor: 'pointer',
+                 fontSize: '14px',
+                 fontWeight: '600',
+                 transition: 'all 0.3s ease',
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '8px'
+               }}
+             >
+               <Package size={16} />
+               Grille
+             </button>
+             <button
+               onClick={() => setViewMode('list')}
+               style={{
+                 padding: '12px 16px',
+                 borderRadius: '8px',
+                 border: 'none',
+                 background: viewMode === 'list' 
+                   ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' 
+                   : 'transparent',
+                 color: viewMode === 'list' 
+                   ? 'white' 
+                   : (isDark ? '#d1d5db' : '#6b7280'),
+                 cursor: 'pointer',
+                 fontSize: '14px',
+                 fontWeight: '600',
+                 transition: 'all 0.3s ease',
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '8px'
+               }}
+             >
+               <Search size={16} />
+               Liste
+             </button>
+           </div>
+         </div>
 
-      {/* Modal de fermeture de caisse */}
-      {showCloseModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(8px)'
-        }}>
-          <div style={{
-            background: isDark ? '#1f2937' : 'white',
-            borderRadius: '20px',
-            padding: '32px',
-            width: '90%',
-            maxWidth: '400px',
-            boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
-          }}>
-            <h3 style={{
-              fontSize: '20px',
-              fontWeight: '700',
-              color: isDark ? '#f9fafb' : '#111827',
-              margin: '0 0 20px 0',
-              textAlign: 'center'
-            }}>
-              🔒 Fermer la caisse
-            </h3>
-            
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: isDark ? '#f9fafb' : '#111827',
-                marginBottom: '8px'
-              }}>
-                Espèces en caisse
-              </label>
-              <input
-                type="number"
-                value={closingCash}
-                onChange={(e) => setClosingCash(e.target.value)}
-                placeholder="Montant compté"
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                  borderRadius: '12px',
-                  fontSize: '16px',
-                  background: isDark ? '#374151' : 'white',
-                  color: isDark ? '#f9fafb' : '#111827'
-                }}
-              />
-            </div>
+         {/* Boutons catégories */}
+         <CategoryButtons />
+       </div>
 
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                fontSize: '14px',
-                fontWeight: '600',
-                color: isDark ? '#f9fafb' : '#111827',
-                marginBottom: '8px'
-              }}>
-                Notes (optionnel)
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Remarques sur la journée..."
-                style={{
-                  width: '100%',
-                  padding: '12px',
-                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                  borderRadius: '12px',
-                  fontSize: '14px',
-                  background: isDark ? '#374151' : 'white',
-                  color: isDark ? '#f9fafb' : '#111827',
-                  resize: 'vertical',
-                  minHeight: '60px'
-                }}
-              />
-            </div>
+       {/* Affichage des produits - Adaptable selon le mode */}
+       {viewMode === 'grid' ? (
+         <div style={{
+           display: 'grid',
+           gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+           gap: '16px',
+           marginBottom: '32px'
+         }}>
+           {filteredProducts.map(product => (
+             <ProductCard key={product.id} product={product} isListMode={false} />
+           ))}
+         </div>
+       ) : (
+         <div style={{
+           display: 'flex',
+           flexDirection: 'column',
+           gap: '8px',
+           marginBottom: '32px'
+         }}>
+           {filteredProducts.map(product => (
+             <ProductCard key={product.id} product={product} isListMode={true} />
+           ))}
+         </div>
+       )}
 
-            <div style={{
-              display: 'flex',
-              gap: '12px'
-            }}>
-              <button
-                onClick={() => setShowCloseModal(false)}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '12px',
-                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                  background: 'transparent',
-                  color: isDark ? '#d1d5db' : '#6b7280',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer'
-                }}
-              >
-                Annuler
-              </button>
-              
-              <button
-                onClick={closeRegister}
-                style={{
-                  flex: 1,
-                  padding: '12px',
-                  borderRadius: '12px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                  color: 'white',
-                  fontSize: '14px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  boxShadow: '0 8px 25px rgba(239, 68, 68, 0.3)'
-                }}
-              >
-                Fermer la caisse
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+       {/* Message si aucun produit */}
+       {filteredProducts.length === 0 && (
+         <div style={{
+           textAlign: 'center',
+           padding: '60px 20px',
+           background: isDark ? '#1f2937' : 'white',
+           borderRadius: '20px',
+           border: `2px dashed ${isDark ? '#374151' : '#e5e7eb'}`
+         }}>
+           <Package size={64} color={isDark ? '#6b7280' : '#9ca3af'} style={{ margin: '0 auto 16px' }} />
+           <h3 style={{
+             fontSize: '20px',
+             fontWeight: '600',
+             color: isDark ? '#f9fafb' : '#111827',
+             margin: '0 0 8px 0'
+           }}>
+             Aucun produit trouvé
+           </h3>
+           <p style={{
+             color: isDark ? '#9ca3af' : '#6b7280',
+             margin: 0,
+             fontSize: '16px'
+           }}>
+             {searchQuery ? 'Essayez de modifier votre recherche' : 'Sélectionnez une autre catégorie'}
+           </p>
+         </div>
+       )}
+     </div>
+
+     {/* Section Panier (si des articles) */}
+     {cart.length > 0 && (
+       <div style={{
+         background: isDark ? '#1f2937' : 'white',
+         borderLeft: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+         display: 'flex',
+         flexDirection: 'column',
+         height: '100vh'
+       }}>
+         {/* Header Panier */}
+         <div style={{
+           padding: '24px',
+           borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+           background: isDark ? '#111827' : '#f8fafc'
+         }}>
+           <div style={{
+             display: 'flex',
+             alignItems: 'center',
+             justifyContent: 'space-between',
+             marginBottom: '16px'
+           }}>
+             <h2 style={{
+               fontSize: '24px',
+               fontWeight: '700',
+               color: isDark ? '#f9fafb' : '#111827',
+               margin: 0,
+               display: 'flex',
+               alignItems: 'center',
+               gap: '12px'
+             }}>
+               <ShoppingCart size={24} />
+               Panier ({cart.length})
+             </h2>
+             
+             <button
+               onClick={clearCart}
+               style={{
+                 padding: '8px',
+                 background: 'none',
+                 border: 'none',
+                 color: '#ef4444',
+                 cursor: 'pointer',
+                 borderRadius: '8px',
+                 transition: 'background 0.2s'
+               }}
+               onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
+               onMouseLeave={(e) => e.target.style.background = 'none'}
+             >
+               <Trash2 size={20} />
+             </button>
+           </div>
+
+           {/* Sélection client */}
+           <select
+             value={selectedCustomer.id}
+             onChange={(e) => {
+               const customer = customers.find(c => c.id === parseInt(e.target.value));
+               setSelectedCustomer(customer || { id: 1, name: 'Client Comptant' });
+             }}
+             style={{
+               width: '100%',
+               padding: '12px',
+               border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+               borderRadius: '12px',
+               background: isDark ? '#374151' : 'white',
+               color: isDark ? '#f9fafb' : '#111827',
+               fontSize: '14px'
+             }}
+           >
+             {customers.map(customer => (
+               <option key={customer.id} value={customer.id}>
+                 👤 {customer.name}
+               </option>
+             ))}
+           </select>
+         </div>
+
+         {/* Liste des articles */}
+         <div style={{
+           flex: 1,
+           overflowY: 'auto',
+           padding: '16px'
+         }}>
+           {cart.map(item => (
+             <div key={item.id} style={{
+               display: 'flex',
+               alignItems: 'center',
+               gap: '12px',
+               padding: '16px',
+               background: isDark ? '#374151' : '#f8fafc',
+               borderRadius: '12px',
+               marginBottom: '12px',
+               border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
+             }}>
+               {/* Image ou placeholder */}
+               <div style={{
+                 width: '50px',
+                 height: '50px',
+                 borderRadius: '8px',
+                 background: isDark ? '#4b5563' : '#e5e7eb',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 overflow: 'hidden',
+                 flexShrink: 0
+               }}>
+                 {item.image ? (
+                   <img 
+                     src={item.image} 
+                     alt={item.name}
+                     style={{
+                       width: '100%',
+                       height: '100%',
+                       objectFit: 'cover'
+                     }}
+                   />
+                 ) : (
+                   <Package size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
+                 )}
+               </div>
+
+               {/* Infos produit */}
+               <div style={{ flex: 1, minWidth: 0 }}>
+                 <h4 style={{
+                   fontSize: '14px',
+                   fontWeight: '600',
+                   color: isDark ? '#f9fafb' : '#111827',
+                   margin: '0 0 4px 0',
+                   overflow: 'hidden',
+                   textOverflow: 'ellipsis',
+                   whiteSpace: 'nowrap'
+                 }}>
+                   {item.name}
+                 </h4>
+                 <p style={{
+                   fontSize: '12px',
+                   color: isDark ? '#9ca3af' : '#6b7280',
+                   margin: 0
+                 }}>
+                   {item.price.toLocaleString()} {appSettings.currency} × {item.quantity}
+                 </p>
+               </div>
+
+               {/* Contrôles quantité */}
+               <div style={{
+                 display: 'flex',
+                 alignItems: 'center',
+                 gap: '8px'
+               }}>
+                 <button
+                   onClick={() => updateQuantity(item.id, -1)}
+                   style={{
+                     width: '32px',
+                     height: '32px',
+                     borderRadius: '8px',
+                     border: 'none',
+                     background: '#ef4444',
+                     color: 'white',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     cursor: 'pointer',
+                     fontSize: '16px',
+                     fontWeight: 'bold'
+                   }}
+                 >
+                   <Minus size={16} />
+                 </button>
+                 
+                 <span style={{
+                   fontSize: '16px',
+                   fontWeight: '600',
+                   color: isDark ? '#f9fafb' : '#111827',
+                   minWidth: '24px',
+                   textAlign: 'center'
+                 }}>
+                   {item.quantity}
+                 </span>
+                 
+                 <button
+                   onClick={() => updateQuantity(item.id, 1)}
+                   disabled={item.quantity >= item.stock}
+                   style={{
+                     width: '32px',
+                     height: '32px',
+                     borderRadius: '8px',
+                     border: 'none',
+                     background: item.quantity >= item.stock ? '#9ca3af' : '#10b981',
+                     color: 'white',
+                     display: 'flex',
+                     alignItems: 'center',
+                     justifyContent: 'center',
+                     cursor: item.quantity >= item.stock ? 'not-allowed' : 'pointer',
+                     fontSize: '16px',
+                     fontWeight: 'bold'
+                   }}
+                 >
+                   <Plus size={16} />
+                 </button>
+               </div>
+
+               {/* Prix total et suppression */}
+               <div style={{
+                 display: 'flex',
+                 flexDirection: 'column',
+                 alignItems: 'flex-end',
+                 gap: '4px'
+               }}>
+                 <span style={{
+                   fontSize: '16px',
+                   fontWeight: '700',
+                   color: '#3b82f6'
+                 }}>
+                   {(item.price * item.quantity).toLocaleString()} {appSettings.currency}
+                 </span>
+                 
+                 <button
+                   onClick={() => removeFromCart(item.id)}
+                   style={{
+                     background: 'none',
+                     border: 'none',
+                     color: '#ef4444',
+                     cursor: 'pointer',
+                     padding: '4px',
+                     borderRadius: '4px'
+                   }}
+                 >
+                   <X size={16} />
+                 </button>
+               </div>
+             </div>
+           ))}
+         </div>
+
+         {/* Résumé et paiement */}
+         <div style={{
+           padding: '24px',
+           background: isDark ? '#111827' : '#f8fafc',
+           borderTop: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
+         }}>
+           {/* Totaux */}
+           <div style={{ marginBottom: '24px' }}>
+             <div style={{
+               display: 'flex',
+               justifyContent: 'space-between',
+               marginBottom: '8px'
+             }}>
+               <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
+                 Sous-total:
+               </span>
+               <span style={{ 
+                 fontWeight: '600', 
+                 color: isDark ? '#f9fafb' : '#111827' 
+               }}>
+                 {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+             
+             {cartStats.totalTax > 0 && (
+               <div style={{
+                 display: 'flex',
+                 justifyContent: 'space-between',
+                 marginBottom: '8px'
+               }}>
+                 <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
+                   Taxe:
+                 </span>
+                 <span style={{ 
+                   fontWeight: '600', 
+                   color: isDark ? '#f9fafb' : '#111827' 
+                 }}>
+                   {cartStats.totalTax.toLocaleString()} {appSettings.currency}
+                 </span>
+               </div>
+             )}
+             
+             <div style={{
+               display: 'flex',
+               justifyContent: 'space-between',
+               padding: '16px 0',
+               borderTop: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+               marginTop: '12px'
+             }}>
+               <span style={{ 
+                 fontSize: '20px',
+                 fontWeight: '700',
+                 color: isDark ? '#f9fafb' : '#111827' 
+               }}>
+                 Total:
+               </span>
+               <span style={{ 
+                 fontSize: '24px',
+                 fontWeight: '800',
+                 color: '#3b82f6'
+               }}>
+                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+           </div>
+
+           {/* Bouton paiement */}
+           <button
+             onClick={() => setShowPaymentModal(true)}
+             disabled={cart.length === 0}
+             style={{
+               width: '100%',
+               padding: '16px',
+               borderRadius: '16px',
+               border: 'none',
+               background: cart.length === 0 ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
+               color: 'white',
+               fontSize: '18px',
+               fontWeight: '700',
+               cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+               display: 'flex',
+               alignItems: 'center',
+               justifyContent: 'center',
+               gap: '12px',
+               transition: 'all 0.3s ease',
+               boxShadow: cart.length === 0 ? 'none' : '0 8px 25px rgba(16, 185, 129, 0.3)'
+             }}
+           >
+             <CreditCard size={20} />
+             Procéder au paiement
+             <Zap size={16} />
+           </button>
+         </div>
+       </div>
+     )}
+
+     {/* Modal d'ouverture de caisse */}
+     {showOpenModal && (
+       <div style={{
+         position: 'fixed',
+         top: 0,
+         left: 0,
+         right: 0,
+         bottom: 0,
+         background: 'rgba(0, 0, 0, 0.5)',
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'center',
+         zIndex: 1000,
+         backdropFilter: 'blur(8px)'
+       }}>
+         <div style={{
+           background: isDark ? '#1f2937' : 'white',
+           borderRadius: '20px',
+           padding: '32px',
+           width: '90%',
+           maxWidth: '400px',
+           boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
+         }}>
+           <h3 style={{
+             fontSize: '24px',
+             fontWeight: '700',
+             color: isDark ? '#f9fafb' : '#111827',
+             margin: '0 0 20px 0',
+             textAlign: 'center'
+           }}>
+             🔓 Ouvrir la caisse
+           </h3>
+           
+           <div style={{ marginBottom: '20px' }}>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '600',
+               color: isDark ? '#f9fafb' : '#111827',
+               marginBottom: '8px'
+             }}>
+               Montant d'ouverture
+             </label>
+             <input
+               type="number"
+               value={openingAmount}
+               onChange={(e) => setOpeningAmount(e.target.value)}
+               style={{
+                 width: '100%',
+                 padding: '12px',
+                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                 borderRadius: '12px',
+                 fontSize: '16px',
+                 background: isDark ? '#374151' : 'white',
+                 color: isDark ? '#f9fafb' : '#111827'
+               }}
+             />
+           </div>
+
+           <div style={{
+             display: 'flex',
+             gap: '12px'
+           }}>
+             <button
+               onClick={() => setShowOpenModal(false)}
+               style={{
+                 flex: 1,
+                 padding: '12px',
+                 borderRadius: '12px',
+                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                 background: 'transparent',
+                 color: isDark ? '#d1d5db' : '#6b7280',
+                 fontSize: '14px',
+                 fontWeight: '600',
+                 cursor: 'pointer'
+               }}
+             >
+               Annuler
+             </button>
+             
+             <button
+               onClick={openRegister}
+               style={{
+                 flex: 1,
+                 padding: '12px',
+                 borderRadius: '12px',
+                 border: 'none',
+                 background: 'linear-gradient(135deg, #10b981, #059669)',
+                 color: 'white',
+                 fontSize: '14px',
+                 fontWeight: '700',
+                 cursor: 'pointer',
+                 boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)'
+               }}
+             >
+               Ouvrir
+             </button>
+           </div>
+         </div>
+       </div>
+     )}
+
+     {/* Modal de paiement */}
+     {showPaymentModal && (
+       <div style={{
+         position: 'fixed',
+         top: 0,
+         left: 0,
+         right: 0,
+         bottom: 0,
+         background: 'rgba(0, 0, 0, 0.5)',
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'center',
+         zIndex: 1000,
+         backdropFilter: 'blur(8px)'
+       }}>
+         <div style={{
+           background: isDark ? '#1f2937' : 'white',
+           borderRadius: '20px',
+           padding: '32px',
+           width: '90%',
+           maxWidth: '500px',
+           maxHeight: '90vh',
+           overflow: 'auto',
+           boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
+         }}>
+           {/* Header */}
+           <div style={{
+             display: 'flex',
+             justifyContent: 'space-between',
+             alignItems: 'center',
+             marginBottom: '24px'
+           }}>
+             <h3 style={{
+               fontSize: '24px',
+               fontWeight: '700',
+               color: isDark ? '#f9fafb' : '#111827',
+               margin: 0
+             }}>
+               💳 Paiement
+             </h3>
+             
+             <button
+               onClick={() => setShowPaymentModal(false)}
+               style={{
+                 background: 'none',
+                 border: 'none',
+                 cursor: 'pointer',
+                 padding: '8px',
+                 borderRadius: '8px',
+                 color: isDark ? '#9ca3af' : '#6b7280'
+               }}
+             >
+               <X size={24} />
+             </button>
+           </div>
+
+           {/* Résumé de la commande */}
+           <div style={{
+             background: isDark ? '#374151' : '#f8fafc',
+             borderRadius: '12px',
+             padding: '20px',
+             marginBottom: '24px'
+           }}>
+             <h4 style={{
+               fontSize: '16px',
+               fontWeight: '600',
+               color: isDark ? '#f9fafb' : '#111827',
+               margin: '0 0 12px 0'
+             }}>
+               Résumé de la commande
+             </h4>
+             
+             <div style={{
+               display: 'flex',
+               justifyContent: 'space-between',
+               marginBottom: '8px'
+             }}>
+               <span style={{ color: isDark ? '#d1d5db' : '#6b7280' }}>
+                 Articles ({cart.length}):
+               </span>
+               <span style={{ fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
+                 {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+             
+             <div style={{
+               display: 'flex',
+               justifyContent: 'space-between',
+               padding: '12px 0',
+               borderTop: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
+               marginTop: '8px'
+             }}>
+               <span style={{ 
+                 fontSize: '18px',
+                 fontWeight: '700',
+                 color: isDark ? '#f9fafb' : '#111827' 
+               }}>
+                 Total à payer:
+               </span>
+               <span style={{ 
+                 fontSize: '20px',
+                 fontWeight: '800',
+                 color: '#3b82f6'
+               }}>
+                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+           </div>
+
+           {/* Méthodes de paiement */}
+           <div style={{ marginBottom: '24px' }}>
+             <h4 style={{
+               fontSize: '16px',
+               fontWeight: '600',
+               color: isDark ? '#f9fafb' : '#111827',
+               margin: '0 0 16px 0'
+             }}>
+               Méthode de paiement
+             </h4>
+             
+             <div style={{
+               display: 'grid',
+               gridTemplateColumns: '1fr 1fr 1fr',
+               gap: '12px'
+             }}>
+               {[
+                 { id: 'cash', label: 'Espèces', icon: '💵', color: '#10b981' },
+                 { id: 'card', label: 'Carte', icon: '💳', color: '#3b82f6' },
+                 { id: 'credit', label: 'Crédit', icon: '👤', color: '#f59e0b' }
+               ].map(method => (
+                 <button
+                   key={method.id}
+                   onClick={() => setPaymentMethod(method.id)}
+                   style={{
+                     padding: '16px 12px',
+                     borderRadius: '12px',
+                     border: `2px solid ${paymentMethod === method.id ? method.color : (isDark ? '#374151' : '#e5e7eb')}`,
+                     background: paymentMethod === method.id 
+                       ? `${method.color}15` 
+                       : (isDark ? '#374151' : 'white'),
+                     color: paymentMethod === method.id 
+                       ? method.color 
+                       : (isDark ? '#d1d5db' : '#6b7280'),
+                     cursor: 'pointer',
+                     display: 'flex',
+                     flexDirection: 'column',
+                     alignItems: 'center',
+                     gap: '8px',
+                     fontSize: '14px',
+                     fontWeight: '600',
+                     transition: 'all 0.3s ease'
+                   }}
+                 >
+                   <span style={{ fontSize: '24px' }}>{method.icon}</span>
+                   {method.label}
+                 </button>
+               ))}
+             </div>
+           </div>
+
+           {/* Montant reçu (pour espèces) */}
+           {paymentMethod === 'cash' && (
+             <div style={{ marginBottom: '24px' }}>
+               <label style={{
+                 display: 'block',
+                 fontSize: '14px',
+                 fontWeight: '600',
+                 color: isDark ? '#f9fafb' : '#111827',
+                 marginBottom: '8px'
+               }}>
+                 Montant reçu
+               </label>
+               
+               <input
+                 type="number"
+                 placeholder="0"
+                 value={amountDisplay}
+                 onChange={(e) => {
+                   setAmountDisplay(e.target.value);
+                   amountReceivedRef.current = e.target.value;
+                 }}
+                 style={{
+                   width: '100%',
+                   padding: '16px',
+                   border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                   borderRadius: '12px',
+                   fontSize: '18px',
+                   fontWeight: '600',
+                   background: isDark ? '#374151' : 'white',
+                   color: isDark ? '#f9fafb' : '#111827',
+                   textAlign: 'center'
+                 }}
+               />
+
+               {/* Suggestions de montants intelligentes */}
+               <div style={{
+                 display: 'grid',
+                 gridTemplateColumns: 'repeat(4, 1fr)',
+                 gap: '8px',
+                 marginTop: '12px'
+               }}>
+                 {[
+                   cartStats.finalTotal,
+                   Math.ceil(cartStats.finalTotal / 1000) * 1000,
+                   Math.ceil(cartStats.finalTotal / 5000) * 5000,
+                   Math.ceil(cartStats.finalTotal / 10000) * 10000
+                 ].filter((amount, index, arr) => arr.indexOf(amount) === index)
+                  .sort((a, b) => a - b)
+                  .slice(0, 4)
+                  .map((amount, index) => (
+                   <button
+                     key={index}
+                     onClick={() => {
+                       setAmountDisplay(amount.toString());
+                       amountReceivedRef.current = amount.toString();
+                     }}
+                     style={{
+                       padding: '8px 12px',
+                       borderRadius: '8px',
+                       border: `2px solid ${
+                         parseFloat(amountReceivedRef.current) === amount 
+                           ? '#3b82f6' 
+                           : (isDark ? '#374151' : '#e5e7eb')
+                       }`,
+                       background: parseFloat(amountReceivedRef.current) === amount 
+                         ? '#3b82f615' 
+                         : (isDark ? '#374151' : 'white'),
+                       color: parseFloat(amountReceivedRef.current) === amount 
+                         ? '#3b82f6' 
+                         : (isDark ? '#d1d5db' : '#6b7280'),
+                       cursor: 'pointer',
+                       fontSize: '12px',
+                       fontWeight: '600',
+                       transition: 'all 0.3s ease'
+                     }}
+                   >
+                     {amount === cartStats.finalTotal ? 'Exact' : `${amount.toLocaleString()}`}
+                   </button>
+                 ))}
+               </div>
+
+               {/* Montant de la monnaie */}
+               {amountReceivedRef.current && parseFloat(amountReceivedRef.current) >= cartStats.finalTotal && (
+                 <div style={{
+                   marginTop: '12px',
+                   padding: '12px',
+                   background: 'rgba(16, 185, 129, 0.1)',
+                   borderRadius: '8px',
+                   display: 'flex',
+                   justifyContent: 'space-between',
+                   alignItems: 'center'
+                 }}>
+                   <span style={{ 
+                     color: '#10b981',
+                     fontWeight: '600' 
+                   }}>
+                     Monnaie à rendre:
+                   </span>
+                   <span style={{ 
+                     fontSize: '18px',
+                     fontWeight: '700',
+                     color: '#10b981'
+                   }}>
+                     {(parseFloat(amountReceivedRef.current) - cartStats.finalTotal).toLocaleString()} {appSettings.currency}
+                   </span>
+                 </div>
+               )}
+             </div>
+           )}
+
+           {/* Validation pour vente à crédit */}
+           {paymentMethod === 'credit' && selectedCustomer.id === 1 && (
+             <div style={{
+               marginBottom: '24px',
+               padding: '12px',
+               background: 'rgba(239, 68, 68, 0.1)',
+               border: '1px solid #ef4444',
+               borderRadius: '8px',
+               display: 'flex',
+               alignItems: 'center',
+               gap: '8px'
+             }}>
+               <AlertTriangle size={16} color="#ef4444" />
+               <span style={{
+                 fontSize: '14px',
+                 color: '#ef4444',
+                 fontWeight: '500'
+               }}>
+                 Veuillez sélectionner un client spécifique pour une vente à crédit
+               </span>
+             </div>
+           )}
+
+           {/* Boutons d'action */}
+           <div style={{
+             display: 'flex',
+             gap: '12px'
+           }}>
+             <button
+               onClick={() => setShowPaymentModal(false)}
+               style={{
+                 flex: 1,
+                 padding: '16px',
+                 borderRadius: '12px',
+                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                 background: 'transparent',
+                 color: isDark ? '#d1d5db' : '#6b7280',
+                 fontSize: '16px',
+                 fontWeight: '600',
+                 cursor: 'pointer'
+               }}
+             >
+               Annuler
+             </button>
+             
+             <button
+               onClick={handleCompleteSale}
+               disabled={
+                 (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
+                 (paymentMethod === 'credit' && selectedCustomer.id === 1)
+               }
+               style={{
+                 flex: 2,
+                 padding: '16px',
+                 borderRadius: '12px',
+                 border: 'none',
+                 background: (
+                   (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
+                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                 ) ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
+                 color: 'white',
+                 fontSize: '16px',
+                 fontWeight: '700',
+                 cursor: (
+                   (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
+                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                 ) ? 'not-allowed' : 'pointer',
+                 display: 'flex',
+                 alignItems: 'center',
+                 justifyContent: 'center',
+                 gap: '8px',
+                 boxShadow: (
+                   (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
+                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                 ) ? 'none' : '0 8px 25px rgba(16, 185, 129, 0.3)',
+                 opacity: (
+                   (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
+                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                 ) ? 0.6 : 1
+               }}
+             >
+               <Check size={20} />
+               {paymentMethod === 'credit' && selectedCustomer.id === 1 
+                 ? 'Sélectionner un client' 
+                 : 'Confirmer le paiement'
+               }
+             </button>
+           </div>
+         </div>
+       </div>
+     )}
+
+     {/* Modal de fermeture de caisse */}
+     {showCloseModal && (
+       <div style={{
+         position: 'fixed',
+         top: 0,
+         left: 0,
+         right: 0,
+         bottom: 0,
+         background: 'rgba(0, 0, 0, 0.5)',
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'center',
+         zIndex: 1000,
+         backdropFilter: 'blur(8px)'
+       }}>
+         <div style={{
+           background: isDark ? '#1f2937' : 'white',
+           borderRadius: '20px',
+           padding: '32px',
+           width: '90%',
+           maxWidth: '400px',
+           boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
+         }}>
+           <h3 style={{
+             fontSize: '20px',
+             fontWeight: '700',
+             color: isDark ? '#f9fafb' : '#111827',
+             margin: '0 0 20px 0',
+             textAlign: 'center'
+           }}>
+             🔒 Fermer la caisse
+           </h3>
+           
+           <div style={{ marginBottom: '20px' }}>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '600',
+               color: isDark ? '#f9fafb' : '#111827',
+               marginBottom: '8px'
+             }}>
+               Espèces en caisse
+             </label>
+             <input
+               type="number"
+               value={closingCash}
+               onChange={(e) => setClosingCash(e.target.value)}
+               placeholder="Montant compté"
+               style={{
+                 width: '100%',
+                 padding: '12px',
+                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                 borderRadius: '12px',
+                 fontSize: '16px',
+                 background: isDark ? '#374151' : 'white',
+                 color: isDark ? '#f9fafb' : '#111827'
+               }}
+             />
+           </div>
+
+           <div style={{
+             display: 'flex',
+             gap: '12px'
+           }}>
+             <button
+               onClick={() => setShowCloseModal(false)}
+               style={{
+                 flex: 1,
+                 padding: '12px',
+                 borderRadius: '12px',
+                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                 background: 'transparent',
+                 color: isDark ? '#d1d5db' : '#6b7280',
+                 fontSize: '14px',
+                 fontWeight: '600',
+                 cursor: 'pointer'
+               }}
+             >
+               Annuler
+             </button>
+             
+             <button
+               onClick={closeRegister}
+               style={{
+                 flex: 1,
+                 padding: '12px',
+                 borderRadius: '12px',
+                 border: 'none',
+                 background: 'linear-gradient(135deg, #ef4444, #dc2626)',
+                 color: 'white',
+                 fontSize: '14px',
+                 fontWeight: '700',
+                 cursor: 'pointer',
+                 boxShadow: '0 8px 25px rgba(239, 68, 68, 0.3)'
+               }}
+             >
+               Fermer la caisse
+             </button>
+           </div>
+         </div>
+       </div>
+     )}
+   </div>
+ );
 };
 
 export default POSModule;
