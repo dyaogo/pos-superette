@@ -1,4 +1,4 @@
-// src/modules/pos/POSModule.jsx - Version corrigée avec vos dépendances existantes
+// src/modules/pos/POSModule.jsx - Version ultra compacte avec gestion caisse unifiée
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
@@ -9,6 +9,14 @@ import {
 import { useApp } from '../../contexts/AppContext';
 import { useCart } from '../../hooks/useCart';
 import { useCategories } from '../../hooks/useCategories';
+import { 
+  getCashSession, 
+  saveCashSession, 
+  getCashOperations, 
+  saveCashOperations, 
+  addCashReport, 
+  clearCashData 
+} from '../../services/cash.service';
 import toast from 'react-hot-toast';
 
 const POSModule = ({ onNavigate }) => {
@@ -25,12 +33,34 @@ const POSModule = ({ onNavigate }) => {
 
   const isDark = appSettings.darkMode || false;
 
-  // ==================== GESTION CAISSE SIMPLIFIÉE ====================
-  const [cashSession, setCashSession] = useState({ id: 1, status: 'open' }); // Simplifié pour l'instant
+  // ==================== GESTION CAISSE SYNCHRONISÉE ====================
+  const [cashSession, setCashSession] = useState(null);
+  const [cashOperations, setCashOperations] = useState([]);
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [openingAmount, setOpeningAmount] = useState('50000');
   const [closingCash, setClosingCash] = useState('');
+  const [notes, setNotes] = useState('');
+
+  // ✅ Surveillance continue de l'état de la caisse (synchronisation)
+  useEffect(() => {
+    const checkCashSession = () => {
+      const session = getCashSession();
+      const operations = getCashOperations();
+      setCashSession(session);
+      if (operations.length) {
+        setCashOperations(operations);
+      }
+    };
+
+    // Vérification initiale
+    checkCashSession();
+
+    // Vérification périodique toutes les 2 secondes
+    const interval = setInterval(checkCashSession, 2000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // ==================== HOOKS PERSONNALISÉS ====================
   const { 
@@ -51,11 +81,33 @@ const POSModule = ({ onNavigate }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [amountDisplay, setAmountDisplay] = useState('');
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' ou 'list'
+  const [viewMode, setViewMode] = useState('grid');
   const amountReceivedRef = useRef('');
 
-  // ==================== FONCTIONS CAISSE SIMPLIFIÉES ====================
-  const openRegister = () => {
+  // ==================== FONCTIONS CAISSE IDENTIQUES AU MODULE CAISSE ====================
+  const getSessionSales = () => {
+    if (!cashSession) return [];
+    return salesHistory.filter(sale => 
+      new Date(sale.date) >= new Date(cashSession.openedAt)
+    );
+  };
+
+  const getSessionTotals = () => {
+    const sessionSales = getSessionSales();
+    const cashSales = sessionSales.filter(s => s.paymentMethod === 'cash');
+    const cardSales = sessionSales.filter(s => s.paymentMethod === 'card');
+    
+    return {
+      totalSales: sessionSales.reduce((sum, s) => sum + s.total, 0),
+      cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
+      cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
+      transactionCount: sessionSales.length,
+      cashTransactions: cashSales.length,
+      cardTransactions: cardSales.length
+    };
+  };
+
+  const openRegister = useCallback(() => {
     const session = {
       id: Date.now(),
       openedAt: new Date().toISOString(),
@@ -65,15 +117,62 @@ const POSModule = ({ onNavigate }) => {
     };
     
     setCashSession(session);
+    saveCashSession(session);
+    
+    const operation = {
+      id: Date.now(),
+      type: 'opening',
+      amount: parseFloat(openingAmount),
+      timestamp: new Date().toISOString(),
+      description: 'Ouverture de caisse',
+      user: 'Caissier Principal'
+    };
+    
+    const newOperations = [operation];
+    setCashOperations(newOperations);
+    saveCashOperations(newOperations);
+    
     setShowOpenModal(false);
-    toast.success('Caisse ouverte avec succès!');
-  };
+    setOpeningAmount('50000');
+    
+    toast.success(`✅ Caisse ouverte! Fond initial: ${parseFloat(openingAmount).toLocaleString()} ${appSettings.currency}`);
+  }, [openingAmount, appSettings.currency]);
 
-  const closeRegister = () => {
+  const closeRegister = useCallback(() => {
+    if (!cashSession) return;
+    
+    const totals = getSessionTotals();
+    const expectedCash = cashSession.openingAmount + totals.cashSales;
+    const actualCash = parseFloat(closingCash) || 0;
+    const difference = actualCash - expectedCash;
+    
+    const closingReport = {
+      sessionId: cashSession.id,
+      closedAt: new Date().toISOString(),
+      closedBy: 'Caissier Principal',
+      openingAmount: cashSession.openingAmount,
+      expectedCash,
+      actualCash,
+      difference,
+      totals,
+      notes,
+      operations: cashOperations
+    };
+    
+    addCashReport(closingReport);
+    
+    // ✅ FERMETURE GLOBALE - Vide le panier aussi
     setCashSession(null);
+    setCashOperations([]);
+    clearCashData();
+    clearCart(); // Vider le panier à la fermeture
+    
     setShowCloseModal(false);
-    toast.success('Caisse fermée avec succès!');
-  };
+    setClosingCash('');
+    setNotes('');
+    
+    toast.success(`✅ Caisse fermée! Écart: ${difference.toLocaleString()} ${appSettings.currency}`);
+  }, [cashSession, closingCash, notes, cashOperations, appSettings.currency, getSessionTotals, clearCart]);
 
   // ==================== FILTRAGE PRODUITS ====================
   const filteredProducts = useMemo(() => {
@@ -88,7 +187,7 @@ const POSModule = ({ onNavigate }) => {
       return matchesSearch && matchesCategory;
     });
 
-    return filtered.slice(0, 50);
+    return filtered.slice(0, 100); // Plus de produits visibles
   }, [globalProducts, searchQuery, selectedCategory]);
 
   // ==================== GESTION PAIEMENT ====================
@@ -129,7 +228,13 @@ const POSModule = ({ onNavigate }) => {
         return;
       }
 
-      // Validation pour vente à crédit
+      // ✅ VÉRIFICATION CRITIQUE: Caisse doit être ouverte
+      if (!cashSession) {
+        toast.error('🔒 Caisse fermée ! Impossible de finaliser la vente.');
+        setShowPaymentModal(false);
+        return;
+      }
+
       if (paymentMethod === 'credit' && selectedCustomer.id === 1) {
         toast.error('Veuillez sélectionner un client spécifique pour une vente à crédit');
         return;
@@ -179,62 +284,51 @@ const POSModule = ({ onNavigate }) => {
       console.error('❌ Erreur lors de la vente:', error);
       toast.error('Erreur lors de la vente: ' + error.message);
     }
-  }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart, addCreditSale]);
+  }, [cart, cartStats, paymentMethod, selectedCustomer, processSale, appSettings.currency, clearCart, addCreditSale, cashSession]);
 
   const handleAddToCart = useCallback((product) => {
     if (!cashSession) {
-      toast.error('Veuillez d\'abord ouvrir la caisse pour commencer les ventes');
+      toast.error('🔒 Caisse fermée! Impossible d\'ajouter des produits.');
       return;
     }
     addToCart(product);
-    toast.success(`${product.name} ajouté au panier`, { duration: 1500 });
+    toast.success(`${product.name} ajouté`, { duration: 1000 });
   }, [addToCart, cashSession]);
 
-  // ==================== COMPOSANT CARTE PRODUIT COMPACTE ====================
+  // ==================== COMPOSANT CARTE PRODUIT MINI ====================
   const ProductCard = ({ product, isListMode = false }) => {
     const hasImage = product.image && product.image.trim() !== '';
     const isOutOfStock = product.stock === 0;
     const isLowStock = product.stock > 0 && product.stock <= (product.minStock || 5);
+    const isDisabled = !cashSession || isOutOfStock;
 
     if (isListMode) {
-      // Mode liste compact
       return (
         <div
-          onClick={() => !isOutOfStock && handleAddToCart(product)}
+          onClick={() => !isDisabled && handleAddToCart(product)}
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            padding: '12px',
+            gap: '6px',
+            padding: '4px 8px',
             background: isDark ? '#374151' : 'white',
-            borderRadius: '8px',
+            borderRadius: '4px',
             border: `1px solid ${
               isOutOfStock ? '#ef4444' : 
               isLowStock ? '#f59e0b' : 
               (isDark ? '#4b5563' : '#e5e7eb')
             }`,
-            cursor: (!cashSession || isOutOfStock) ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s ease',
-            opacity: (!cashSession || isOutOfStock) ? 0.6 : 1,
-            marginBottom: '8px'
-          }}
-          onMouseEnter={(e) => {
-            if (!isOutOfStock && cashSession) {
-              e.currentTarget.style.background = isDark ? '#4b5563' : '#f8fafc';
-              e.currentTarget.style.borderColor = '#3b82f6';
-            }
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = isDark ? '#374151' : 'white';
-            e.currentTarget.style.borderColor = isOutOfStock ? '#ef4444' : 
-              isLowStock ? '#f59e0b' : (isDark ? '#4b5563' : '#e5e7eb');
+            cursor: isDisabled ? 'not-allowed' : 'pointer',
+            opacity: isDisabled ? 0.5 : 1,
+            marginBottom: '3px',
+            minHeight: '32px' // Ultra compact
           }}
         >
-          {/* Image miniature */}
+          {/* Mini image */}
           <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '6px',
+            width: '24px',
+            height: '24px',
+            borderRadius: '3px',
             background: hasImage ? 'transparent' : (isDark ? '#4b5563' : '#f3f4f6'),
             display: 'flex',
             alignItems: 'center',
@@ -243,103 +337,48 @@ const POSModule = ({ onNavigate }) => {
             flexShrink: 0
           }}>
             {hasImage ? (
-              <img
-                src={product.image}
-                alt={product.name}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover'
-                }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
+              <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
             ) : (
-              <Package size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
+              <Package size={10} color={isDark ? '#9ca3af' : '#6b7280'} />
             )}
           </div>
 
-          {/* Infos produit */}
+          {/* Nom ultra compact */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <h4 style={{
-              fontSize: '14px',
+            <div style={{
+              fontSize: '11px',
               fontWeight: '600',
               color: isDark ? '#f9fafb' : '#111827',
-              margin: '0 0 2px 0',
               overflow: 'hidden',
               textOverflow: 'ellipsis',
               whiteSpace: 'nowrap'
             }}>
               {product.name}
-            </h4>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}>
-              <span style={{
-                fontSize: '12px',
-                color: isDark ? '#9ca3af' : '#6b7280'
-              }}>
-                Stock: {product.stock || 0}
-              </span>
-              {product.category && (
-                <span style={{
-                  fontSize: '10px',
-                  color: isDark ? '#9ca3af' : '#6b7280',
-                  background: isDark ? '#4b5563' : '#f3f4f6',
-                  padding: '1px 6px',
-                  borderRadius: '4px'
-                }}>
-                  {product.category}
-                </span>
-              )}
             </div>
           </div>
 
-          {/* Prix et statut */}
+          {/* Prix mini */}
           <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'flex-end',
-            gap: '4px'
+            fontSize: '11px',
+            fontWeight: '700',
+            color: '#3b82f6'
           }}>
-            <span style={{
-              fontSize: '16px',
-              fontWeight: '700',
-              color: '#3b82f6'
-            }}>
-              {product.price?.toLocaleString()} {appSettings.currency}
-            </span>
-            
-            {(isOutOfStock || isLowStock) && (
-              <span style={{
-                fontSize: '10px',
-                fontWeight: '600',
-                color: isOutOfStock ? '#ef4444' : '#f59e0b',
-                textTransform: 'uppercase'
-              }}>
-                {isOutOfStock ? 'Rupture' : 'Stock faible'}
-              </span>
-            )}
+            {product.price?.toLocaleString()}
           </div>
 
-          {/* Bouton d'ajout */}
-          {!isOutOfStock && (
+          {/* Bouton + mini */}
+          {!isDisabled && (
             <div style={{
-              width: '24px',
-              height: '24px',
+              width: '16px',
+              height: '16px',
               borderRadius: '50%',
-              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+              background: '#3b82f6',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               color: 'white',
-              fontSize: '14px',
-              fontWeight: 'bold',
-              flexShrink: 0
+              fontSize: '10px',
+              fontWeight: 'bold'
             }}>
               +
             </div>
@@ -348,203 +387,110 @@ const POSModule = ({ onNavigate }) => {
       );
     }
 
-    // Mode grille compact
+    // Mode grille mini
     return (
       <div
-        onClick={() => !isOutOfStock && handleAddToCart(product)}
+        onClick={() => !isDisabled && handleAddToCart(product)}
         style={{
           background: isDark ? '#374151' : 'white',
-          borderRadius: '12px',
-          border: `2px solid ${
+          borderRadius: '6px',
+          border: `1px solid ${
             isOutOfStock ? '#ef4444' : 
             isLowStock ? '#f59e0b' : 
             (isDark ? '#4b5563' : '#e5e7eb')
           }`,
-          cursor: (!cashSession || isOutOfStock) ? 'not-allowed' : 'pointer',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          cursor: isDisabled ? 'not-allowed' : 'pointer',
+          transition: 'all 0.2s ease',
           position: 'relative',
-          opacity: (!cashSession || isOutOfStock) ? 0.6 : 1,
+          opacity: isDisabled ? 0.5 : 1,
           overflow: 'hidden',
-          transformOrigin: 'center',
-          minHeight: '180px',
+          minHeight: '100px', // Ultra mini: 100px
           display: 'flex',
           flexDirection: 'column'
         }}
-        onMouseEnter={(e) => {
-          if (!isOutOfStock && cashSession) {
-            e.currentTarget.style.transform = 'translateY(-2px) scale(1.01)';
-            e.currentTarget.style.boxShadow = isDark 
-              ? '0 10px 20px rgba(0, 0, 0, 0.3), 0 0 10px rgba(59, 130, 246, 0.2)'
-              : '0 10px 20px rgba(0, 0, 0, 0.1), 0 0 10px rgba(59, 130, 246, 0.15)';
-            e.currentTarget.style.borderColor = '#3b82f6';
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0) scale(1)';
-          e.currentTarget.style.boxShadow = 'none';
-          e.currentTarget.style.borderColor = isOutOfStock ? '#ef4444' : 
-            isLowStock ? '#f59e0b' : (isDark ? '#4b5563' : '#e5e7eb');
-        }}
       >
-        {/* Indicateur de statut stock */}
+        {/* Statut mini */}
         {(isOutOfStock || isLowStock) && (
           <div style={{
             position: 'absolute',
-            top: '8px',
-            right: '8px',
+            top: '2px',
+            right: '2px',
             background: isOutOfStock ? '#ef4444' : '#f59e0b',
             color: 'white',
-            padding: '2px 6px',
-            borderRadius: '8px',
-            fontSize: '9px',
+            padding: '1px 3px',
+            borderRadius: '3px',
+            fontSize: '7px',
             fontWeight: '600',
-            zIndex: 10,
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px'
+            zIndex: 10
           }}>
-            {isOutOfStock ? 'Rupture' : 'Faible'}
+            {isOutOfStock ? 'OUT' : 'LOW'}
           </div>
         )}
 
-        {/* Zone image ou placeholder - Réduite */}
+        {/* Image mini */}
         <div style={{
-          height: '100px',
+          height: '50px', // Ultra petit
           background: hasImage ? 'transparent' : (isDark ? '#4b5563' : '#f3f4f6'),
-          borderRadius: '8px 8px 0 0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          overflow: 'hidden',
-          position: 'relative'
+          overflow: 'hidden'
         }}>
           {hasImage ? (
-            <>
-              <img
-                src={product.image}
-                alt={product.name}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  transition: 'transform 0.3s ease'
-                }}
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                  e.target.nextSibling.style.display = 'flex';
-                }}
-              />
-              {/* Fallback si image ne charge pas */}
-              <div style={{
-                display: 'none',
-                width: '100%',
-                height: '100%',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: isDark ? '#4b5563' : '#f3f4f6'
-              }}>
-                <ImageIcon size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
-              </div>
-            </>
+            <img src={product.image} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '4px'
-            }}>
-              <Package size={24} color={isDark ? '#9ca3af' : '#6b7280'} />
-              <span style={{
-                fontSize: '10px',
-                color: isDark ? '#9ca3af' : '#6b7280',
-                textAlign: 'center',
-                fontWeight: '500'
-              }}>
-                Pas d'image
-              </span>
-            </div>
+            <Package size={16} color={isDark ? '#9ca3af' : '#6b7280'} />
           )}
         </div>
 
-        {/* Informations produit - Compactées */}
+        {/* Infos mini */}
         <div style={{
-          padding: '12px',
+          padding: '4px',
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between'
         }}>
-          {/* Nom et catégorie */}
-          <div style={{ marginBottom: '8px' }}>
-            <h3 style={{
-              fontSize: '14px',
-              fontWeight: '700',
-              color: isDark ? '#f9fafb' : '#111827',
-              margin: '0 0 4px 0',
-              lineHeight: '1.2',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical'
-            }}>
-              {product.name}
-            </h3>
-            
-            {product.category && (
-              <span style={{
-                fontSize: '10px',
-                color: isDark ? '#9ca3af' : '#6b7280',
-                fontWeight: '500',
-                background: isDark ? '#4b5563' : '#f3f4f6',
-                padding: '1px 6px',
-                borderRadius: '6px',
-                display: 'inline-block'
-              }}>
-                {product.category}
-              </span>
-            )}
+          <div style={{
+            fontSize: '10px',
+            fontWeight: '600',
+            color: isDark ? '#f9fafb' : '#111827',
+            lineHeight: '1.2',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+            marginBottom: '2px'
+          }}>
+            {product.name}
           </div>
 
-          {/* Prix et stock */}
           <div style={{ 
             display: 'flex', 
             justifyContent: 'space-between', 
-            alignItems: 'flex-end' 
+            alignItems: 'center' 
           }}>
-            <div>
-              <div style={{
-                fontSize: '16px',
-                fontWeight: '800',
-                color: '#3b82f6',
-                lineHeight: '1'
-              }}>
-                {product.price?.toLocaleString()} {appSettings.currency}
-              </div>
-              
-              <div style={{
-                fontSize: '10px',
-                color: isDark ? '#9ca3af' : '#6b7280',
-                marginTop: '2px'
-              }}>
-                Stock: {product.stock || 0}
-              </div>
+            <div style={{
+              fontSize: '11px',
+              fontWeight: '700',
+              color: '#3b82f6'
+            }}>
+              {product.price?.toLocaleString()}
             </div>
 
-            {/* Action button - Plus petit */}
-            {!isOutOfStock && (
+            {!isDisabled && (
               <div style={{
-                width: '28px',
-                height: '28px',
+                width: '16px',
+                height: '16px',
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+                background: '#3b82f6',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'white',
-                fontSize: '16px',
-                fontWeight: 'bold',
-                boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)'
+                fontSize: '10px',
+                fontWeight: 'bold'
               }}>
                 +
               </div>
@@ -555,14 +501,13 @@ const POSModule = ({ onNavigate }) => {
     );
   };
 
-  // ==================== BOUTONS CATÉGORIES MODERNES ====================
+  // ==================== BOUTONS CATÉGORIES MINI ====================
   const CategoryButtons = () => (
     <div style={{
       display: 'flex',
-      gap: '12px',
+      gap: '4px',
       flexWrap: 'wrap',
-      marginBottom: '24px',
-      padding: '4px'
+      marginBottom: '12px'
     }}>
       {categories.map(category => {
         const isActive = selectedCategory === category.id || 
@@ -575,51 +520,24 @@ const POSModule = ({ onNavigate }) => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              padding: '12px 20px',
-              borderRadius: '50px',
+              gap: '4px',
+              padding: '4px 8px',
+              borderRadius: '12px',
               border: 'none',
-              fontSize: '14px',
+              fontSize: '10px',
               fontWeight: '600',
               cursor: 'pointer',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-              background: isActive
-                ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
-                : (isDark ? '#374151' : '#f8fafc'),
-              color: isActive
-                ? 'white'
-                : (isDark ? '#d1d5db' : '#374151'),
-              boxShadow: isActive
-                ? '0 8px 25px rgba(59, 130, 246, 0.3)'
-                : '0 2px 8px rgba(0, 0, 0, 0.1)',
-              transform: isActive ? 'translateY(-2px)' : 'translateY(0)',
-              position: 'relative',
-              overflow: 'hidden'
-            }}
-            onMouseEnter={(e) => {
-              if (!isActive) {
-                e.target.style.background = isDark ? '#4b5563' : '#e2e8f0';
-                e.target.style.transform = 'translateY(-1px)';
-                e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.15)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!isActive) {
-                e.target.style.background = isDark ? '#374151' : '#f8fafc';
-                e.target.style.transform = 'translateY(0)';
-                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)';
-              }
+              background: isActive ? '#3b82f6' : (isDark ? '#374151' : '#f8fafc'),
+              color: isActive ? 'white' : (isDark ? '#d1d5db' : '#374151')
             }}
           >
-            <span style={{ fontSize: '16px' }}>{category.icon}</span>
+            <span style={{ fontSize: '12px' }}>{category.icon}</span>
             <span>{category.name}</span>
             <span style={{
               background: isActive ? 'rgba(255,255,255,0.2)' : (isDark ? '#4b5563' : '#e2e8f0'),
-              padding: '2px 8px',
-              borderRadius: '12px',
-              fontSize: '12px',
-              fontWeight: '700',
-              color: isActive ? 'white' : (isDark ? '#9ca3af' : '#6b7280')
+              padding: '1px 4px',
+              borderRadius: '6px',
+              fontSize: '8px'
             }}>
               {category.count}
             </span>
@@ -633,342 +551,275 @@ const POSModule = ({ onNavigate }) => {
   return (
     <div style={{
       display: 'grid',
-      gridTemplateColumns: cart.length > 0 ? '1fr 400px' : '1fr',
+      gridTemplateColumns: cart.length > 0 ? '1fr 300px' : '1fr', // Panier encore plus petit
       height: '100vh',
       background: isDark ? '#111827' : '#f8fafc',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
       {/* Section Produits */}
       <div style={{
-        padding: '24px',
+        padding: '12px', // Padding réduit
         overflowY: 'auto'
       }}>
-        {/* Header avec statut caisse */}
-        <div style={{ marginBottom: '32px' }}>
+        {/* Header compact */}
+        <div style={{ marginBottom: '16px' }}>
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
             justifyContent: 'space-between', 
-            marginBottom: '20px' 
+            marginBottom: '12px' 
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
-                width: '56px',
-                height: '56px',
-                borderRadius: '16px',
+                width: '40px', // Plus petit
+                height: '40px',
+                borderRadius: '12px',
                 background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 8px 25px rgba(59, 130, 246, 0.3)'
+                justifyContent: 'center'
               }}>
-                <Package size={28} color="white" />
+                <Package size={20} color="white" />
               </div>
               <div>
                 <h1 style={{ 
                   margin: 0, 
-                  fontSize: '32px', 
-                  fontWeight: '800',
-                  background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
+                  fontSize: '20px', // Réduit
+                  fontWeight: '700',
+                  color: isDark ? '#f9fafb' : '#111827'
                 }}>
                   Point de Vente
                 </h1>
-                <p style={{
-                  margin: '4px 0 0 0',
-                  color: isDark ? '#9ca3af' : '#6b7280',
-                  fontSize: '16px',
-                  fontWeight: '500'
-                }}>
-                  Interface moderne de vente
-                </p>
               </div>
             </div>
 
-            {/* Statut caisse */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px'
-            }}>
+            {/* Statut caisse compact */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               {!cashSession && (
                 <button
                   onClick={() => setShowOpenModal(true)}
                   style={{
-                    padding: '12px 24px',
-                    borderRadius: '50px',
+                    padding: '6px 12px',
+                    borderRadius: '20px',
                     border: 'none',
                     background: 'linear-gradient(135deg, #10b981, #059669)',
                     color: 'white',
+                    fontSize: '12px',
                     fontWeight: '600',
-                    cursor: 'pointer',
-                    boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)'
+                    cursor: 'pointer'
                   }}
                 >
-                  Ouvrir la caisse
+                  Ouvrir caisse
                 </button>
               )}
               
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '12px',
-                padding: '12px 24px',
-                borderRadius: '50px',
+                gap: '6px',
+                padding: '6px 12px',
+                borderRadius: '20px',
                 background: cashSession 
                   ? 'linear-gradient(135deg, #10b981, #059669)' 
                   : 'linear-gradient(135deg, #ef4444, #dc2626)',
                 color: 'white',
+                fontSize: '11px',
                 fontWeight: '600',
-                boxShadow: cashSession 
-                  ? '0 8px 25px rgba(16, 185, 129, 0.3)' 
-                  : '0 8px 25px rgba(239, 68, 68, 0.3)',
                 cursor: cashSession ? 'pointer' : 'default'
               }}
               onClick={() => cashSession && setShowCloseModal(true)}
               >
-                {cashSession ? <Unlock size={20} /> : <Lock size={20} />}
-                <span>{cashSession ? 'Caisse Ouverte' : 'Caisse Fermée'}</span>
-                {cashSession && <Sparkles size={16} />}
+                {cashSession ? <Unlock size={12} /> : <Lock size={12} />}
+                <span>{cashSession ? 'Ouverte' : 'Fermée'}</span>
               </div>
             </div>
           </div>
 
-          {/* Barre de recherche moderne + Toggle de vue */}
-          <div style={{
-            display: 'flex',
-            gap: '12px',
-            marginBottom: '24px'
-          }}>
-            {/* Barre de recherche */}
-            <div style={{
-              position: 'relative',
-              flex: 1
-            }}>
-              <Search size={20} style={{
+          {/* Recherche + Toggle mini */}
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ position: 'relative', flex: 1 }}>
+              <Search size={14} style={{
                 position: 'absolute',
-                left: '16px',
+                left: '8px',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: isDark ? '#9ca3af' : '#6b7280'
               }} />
               <input
                 type="text"
-                placeholder="Rechercher un produit par nom ou code..."
+                placeholder="Rechercher..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 disabled={!cashSession}
                 style={{
                   width: '100%',
-                  padding: '16px 16px 16px 48px',
-                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                  borderRadius: '20px',
-                  fontSize: '16px',
+                  padding: '8px 8px 8px 28px',
+                  border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                  borderRadius: '12px',
+                  fontSize: '12px',
                   background: isDark ? '#374151' : 'white',
                   color: isDark ? '#f9fafb' : '#111827',
                   outline: 'none',
-                  transition: 'all 0.3s ease',
-                  opacity: !cashSession ? 0.6 : 1
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = isDark ? '#374151' : '#e5e7eb';
-                  e.target.style.boxShadow = 'none';
+                  opacity: !cashSession ? 0.5 : 1
                 }}
               />
             </div>
 
-            {/* Boutons de vue */}
+            {/* Toggle mini */}
             <div style={{
               display: 'flex',
               background: isDark ? '#374151' : '#f8fafc',
-              borderRadius: '12px',
-              padding: '4px',
-              border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
+              borderRadius: '8px',
+              padding: '2px'
             }}>
               <button
                 onClick={() => setViewMode('grid')}
                 style={{
-                  padding: '12px 16px',
-                 borderRadius: '8px',
-                 border: 'none',
-                 background: viewMode === 'grid' 
-                   ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' 
-                   : 'transparent',
-                 color: viewMode === 'grid' 
-                   ? 'white' 
-                   : (isDark ? '#d1d5db' : '#6b7280'),
-                 cursor: 'pointer',
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 transition: 'all 0.3s ease',
-                 display: 'flex',
-                 alignItems: 'center',
-                 gap: '8px'
-               }}
-             >
-               <Package size={16} />
-               Grille
-             </button>
-             <button
-               onClick={() => setViewMode('list')}
-               style={{
-                 padding: '12px 16px',
-                 borderRadius: '8px',
-                 border: 'none',
-                 background: viewMode === 'list' 
-                   ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)' 
-                   : 'transparent',
-                 color: viewMode === 'list' 
-                   ? 'white' 
-                   : (isDark ? '#d1d5db' : '#6b7280'),
-                 cursor: 'pointer',
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 transition: 'all 0.3s ease',
-                 display: 'flex',
-                 alignItems: 'center',
-                 gap: '8px'
-               }}
-             >
-               <Search size={16} />
-               Liste
-             </button>
-           </div>
-         </div>
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'grid' ? '#3b82f6' : 'transparent',
+                  color: viewMode === 'grid' ? 'white' : (isDark ? '#d1d5db' : '#6b7280'),
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                Grille
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                style={{
+                  padding: '6px 8px',
+                  borderRadius: '6px',
+                  border: 'none',
+                  background: viewMode === 'list' ? '#3b82f6' : 'transparent',
+                  color: viewMode === 'list' ? 'white' : (isDark ? '#d1d5db' : '#6b7280'),
+                  cursor: 'pointer',
+                  fontSize: '10px',
+                  fontWeight: '600'
+                }}
+              >
+                Liste
+              </button>
+            </div>
+          </div>
 
-         {/* Boutons catégories */}
-         <CategoryButtons />
-       </div>
+          <CategoryButtons />
+        </div>
 
-       {/* Affichage des produits - Adaptable selon le mode */}
-       {viewMode === 'grid' ? (
-         <div style={{
-           display: 'grid',
-           gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-           gap: '16px',
-           marginBottom: '32px'
-         }}>
-           {filteredProducts.map(product => (
-             <ProductCard key={product.id} product={product} isListMode={false} />
-           ))}
-         </div>
-       ) : (
-         <div style={{
-           display: 'flex',
-           flexDirection: 'column',
-           gap: '8px',
-           marginBottom: '32px'
-         }}>
-           {filteredProducts.map(product => (
-             <ProductCard key={product.id} product={product} isListMode={true} />
-           ))}
-         </div>
-       )}
+        {/* Affichage produits ultra compact */}
+        {viewMode === 'grid' ? (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', // Ultra compact
+            gap: '8px',
+            marginBottom: '16px'
+          }}>
+            {filteredProducts.map(product => (
+              <ProductCard key={product.id} product={product} isListMode={false} />
+            ))}
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '2px',
+            marginBottom: '16px'
+          }}>
+            {filteredProducts.map(product => (
+              <ProductCard key={product.id} product={product} isListMode={true} />
+            ))}
+          </div>
+        )}
 
-       {/* Message si aucun produit */}
-       {filteredProducts.length === 0 && (
-         <div style={{
-           textAlign: 'center',
-           padding: '60px 20px',
-           background: isDark ? '#1f2937' : 'white',
-           borderRadius: '20px',
-           border: `2px dashed ${isDark ? '#374151' : '#e5e7eb'}`
-         }}>
-           <Package size={64} color={isDark ? '#6b7280' : '#9ca3af'} style={{ margin: '0 auto 16px' }} />
-           <h3 style={{
-             fontSize: '20px',
-             fontWeight: '600',
-             color: isDark ? '#f9fafb' : '#111827',
-             margin: '0 0 8px 0'
-           }}>
-             Aucun produit trouvé
-           </h3>
-           <p style={{
-             color: isDark ? '#9ca3af' : '#6b7280',
-             margin: 0,
-             fontSize: '16px'
-           }}>
-             {searchQuery ? 'Essayez de modifier votre recherche' : 'Sélectionnez une autre catégorie'}
-           </p>
-         </div>
-       )}
-     </div>
+        {/* Message si aucun produit */}
+        {filteredProducts.length === 0 && (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px 20px',
+            background: isDark ? '#1f2937' : 'white',
+            borderRadius: '12px',
+            border: `1px dashed ${isDark ? '#374151' : '#e5e7eb'}`
+          }}>
+            <Package size={40} color={isDark ? '#6b7280' : '#9ca3af'} style={{ margin: '0 auto 8px' }} />
+            <p style={{
+              color: isDark ? '#9ca3af' : '#6b7280',
+              margin: 0,
+              fontSize: '14px'
+            }}>
+              {searchQuery ? 'Aucun produit trouvé' : 'Sélectionnez une catégorie'}
+            </p>
+          </div>
+        )}
+      </div>
 
-     {/* Section Panier (si des articles) */}
-     {cart.length > 0 && (
-       <div style={{
-         background: isDark ? '#1f2937' : 'white',
-         borderLeft: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-         display: 'flex',
-         flexDirection: 'column',
-         height: '100vh'
-       }}>
-         {/* Header Panier */}
-         <div style={{
-           padding: '24px',
-           borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-           background: isDark ? '#111827' : '#f8fafc'
-         }}>
-           <div style={{
-             display: 'flex',
-             alignItems: 'center',
-             justifyContent: 'space-between',
-             marginBottom: '16px'
-           }}>
-             <h2 style={{
-               fontSize: '24px',
-               fontWeight: '700',
-               color: isDark ? '#f9fafb' : '#111827',
-               margin: 0,
-               display: 'flex',
-               alignItems: 'center',
-               gap: '12px'
-             }}>
-               <ShoppingCart size={24} />
-               Panier ({cart.length})
-             </h2>
-             
-             <button
-               onClick={clearCart}
-               style={{
-                 padding: '8px',
-                 background: 'none',
-                 border: 'none',
-                 color: '#ef4444',
-                 cursor: 'pointer',
-                 borderRadius: '8px',
-                 transition: 'background 0.2s'
-               }}
-               onMouseEnter={(e) => e.target.style.background = 'rgba(239, 68, 68, 0.1)'}
-               onMouseLeave={(e) => e.target.style.background = 'none'}
-             >
-               <Trash2 size={20} />
-             </button>
-           </div>
+      {/* Section Panier mini (si des articles) */}
+      {cart.length > 0 && (
+        <div style={{
+          background: isDark ? '#1f2937' : 'white',
+          borderLeft: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh'
+        }}>
+          {/* Header Panier mini */}
+          <div style={{
+            padding: '12px',
+            borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+            background: isDark ? '#111827' : '#f8fafc'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '8px'
+            }}>
+              <h2 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: isDark ? '#f9fafb' : '#111827',
+                margin: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <ShoppingCart size={16} />
+                Panier ({cart.length})
+              </h2>
+              
+              <button
+                onClick={clearCart}
+                style={{
+                  padding: '4px',
+                  background: 'none',
+                  border: 'none',
+                  color: '#ef4444',
+                  cursor: 'pointer',
+                  borderRadius: '4px'
+                }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
 
-           {/* Sélection client */}
-           <select
-             value={selectedCustomer.id}
-             onChange={(e) => {
-               const customer = customers.find(c => c.id === parseInt(e.target.value));
-               setSelectedCustomer(customer || { id: 1, name: 'Client Comptant' });
-             }}
-             style={{
-               width: '100%',
-               padding: '12px',
-               border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-               borderRadius: '12px',
-               background: isDark ? '#374151' : 'white',
-               color: isDark ? '#f9fafb' : '#111827',
-               fontSize: '14px'
-             }}
-           >
+            {/* Sélection client mini */}
+            <select
+              value={selectedCustomer.id}
+              onChange={(e) => {
+                const customer = customers.find(c => c.id === parseInt(e.target.value));
+                setSelectedCustomer(customer || { id: 1, name: 'Client Comptant' });
+              }}
+              style={{
+                width: '100%',
+                padding: '6px',
+                border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
+                borderRadius: '6px',
+                background: isDark ? '#374151' : 'white',
+                color: isDark ? '#f9fafb' : '#111827',
+                fontSize: '11px'
+              }}
+            >
              {customers.map(customer => (
                <option key={customer.id} value={customer.id}>
                  👤 {customer.name}
@@ -977,28 +828,28 @@ const POSModule = ({ onNavigate }) => {
            </select>
          </div>
 
-         {/* Liste des articles */}
+         {/* Liste des articles mini */}
          <div style={{
            flex: 1,
            overflowY: 'auto',
-           padding: '16px'
+           padding: '8px'
          }}>
            {cart.map(item => (
              <div key={item.id} style={{
                display: 'flex',
                alignItems: 'center',
-               gap: '12px',
-               padding: '16px',
+               gap: '6px',
+               padding: '6px',
                background: isDark ? '#374151' : '#f8fafc',
-               borderRadius: '12px',
-               marginBottom: '12px',
+               borderRadius: '6px',
+               marginBottom: '4px',
                border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
              }}>
-               {/* Image ou placeholder */}
+               {/* Image mini */}
                <div style={{
-                 width: '50px',
-                 height: '50px',
-                 borderRadius: '8px',
+                 width: '24px',
+                 height: '24px',
+                 borderRadius: '4px',
                  background: isDark ? '#4b5563' : '#e5e7eb',
                  display: 'flex',
                  alignItems: 'center',
@@ -1010,51 +861,45 @@ const POSModule = ({ onNavigate }) => {
                    <img 
                      src={item.image} 
                      alt={item.name}
-                     style={{
-                       width: '100%',
-                       height: '100%',
-                       objectFit: 'cover'
-                     }}
+                     style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                    />
                  ) : (
-                   <Package size={20} color={isDark ? '#9ca3af' : '#6b7280'} />
+                   <Package size={12} color={isDark ? '#9ca3af' : '#6b7280'} />
                  )}
                </div>
 
-               {/* Infos produit */}
+               {/* Infos produit mini */}
                <div style={{ flex: 1, minWidth: 0 }}>
-                 <h4 style={{
-                   fontSize: '14px',
+                 <div style={{
+                   fontSize: '10px',
                    fontWeight: '600',
                    color: isDark ? '#f9fafb' : '#111827',
-                   margin: '0 0 4px 0',
                    overflow: 'hidden',
                    textOverflow: 'ellipsis',
                    whiteSpace: 'nowrap'
                  }}>
                    {item.name}
-                 </h4>
-                 <p style={{
-                   fontSize: '12px',
-                   color: isDark ? '#9ca3af' : '#6b7280',
-                   margin: 0
+                 </div>
+                 <div style={{
+                   fontSize: '9px',
+                   color: isDark ? '#9ca3af' : '#6b7280'
                  }}>
-                   {item.price.toLocaleString()} {appSettings.currency} × {item.quantity}
-                 </p>
+                   {item.price.toLocaleString()} × {item.quantity}
+                 </div>
                </div>
 
-               {/* Contrôles quantité */}
+               {/* Contrôles quantité mini */}
                <div style={{
                  display: 'flex',
                  alignItems: 'center',
-                 gap: '8px'
+                 gap: '4px'
                }}>
                  <button
                    onClick={() => updateQuantity(item.id, -1)}
                    style={{
-                     width: '32px',
-                     height: '32px',
-                     borderRadius: '8px',
+                     width: '16px',
+                     height: '16px',
+                     borderRadius: '4px',
                      border: 'none',
                      background: '#ef4444',
                      color: 'white',
@@ -1062,18 +907,17 @@ const POSModule = ({ onNavigate }) => {
                      alignItems: 'center',
                      justifyContent: 'center',
                      cursor: 'pointer',
-                     fontSize: '16px',
-                     fontWeight: 'bold'
+                     fontSize: '10px'
                    }}
                  >
-                   <Minus size={16} />
+                   <Minus size={8} />
                  </button>
                  
                  <span style={{
-                   fontSize: '16px',
+                   fontSize: '10px',
                    fontWeight: '600',
                    color: isDark ? '#f9fafb' : '#111827',
-                   minWidth: '24px',
+                   minWidth: '12px',
                    textAlign: 'center'
                  }}>
                    {item.quantity}
@@ -1083,9 +927,9 @@ const POSModule = ({ onNavigate }) => {
                    onClick={() => updateQuantity(item.id, 1)}
                    disabled={item.quantity >= item.stock}
                    style={{
-                     width: '32px',
-                     height: '32px',
-                     borderRadius: '8px',
+                     width: '16px',
+                     height: '16px',
+                     borderRadius: '4px',
                      border: 'none',
                      background: item.quantity >= item.stock ? '#9ca3af' : '#10b981',
                      color: 'white',
@@ -1093,144 +937,98 @@ const POSModule = ({ onNavigate }) => {
                      alignItems: 'center',
                      justifyContent: 'center',
                      cursor: item.quantity >= item.stock ? 'not-allowed' : 'pointer',
-                     fontSize: '16px',
-                     fontWeight: 'bold'
+                     fontSize: '10px'
                    }}
                  >
-                   <Plus size={16} />
+                   <Plus size={8} />
                  </button>
                </div>
 
-               {/* Prix total et suppression */}
+               {/* Prix total mini */}
                <div style={{
-                 display: 'flex',
-                 flexDirection: 'column',
-                 alignItems: 'flex-end',
-                 gap: '4px'
+                 fontSize: '10px',
+                 fontWeight: '700',
+                 color: '#3b82f6',
+                 minWidth: '30px',
+                 textAlign: 'right'
                }}>
-                 <span style={{
-                   fontSize: '16px',
-                   fontWeight: '700',
-                   color: '#3b82f6'
-                 }}>
-                   {(item.price * item.quantity).toLocaleString()} {appSettings.currency}
-                 </span>
-                 
-                 <button
-                   onClick={() => removeFromCart(item.id)}
-                   style={{
-                     background: 'none',
-                     border: 'none',
-                     color: '#ef4444',
-                     cursor: 'pointer',
-                     padding: '4px',
-                     borderRadius: '4px'
-                   }}
-                 >
-                   <X size={16} />
-                 </button>
+                 {(item.price * item.quantity).toLocaleString()}
                </div>
+
+               {/* Suppression */}
+               <button
+                 onClick={() => removeFromCart(item.id)}
+                 style={{
+                   background: 'none',
+                   border: 'none',
+                   color: '#ef4444',
+                   cursor: 'pointer',
+                   padding: '2px'
+                 }}
+               >
+                 <X size={10} />
+               </button>
              </div>
            ))}
          </div>
 
-         {/* Résumé et paiement */}
+         {/* Résumé et paiement mini */}
          <div style={{
-           padding: '24px',
+           padding: '12px',
            background: isDark ? '#111827' : '#f8fafc',
            borderTop: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
          }}>
-           {/* Totaux */}
-           <div style={{ marginBottom: '24px' }}>
-             <div style={{
-               display: 'flex',
-               justifyContent: 'space-between',
-               marginBottom: '8px'
+           {/* Total compact */}
+           <div style={{
+             display: 'flex',
+             justifyContent: 'space-between',
+             padding: '8px 0',
+             borderTop: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
+           }}>
+             <span style={{ 
+               fontSize: '14px',
+               fontWeight: '700',
+               color: isDark ? '#f9fafb' : '#111827' 
              }}>
-               <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
-                 Sous-total:
-               </span>
-               <span style={{ 
-                 fontWeight: '600', 
-                 color: isDark ? '#f9fafb' : '#111827' 
-               }}>
-                 {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
-               </span>
-             </div>
-             
-             {cartStats.totalTax > 0 && (
-               <div style={{
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 marginBottom: '8px'
-               }}>
-                 <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
-                   Taxe:
-                 </span>
-                 <span style={{ 
-                   fontWeight: '600', 
-                   color: isDark ? '#f9fafb' : '#111827' 
-                 }}>
-                   {cartStats.totalTax.toLocaleString()} {appSettings.currency}
-                 </span>
-               </div>
-             )}
-             
-             <div style={{
-               display: 'flex',
-               justifyContent: 'space-between',
-               padding: '16px 0',
-               borderTop: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-               marginTop: '12px'
+               Total:
+             </span>
+             <span style={{ 
+               fontSize: '16px',
+               fontWeight: '800',
+               color: '#3b82f6'
              }}>
-               <span style={{ 
-                 fontSize: '20px',
-                 fontWeight: '700',
-                 color: isDark ? '#f9fafb' : '#111827' 
-               }}>
-                 Total:
-               </span>
-               <span style={{ 
-                 fontSize: '24px',
-                 fontWeight: '800',
-                 color: '#3b82f6'
-               }}>
-                 {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
-               </span>
-             </div>
+               {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
+             </span>
            </div>
 
-           {/* Bouton paiement */}
+           {/* Bouton paiement mini */}
            <button
              onClick={() => setShowPaymentModal(true)}
-             disabled={cart.length === 0}
+             disabled={cart.length === 0 || !cashSession}
              style={{
                width: '100%',
-               padding: '16px',
-               borderRadius: '16px',
+               padding: '8px',
+               borderRadius: '8px',
                border: 'none',
-               background: cart.length === 0 ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
+               background: (cart.length === 0 || !cashSession) ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
                color: 'white',
-               fontSize: '18px',
-               fontWeight: '700',
-               cursor: cart.length === 0 ? 'not-allowed' : 'pointer',
+               fontSize: '12px',
+               fontWeight: '600',
+               cursor: (cart.length === 0 || !cashSession) ? 'not-allowed' : 'pointer',
                display: 'flex',
                alignItems: 'center',
                justifyContent: 'center',
-               gap: '12px',
-               transition: 'all 0.3s ease',
-               boxShadow: cart.length === 0 ? 'none' : '0 8px 25px rgba(16, 185, 129, 0.3)'
+               gap: '4px'
              }}
            >
-             <CreditCard size={20} />
-             Procéder au paiement
-             <Zap size={16} />
+             <CreditCard size={12} />
+             {!cashSession ? 'Caisse fermée' : 'Payer'}
            </button>
          </div>
        </div>
      )}
 
-     {/* Modal d'ouverture de caisse */}
+     {/* ✅ MODAL D'OUVERTURE IDENTIQUE AU MODULE CAISSE */}
      {showOpenModal && (
        <div style={{
          position: 'fixed',
@@ -1238,40 +1036,35 @@ const POSModule = ({ onNavigate }) => {
          left: 0,
          right: 0,
          bottom: 0,
-         background: 'rgba(0, 0, 0, 0.5)',
+         background: 'rgba(0,0,0,0.5)',
          display: 'flex',
          alignItems: 'center',
          justifyContent: 'center',
-         zIndex: 1000,
-         backdropFilter: 'blur(8px)'
+         zIndex: 1000
        }}>
          <div style={{
-           background: isDark ? '#1f2937' : 'white',
-           borderRadius: '20px',
-           padding: '32px',
+           background: isDark ? '#2d3748' : 'white',
+           padding: '30px',
+           borderRadius: '12px',
            width: '90%',
-           maxWidth: '400px',
-           boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
+           maxWidth: '400px'
          }}>
-           <h3 style={{
-             fontSize: '24px',
-             fontWeight: '700',
-             color: isDark ? '#f9fafb' : '#111827',
-             margin: '0 0 20px 0',
-             textAlign: 'center'
+           <h3 style={{ 
+             marginBottom: '20px',
+             color: isDark ? '#f7fafc' : '#2d3748'
            }}>
-             🔓 Ouvrir la caisse
+             Ouverture de Caisse
            </h3>
            
            <div style={{ marginBottom: '20px' }}>
              <label style={{
                display: 'block',
                fontSize: '14px',
-               fontWeight: '600',
-               color: isDark ? '#f9fafb' : '#111827',
-               marginBottom: '8px'
+               fontWeight: '500',
+               marginBottom: '8px',
+               color: isDark ? '#a0aec0' : '#64748b'
              }}>
-               Montant d'ouverture
+               Fond de caisse initial
              </label>
              <input
                type="number"
@@ -1280,49 +1073,42 @@ const POSModule = ({ onNavigate }) => {
                style={{
                  width: '100%',
                  padding: '12px',
-                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                 borderRadius: '12px',
+                 border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                 borderRadius: '6px',
                  fontSize: '16px',
                  background: isDark ? '#374151' : 'white',
-                 color: isDark ? '#f9fafb' : '#111827'
+                 color: isDark ? '#f7fafc' : '#2d3748'
                }}
+               autoFocus
              />
            </div>
-
-           <div style={{
-             display: 'flex',
-             gap: '12px'
-           }}>
+           
+           <div style={{ display: 'flex', gap: '10px' }}>
              <button
                onClick={() => setShowOpenModal(false)}
                style={{
                  flex: 1,
                  padding: '12px',
-                 borderRadius: '12px',
-                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                 background: 'transparent',
-                 color: isDark ? '#d1d5db' : '#6b7280',
-                 fontSize: '14px',
-                 fontWeight: '600',
+                 background: '#64748b',
+                 color: 'white',
+                 border: 'none',
+                 borderRadius: '6px',
                  cursor: 'pointer'
                }}
              >
                Annuler
              </button>
-             
              <button
                onClick={openRegister}
                style={{
                  flex: 1,
                  padding: '12px',
-                 borderRadius: '12px',
-                 border: 'none',
-                 background: 'linear-gradient(135deg, #10b981, #059669)',
+                 background: '#10b981',
                  color: 'white',
-                 fontSize: '14px',
-                 fontWeight: '700',
+                 border: 'none',
+                 borderRadius: '6px',
                  cursor: 'pointer',
-                 boxShadow: '0 8px 25px rgba(16, 185, 129, 0.3)'
+                 fontWeight: '600'
                }}
              >
                Ouvrir
@@ -1332,7 +1118,154 @@ const POSModule = ({ onNavigate }) => {
        </div>
      )}
 
-     {/* Modal de paiement */}
+     {/* ✅ MODAL DE FERMETURE IDENTIQUE AU MODULE CAISSE */}
+     {showCloseModal && (
+       <div style={{
+         position: 'fixed',
+         top: 0,
+         left: 0,
+         right: 0,
+         bottom: 0,
+         background: 'rgba(0,0,0,0.5)',
+         display: 'flex',
+         alignItems: 'center',
+         justifyContent: 'center',
+         zIndex: 1000
+       }}>
+         <div style={{
+           background: isDark ? '#2d3748' : 'white',
+           padding: '30px',
+           borderRadius: '12px',
+           width: '90%',
+           maxWidth: '500px'
+         }}>
+           <h3 style={{ 
+             marginBottom: '20px',
+             color: isDark ? '#f7fafc' : '#2d3748'
+           }}>
+             Fermeture de Caisse
+           </h3>
+           
+           {/* ✅ RÉCAPITULATIF COMPLET COMME MODULE CAISSE */}
+           <div style={{ 
+             marginBottom: '20px',
+             padding: '15px',
+             background: isDark ? '#374151' : '#f8fafc',
+             borderRadius: '8px'
+           }}>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+               <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Fond initial:</span>
+               <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                 {cashSession?.openingAmount?.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+               <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes espèces:</span>
+               <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                 {getSessionTotals().cashSales?.toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+               <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Attendu:</span>
+               <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                 {((cashSession?.openingAmount || 0) + getSessionTotals().cashSales).toLocaleString()} {appSettings.currency}
+               </span>
+             </div>
+           </div>
+
+           <div style={{ marginBottom: '20px' }}>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '500',
+               marginBottom: '8px',
+               color: isDark ? '#a0aec0' : '#64748b'
+             }}>
+               Espèces comptées
+             </label>
+             <input
+               type="number"
+               value={closingCash}
+               onChange={(e) => setClosingCash(e.target.value)}
+               placeholder="Montant réellement compté"
+               style={{
+                 width: '100%',
+                 padding: '12px',
+                 border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                 borderRadius: '6px',
+                 fontSize: '16px',
+                 background: isDark ? '#374151' : 'white',
+                 color: isDark ? '#f7fafc' : '#2d3748'
+               }}
+               autoFocus
+             />
+           </div>
+
+           <div style={{ marginBottom: '20px' }}>
+             <label style={{
+               display: 'block',
+               fontSize: '14px',
+               fontWeight: '500',
+               marginBottom: '8px',
+               color: isDark ? '#a0aec0' : '#64748b'
+             }}>
+               Notes (optionnel)
+             </label>
+             <textarea
+               value={notes}
+               onChange={(e) => setNotes(e.target.value)}
+               placeholder="Remarques de fin de journée..."
+               style={{
+                 width: '100%',
+                 padding: '12px',
+                 border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                 borderRadius: '6px',
+                 fontSize: '14px',
+                 background: isDark ? '#374151' : 'white',
+                 color: isDark ? '#f7fafc' : '#2d3748',
+                 resize: 'vertical',
+                 minHeight: '60px'
+               }}
+             />
+           </div>
+
+           <div style={{ display: 'flex', gap: '10px' }}>
+             <button
+               onClick={() => setShowCloseModal(false)}
+               style={{
+                 flex: 1,
+                 padding: '12px',
+                 background: '#64748b',
+                 color: 'white',
+                 border: 'none',
+                 borderRadius: '6px',
+                 cursor: 'pointer'
+               }}
+             >
+               Annuler
+             </button>
+             <button
+               onClick={closeRegister}
+               disabled={!closingCash}
+               style={{
+                 flex: 1,
+                 padding: '12px',
+                 background: closingCash ? '#ef4444' : '#94a3b8',
+                 color: 'white',
+                 border: 'none',
+                 borderRadius: '6px',
+                 cursor: closingCash ? 'pointer' : 'not-allowed',
+                 fontWeight: '600'
+               }}
+             >
+               Fermer Caisse
+             </button>
+           </div>
+         </div>
+       </div>
+     )}
+
+     {/* Modal de paiement (simplifié) */}
      {showPaymentModal && (
        <div style={{
          position: 'fixed',
@@ -1344,28 +1277,25 @@ const POSModule = ({ onNavigate }) => {
          display: 'flex',
          alignItems: 'center',
          justifyContent: 'center',
-         zIndex: 1000,
-         backdropFilter: 'blur(8px)'
+         zIndex: 1000
        }}>
          <div style={{
            background: isDark ? '#1f2937' : 'white',
-           borderRadius: '20px',
-           padding: '32px',
+           borderRadius: '16px',
+           padding: '24px',
            width: '90%',
-           maxWidth: '500px',
+           maxWidth: '400px',
            maxHeight: '90vh',
-           overflow: 'auto',
-           boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
+           overflow: 'auto'
          }}>
-           {/* Header */}
            <div style={{
              display: 'flex',
              justifyContent: 'space-between',
              alignItems: 'center',
-             marginBottom: '24px'
+             marginBottom: '16px'
            }}>
              <h3 style={{
-               fontSize: '24px',
+               fontSize: '18px',
                fontWeight: '700',
                color: isDark ? '#f9fafb' : '#111827',
                margin: 0
@@ -1379,60 +1309,33 @@ const POSModule = ({ onNavigate }) => {
                  background: 'none',
                  border: 'none',
                  cursor: 'pointer',
-                 padding: '8px',
-                 borderRadius: '8px',
-                 color: isDark ? '#9ca3af' : '#6b7280'
+                 padding: '4px'
                }}
              >
-               <X size={24} />
+               <X size={20} />
              </button>
            </div>
 
-           {/* Résumé de la commande */}
+           {/* Total compact */}
            <div style={{
              background: isDark ? '#374151' : '#f8fafc',
-             borderRadius: '12px',
-             padding: '20px',
-             marginBottom: '24px'
+             borderRadius: '8px',
+             padding: '12px',
+             marginBottom: '16px'
            }}>
-             <h4 style={{
-               fontSize: '16px',
-               fontWeight: '600',
-               color: isDark ? '#f9fafb' : '#111827',
-               margin: '0 0 12px 0'
-             }}>
-               Résumé de la commande
-             </h4>
-             
              <div style={{
                display: 'flex',
-               justifyContent: 'space-between',
-               marginBottom: '8px'
-             }}>
-               <span style={{ color: isDark ? '#d1d5db' : '#6b7280' }}>
-                 Articles ({cart.length}):
-               </span>
-               <span style={{ fontWeight: '600', color: isDark ? '#f9fafb' : '#111827' }}>
-                 {cartStats.totalAmount.toLocaleString()} {appSettings.currency}
-               </span>
-             </div>
-             
-             <div style={{
-               display: 'flex',
-               justifyContent: 'space-between',
-               padding: '12px 0',
-               borderTop: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-               marginTop: '8px'
+               justifyContent: 'space-between'
              }}>
                <span style={{ 
-                 fontSize: '18px',
+                 fontSize: '16px',
                  fontWeight: '700',
                  color: isDark ? '#f9fafb' : '#111827' 
                }}>
-                 Total à payer:
+                 Total:
                </span>
                <span style={{ 
-                 fontSize: '20px',
+                 fontSize: '18px',
                  fontWeight: '800',
                  color: '#3b82f6'
                }}>
@@ -1441,21 +1344,12 @@ const POSModule = ({ onNavigate }) => {
              </div>
            </div>
 
-           {/* Méthodes de paiement */}
-           <div style={{ marginBottom: '24px' }}>
-             <h4 style={{
-               fontSize: '16px',
-               fontWeight: '600',
-               color: isDark ? '#f9fafb' : '#111827',
-               margin: '0 0 16px 0'
-             }}>
-               Méthode de paiement
-             </h4>
-             
+           {/* Méthodes de paiement compactes */}
+           <div style={{ marginBottom: '16px' }}>
              <div style={{
                display: 'grid',
                gridTemplateColumns: '1fr 1fr 1fr',
-               gap: '12px'
+               gap: '8px'
              }}>
                {[
                  { id: 'cash', label: 'Espèces', icon: '💵', color: '#10b981' },
@@ -1466,8 +1360,8 @@ const POSModule = ({ onNavigate }) => {
                    key={method.id}
                    onClick={() => setPaymentMethod(method.id)}
                    style={{
-                     padding: '16px 12px',
-                     borderRadius: '12px',
+                     padding: '12px 8px',
+                     borderRadius: '8px',
                      border: `2px solid ${paymentMethod === method.id ? method.color : (isDark ? '#374151' : '#e5e7eb')}`,
                      background: paymentMethod === method.id 
                        ? `${method.color}15` 
@@ -1479,28 +1373,27 @@ const POSModule = ({ onNavigate }) => {
                      display: 'flex',
                      flexDirection: 'column',
                      alignItems: 'center',
-                     gap: '8px',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     transition: 'all 0.3s ease'
+                     gap: '4px',
+                     fontSize: '12px',
+                     fontWeight: '600'
                    }}
                  >
-                   <span style={{ fontSize: '24px' }}>{method.icon}</span>
+                   <span style={{ fontSize: '16px' }}>{method.icon}</span>
                    {method.label}
                  </button>
                ))}
              </div>
            </div>
 
-           {/* Montant reçu (pour espèces) */}
+           {/* Montant reçu pour espèces */}
            {paymentMethod === 'cash' && (
-             <div style={{ marginBottom: '24px' }}>
+             <div style={{ marginBottom: '16px' }}>
                <label style={{
                  display: 'block',
-                 fontSize: '14px',
+                 fontSize: '12px',
                  fontWeight: '600',
                  color: isDark ? '#f9fafb' : '#111827',
-                 marginBottom: '8px'
+                 marginBottom: '6px'
                }}>
                  Montant reçu
                </label>
@@ -1515,10 +1408,10 @@ const POSModule = ({ onNavigate }) => {
                  }}
                  style={{
                    width: '100%',
-                   padding: '16px',
+                   padding: '12px',
                    border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                   borderRadius: '12px',
-                   fontSize: '18px',
+                   borderRadius: '8px',
+                   fontSize: '16px',
                    fontWeight: '600',
                    background: isDark ? '#374151' : 'white',
                    color: isDark ? '#f9fafb' : '#111827',
@@ -1526,12 +1419,12 @@ const POSModule = ({ onNavigate }) => {
                  }}
                />
 
-               {/* Suggestions de montants intelligentes */}
+               {/* Suggestions compactes */}
                <div style={{
                  display: 'grid',
                  gridTemplateColumns: 'repeat(4, 1fr)',
-                 gap: '8px',
-                 marginTop: '12px'
+                 gap: '6px',
+                 marginTop: '8px'
                }}>
                  {[
                    cartStats.finalTotal,
@@ -1549,9 +1442,9 @@ const POSModule = ({ onNavigate }) => {
                        amountReceivedRef.current = amount.toString();
                      }}
                      style={{
-                       padding: '8px 12px',
-                       borderRadius: '8px',
-                       border: `2px solid ${
+                       padding: '6px',
+                       borderRadius: '6px',
+                       border: `1px solid ${
                          parseFloat(amountReceivedRef.current) === amount 
                            ? '#3b82f6' 
                            : (isDark ? '#374151' : '#e5e7eb')
@@ -1563,9 +1456,8 @@ const POSModule = ({ onNavigate }) => {
                          ? '#3b82f6' 
                          : (isDark ? '#d1d5db' : '#6b7280'),
                        cursor: 'pointer',
-                       fontSize: '12px',
-                       fontWeight: '600',
-                       transition: 'all 0.3s ease'
+                       fontSize: '10px',
+                       fontWeight: '600'
                      }}
                    >
                      {amount === cartStats.finalTotal ? 'Exact' : `${amount.toLocaleString()}`}
@@ -1573,25 +1465,26 @@ const POSModule = ({ onNavigate }) => {
                  ))}
                </div>
 
-               {/* Montant de la monnaie */}
+               {/* Monnaie */}
                {amountReceivedRef.current && parseFloat(amountReceivedRef.current) >= cartStats.finalTotal && (
                  <div style={{
-                   marginTop: '12px',
-                   padding: '12px',
+                   marginTop: '8px',
+                   padding: '8px',
                    background: 'rgba(16, 185, 129, 0.1)',
-                   borderRadius: '8px',
+                   borderRadius: '6px',
                    display: 'flex',
                    justifyContent: 'space-between',
                    alignItems: 'center'
                  }}>
                    <span style={{ 
                      color: '#10b981',
-                     fontWeight: '600' 
+                     fontWeight: '600',
+                     fontSize: '12px'
                    }}>
-                     Monnaie à rendre:
+                     Monnaie:
                    </span>
                    <span style={{ 
-                     fontSize: '18px',
+                     fontSize: '14px',
                      fontWeight: '700',
                      color: '#10b981'
                    }}>
@@ -1602,25 +1495,25 @@ const POSModule = ({ onNavigate }) => {
              </div>
            )}
 
-           {/* Validation pour vente à crédit */}
+           {/* Validation crédit */}
            {paymentMethod === 'credit' && selectedCustomer.id === 1 && (
              <div style={{
-               marginBottom: '24px',
-               padding: '12px',
+               marginBottom: '16px',
+               padding: '8px',
                background: 'rgba(239, 68, 68, 0.1)',
                border: '1px solid #ef4444',
-               borderRadius: '8px',
+               borderRadius: '6px',
                display: 'flex',
                alignItems: 'center',
-               gap: '8px'
+               gap: '6px'
              }}>
-               <AlertTriangle size={16} color="#ef4444" />
+               <AlertTriangle size={12} color="#ef4444" />
                <span style={{
-                 fontSize: '14px',
+                 fontSize: '11px',
                  color: '#ef4444',
                  fontWeight: '500'
                }}>
-                 Veuillez sélectionner un client spécifique pour une vente à crédit
+                 Sélectionner un client spécifique
                </span>
              </div>
            )}
@@ -1628,18 +1521,18 @@ const POSModule = ({ onNavigate }) => {
            {/* Boutons d'action */}
            <div style={{
              display: 'flex',
-             gap: '12px'
+             gap: '8px'
            }}>
              <button
                onClick={() => setShowPaymentModal(false)}
                style={{
                  flex: 1,
-                 padding: '16px',
-                 borderRadius: '12px',
+                 padding: '12px',
+                 borderRadius: '8px',
                  border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
                  background: 'transparent',
                  color: isDark ? '#d1d5db' : '#6b7280',
-                 fontSize: '16px',
+                 fontSize: '14px',
                  fontWeight: '600',
                  cursor: 'pointer'
                }}
@@ -1651,146 +1544,42 @@ const POSModule = ({ onNavigate }) => {
                onClick={handleCompleteSale}
                disabled={
                  (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
-                 (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                 (paymentMethod === 'credit' && selectedCustomer.id === 1) ||
+                 !cashSession
                }
                style={{
                  flex: 2,
-                 padding: '16px',
-                 borderRadius: '12px',
+                 padding: '12px',
+                 borderRadius: '8px',
                  border: 'none',
                  background: (
                    (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
-                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                   (paymentMethod === 'credit' && selectedCustomer.id === 1) ||
+                   !cashSession
                  ) ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
                  color: 'white',
-                 fontSize: '16px',
+                 fontSize: '14px',
                  fontWeight: '700',
                  cursor: (
                    (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
-                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                   (paymentMethod === 'credit' && selectedCustomer.id === 1) ||
+                   !cashSession
                  ) ? 'not-allowed' : 'pointer',
                  display: 'flex',
                  alignItems: 'center',
                  justifyContent: 'center',
-                 gap: '8px',
-                 boxShadow: (
-                   (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
-                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
-                 ) ? 'none' : '0 8px 25px rgba(16, 185, 129, 0.3)',
+                 gap: '6px',
                  opacity: (
                    (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) ||
-                   (paymentMethod === 'credit' && selectedCustomer.id === 1)
+                   (paymentMethod === 'credit' && selectedCustomer.id === 1) ||
+                   !cashSession
                  ) ? 0.6 : 1
                }}
              >
-               <Check size={20} />
-               {paymentMethod === 'credit' && selectedCustomer.id === 1 
-                 ? 'Sélectionner un client' 
-                 : 'Confirmer le paiement'
-               }
-             </button>
-           </div>
-         </div>
-       </div>
-     )}
-
-     {/* Modal de fermeture de caisse */}
-     {showCloseModal && (
-       <div style={{
-         position: 'fixed',
-         top: 0,
-         left: 0,
-         right: 0,
-         bottom: 0,
-         background: 'rgba(0, 0, 0, 0.5)',
-         display: 'flex',
-         alignItems: 'center',
-         justifyContent: 'center',
-         zIndex: 1000,
-         backdropFilter: 'blur(8px)'
-       }}>
-         <div style={{
-           background: isDark ? '#1f2937' : 'white',
-           borderRadius: '20px',
-           padding: '32px',
-           width: '90%',
-           maxWidth: '400px',
-           boxShadow: '0 25px 50px rgba(0, 0, 0, 0.25)'
-         }}>
-           <h3 style={{
-             fontSize: '20px',
-             fontWeight: '700',
-             color: isDark ? '#f9fafb' : '#111827',
-             margin: '0 0 20px 0',
-             textAlign: 'center'
-           }}>
-             🔒 Fermer la caisse
-           </h3>
-           
-           <div style={{ marginBottom: '20px' }}>
-             <label style={{
-               display: 'block',
-               fontSize: '14px',
-               fontWeight: '600',
-               color: isDark ? '#f9fafb' : '#111827',
-               marginBottom: '8px'
-             }}>
-               Espèces en caisse
-             </label>
-             <input
-               type="number"
-               value={closingCash}
-               onChange={(e) => setClosingCash(e.target.value)}
-               placeholder="Montant compté"
-               style={{
-                 width: '100%',
-                 padding: '12px',
-                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                 borderRadius: '12px',
-                 fontSize: '16px',
-                 background: isDark ? '#374151' : 'white',
-                 color: isDark ? '#f9fafb' : '#111827'
-               }}
-             />
-           </div>
-
-           <div style={{
-             display: 'flex',
-             gap: '12px'
-           }}>
-             <button
-               onClick={() => setShowCloseModal(false)}
-               style={{
-                 flex: 1,
-                 padding: '12px',
-                 borderRadius: '12px',
-                 border: `2px solid ${isDark ? '#374151' : '#e5e7eb'}`,
-                 background: 'transparent',
-                 color: isDark ? '#d1d5db' : '#6b7280',
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 cursor: 'pointer'
-               }}
-             >
-               Annuler
-             </button>
-             
-             <button
-               onClick={closeRegister}
-               style={{
-                 flex: 1,
-                 padding: '12px',
-                 borderRadius: '12px',
-                 border: 'none',
-                 background: 'linear-gradient(135deg, #ef4444, #dc2626)',
-                 color: 'white',
-                 fontSize: '14px',
-                 fontWeight: '700',
-                 cursor: 'pointer',
-                 boxShadow: '0 8px 25px rgba(239, 68, 68, 0.3)'
-               }}
-             >
-               Fermer la caisse
+               <Check size={16} />
+               {!cashSession ? 'Caisse fermée' : 
+                paymentMethod === 'credit' && selectedCustomer.id === 1 ? 'Sélectionner client' : 
+                'Confirmer'}
              </button>
            </div>
          </div>
