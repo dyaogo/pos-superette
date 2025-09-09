@@ -1,4 +1,5 @@
-// src/modules/pos/POSModule.jsx - Version corrigée pour votre structure existante
+{/* Grille des produits - Adaptable selon le mode */}
+        {view// src/modules/pos/POSModule.jsx - Version corrigée pour votre structure existante
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
@@ -192,6 +193,12 @@ const POSModule = ({ onNavigate }) => {
         return;
       }
 
+      // Validation pour vente à crédit
+      if (paymentMethod === 'credit' && selectedCustomer.id === 1) {
+        toast.error('Veuillez sélectionner un client spécifique pour une vente à crédit');
+        return;
+      }
+
       const amountReceived = parseFloat(amountReceivedRef.current) || 0;
       
       if (paymentMethod === 'cash' && amountReceived < cartStats.finalTotal) {
@@ -220,6 +227,7 @@ const POSModule = ({ onNavigate }) => {
           setShowPaymentModal(false);
           amountReceivedRef.current = '';
           setAmountDisplay('');
+          setPaymentMethod('cash');
           
           toast.success(`✅ Vente confirmée! Reçu: ${result.receiptNumber}`);
           
