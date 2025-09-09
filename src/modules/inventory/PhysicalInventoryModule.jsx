@@ -52,7 +52,7 @@ const PhysicalInventoryModule = () => {
   const [scanInput, setScanInput] = useState('');
   const [quickCountMode, setQuickCountMode] = useState(false);
 
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode || false;
 
   // Obtenir les catégories uniques
   const categories = useMemo(() => {
@@ -195,9 +195,13 @@ const PhysicalInventoryModule = () => {
     setActiveView('counting');
 
     // Sauvegarder la session
-    const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
-    sessions.push(newSession);
-    localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
+    try {
+      const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
+      sessions.push(newSession);
+      localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
+    } catch (error) {
+      console.warn('Erreur sauvegarde session:', error);
+    }
 
     console.log('Session d\'inventaire démarrée:', newSession);
   }, [sessionData, currentStoreId]);
@@ -221,18 +225,22 @@ const PhysicalInventoryModule = () => {
 
     // Sauvegarder en temps réel
     if (inventorySession) {
-      const updatedSession = {
-        ...inventorySession,
-        productCounts: newCounts,
-        productNotes: newNotes,
-        lastUpdated: new Date().toISOString()
-      };
-      
-      const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
-      const sessionIndex = sessions.findIndex(s => s.id === inventorySession.id);
-      if (sessionIndex !== -1) {
-        sessions[sessionIndex] = updatedSession;
-        localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
+      try {
+        const updatedSession = {
+          ...inventorySession,
+          productCounts: newCounts,
+          productNotes: newNotes,
+          lastUpdated: new Date().toISOString()
+        };
+        
+        const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
+        const sessionIndex = sessions.findIndex(s => s.id === inventorySession.id);
+        if (sessionIndex !== -1) {
+          sessions[sessionIndex] = updatedSession;
+          localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
+        }
+      } catch (error) {
+        console.warn('Erreur sauvegarde temps réel:', error);
       }
     }
   }, [sessionData.productCounts, sessionData.productNotes, inventorySession]);
@@ -260,143 +268,127 @@ const PhysicalInventoryModule = () => {
   }, [globalProducts, sessionData.productCounts, updateProductCount]);
 
   // Finaliser l'inventaire - VERSION CORRIGÉE COMPLÈTE
-const finalizeInventory = useCallback(() => {
-  if (!inventorySession) {
-    alert('Aucune session d\'inventaire active');
-    return;
-  }
+  const finalizeInventory = useCallback(() => {
+    if (!inventorySession) {
+      alert('Aucune session d\'inventaire active');
+      return;
+    }
 
-  if (!setStockForStore) {
-    alert('Fonction setStockForStore non disponible');
-    return;
-  }
+    if (!setStockForStore) {
+      alert('Fonction setStockForStore non disponible');
+      return;
+    }
 
-  const discrepancies = globalProducts.filter(product => {
-    const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
-    const countedStock = sessionData.productCounts[product.id];
-    return countedStock !== undefined && countedStock !== currentStock;
-  }).map(product => {
-    const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
-    const countedStock = sessionData.productCounts[product.id] || 0;
-    const difference = countedStock - currentStock;
-    return {
-      productId: product.id,
-      productName: product.name,
-      sku: product.sku,
-      currentStock,
-      countedStock,
-      difference,
-      valueImpact: difference * (product.costPrice || 0),
-      note: sessionData.productNotes[product.id] || ''
-    };
-  });
-
-  if (discrepancies.length === 0) {
-    alert('Aucune différence détectée. Inventaire terminé avec succès !');
-    setActiveView('history');
-    return;
-  }
-
-  const shouldApply = window.confirm(
-    `${discrepancies.length} différence(s) détectée(s).\n` +
-    `Impact financier: ${sessionStats.totalDiscrepancyValue.toLocaleString()} ${appSettings.currency}\n\n` +
-    `Voulez-vous appliquer ces ajustements ?`
-  );
-
-  if (shouldApply) {
-    try {
-      // ✅ PARTIE CORRIGÉE - Appliquer les ajustements
-      const newStock = { ...(stockByStore[currentStoreId] || {}) };
-      
-      // Mettre à jour seulement les produits comptés
-      Object.entries(sessionData.productCounts).forEach(([productIdStr, count]) => {
-        const productId = parseInt(productIdStr);
-        newStock[productId] = parseInt(count) || 0;
-      });
-
-      // Appliquer le nouveau stock
-      setStockForStore(currentStoreId, newStock);
-
-      // Enregistrer l'historique
-      const inventoryRecord = {
-        id: inventorySession.id,
-        type: 'physical_inventory',
-        date: new Date().toISOString(),
-        storeId: currentStoreId,
-        sessionName: inventorySession.name,
-        assignedTo: inventorySession.assignedTo,
-        notes: inventorySession.notes,
-        stats: sessionStats,
-        discrepancies,
-        appliedAt: new Date().toISOString()
+    const discrepancies = globalProducts.filter(product => {
+      const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
+      const countedStock = sessionData.productCounts[product.id];
+      return countedStock !== undefined && countedStock !== currentStock;
+    }).map(product => {
+      const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
+      const countedStock = sessionData.productCounts[product.id] || 0;
+      const difference = countedStock - currentStock;
+      return {
+        productId: product.id,
+        productName: product.name,
+        sku: product.sku,
+        currentStock,
+        countedStock,
+        difference,
+        valueImpact: difference * (product.costPrice || 0),
+        note: sessionData.productNotes[product.id] || ''
       };
+    });
 
-      addInventoryRecord(inventoryRecord);
-
-      // Finaliser la session
-      const finalizedSession = {
-        ...inventorySession,
-        status: 'completed',
-        completedAt: new Date().toISOString(),
-        finalStats: sessionStats,
-        discrepancies
-      };
-
-      try {
-        const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
-        const sessionIndex = sessions.findIndex(s => s.id === inventorySession.id);
-        if (sessionIndex !== -1) {
-          sessions[sessionIndex] = finalizedSession;
-          localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
-        }
-      } catch (storageError) {
-        console.warn('Erreur sauvegarde session:', storageError);
-      }
-
-      alert(`Inventaire finalisé avec succès !\n${discrepancies.length} ajustement(s) appliqué(s).`);
-      
-      // Réinitialiser
-      setInventorySession(null);
-      setSessionData({
-        id: null,
-        name: '',
-        startDate: new Date().toISOString().split('T')[0],
-        startTime: new Date().toTimeString().split(' ')[0].slice(0, 5),
-        assignedTo: '',
-        notes: '',
-        status: 'preparation',
-        productCounts: {},
-        productNotes: {},
-        discrepancies: [],
-        totalProducts: 0,
-        countedProducts: 0,
-        progressPercent: 0
-      });
+    if (discrepancies.length === 0) {
+      alert('Aucune différence détectée. Inventaire terminé avec succès !');
       setActiveView('history');
-      
-    } catch (error) {
-      console.error('Erreur lors de la finalisation:', error);
-      alert('Erreur lors de la finalisation de l\'inventaire. Vérifiez la console pour plus de détails.');
+      return;
     }
-  }
-}, [inventorySession, globalProducts, sessionData, stockByStore, currentStoreId, 
-    sessionStats, setStockForStore, appSettings.currency, addInventoryRecord]);
-  
-  // Rendu conditionnel selon la vue active
-  const renderContent = () => {
-    switch (activeView) {
-      case 'preparation':
-        return renderPreparationView();
-      case 'counting':
-        return renderCountingView();
-      case 'review':
-        return renderReviewView();
-      case 'history':
-        return renderHistoryView();
-      default:
-        return renderPreparationView();
+
+    const shouldApply = window.confirm(
+      `${discrepancies.length} différence(s) détectée(s).\n` +
+      `Impact financier: ${sessionStats.totalDiscrepancyValue.toLocaleString()} ${appSettings?.currency || 'FCFA'}\n\n` +
+      `Voulez-vous appliquer ces ajustements ?`
+    );
+
+    if (shouldApply) {
+      try {
+        // ✅ PARTIE CORRIGÉE - Appliquer les ajustements
+        const newStock = { ...(stockByStore[currentStoreId] || {}) };
+        
+        // Mettre à jour seulement les produits comptés
+        Object.entries(sessionData.productCounts).forEach(([productIdStr, count]) => {
+          const productId = parseInt(productIdStr);
+          newStock[productId] = parseInt(count) || 0;
+        });
+
+        // Appliquer le nouveau stock
+        setStockForStore(currentStoreId, newStock);
+
+        // Enregistrer l'historique
+        const inventoryRecord = {
+          id: inventorySession.id,
+          type: 'physical_inventory',
+          date: new Date().toISOString(),
+          storeId: currentStoreId,
+          sessionName: inventorySession.name,
+          assignedTo: inventorySession.assignedTo,
+          notes: inventorySession.notes,
+          stats: sessionStats,
+          discrepancies,
+          appliedAt: new Date().toISOString()
+        };
+
+        addInventoryRecord(inventoryRecord);
+
+        // Finaliser la session
+        const finalizedSession = {
+          ...inventorySession,
+          status: 'completed',
+          completedAt: new Date().toISOString(),
+          finalStats: sessionStats,
+          discrepancies
+        };
+
+        try {
+          const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
+          const sessionIndex = sessions.findIndex(s => s.id === inventorySession.id);
+          if (sessionIndex !== -1) {
+            sessions[sessionIndex] = finalizedSession;
+            localStorage.setItem('pos_inventory_sessions', JSON.stringify(sessions));
+          }
+        } catch (storageError) {
+          console.warn('Erreur sauvegarde session:', storageError);
+        }
+
+        alert(`Inventaire finalisé avec succès !\n${discrepancies.length} ajustement(s) appliqué(s).`);
+        
+        // Réinitialiser
+        setInventorySession(null);
+        setSessionData({
+          id: null,
+          name: '',
+          startDate: new Date().toISOString().split('T')[0],
+          startTime: new Date().toTimeString().split(' ')[0].slice(0, 5),
+          assignedTo: '',
+          notes: '',
+          status: 'preparation',
+          productCounts: {},
+          productNotes: {},
+          discrepancies: [],
+          totalProducts: 0,
+          countedProducts: 0,
+          progressPercent: 0
+        });
+        setActiveView('history');
+        
+      } catch (error) {
+        console.error('Erreur lors de la finalisation:', error);
+        alert('Erreur lors de la finalisation de l\'inventaire. Vérifiez la console pour plus de détails.');
+      }
     }
-  };
+  }, [inventorySession, globalProducts, sessionData, stockByStore, currentStoreId, 
+      sessionStats, setStockForStore, appSettings?.currency]);
 
   // Vue de préparation
   const renderPreparationView = () => (
@@ -423,7 +415,8 @@ const finalizeInventory = useCallback(() => {
         <div style={{ 
           display: 'grid', 
           gridTemplateColumns: window.innerWidth > 768 ? '1fr 1fr' : '1fr',
-          gap: '20px' 
+          gap: '20px',
+          marginBottom: '20px'
         }}>
           <div>
             <label style={{
@@ -481,61 +474,9 @@ const finalizeInventory = useCallback(() => {
               ))}
             </select>
           </div>
-
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              marginBottom: '8px',
-              color: isDark ? '#f7fafc' : '#374151'
-            }}>
-              Date
-            </label>
-            <input
-              type="date"
-              value={sessionData.startDate}
-              onChange={(e) => setSessionData(prev => ({ ...prev, startDate: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: `2px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-                borderRadius: '8px',
-                background: isDark ? '#374151' : 'white',
-                color: isDark ? '#f7fafc' : '#1f2937',
-                fontSize: '14px'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: '14px',
-              fontWeight: '600',
-              marginBottom: '8px',
-              color: isDark ? '#f7fafc' : '#374151'
-            }}>
-              Heure de début
-            </label>
-            <input
-              type="time"
-              value={sessionData.startTime}
-              onChange={(e) => setSessionData(prev => ({ ...prev, startTime: e.target.value }))}
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: `2px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-                borderRadius: '8px',
-                background: isDark ? '#374151' : 'white',
-                color: isDark ? '#f7fafc' : '#1f2937',
-                fontSize: '14px'
-              }}
-            />
-          </div>
         </div>
 
-        <div style={{ marginTop: '20px' }}>
+        <div style={{ marginBottom: '20px' }}>
           <label style={{
             display: 'block',
             fontSize: '14px',
@@ -566,7 +507,6 @@ const finalizeInventory = useCallback(() => {
         <div style={{
           display: 'flex',
           gap: '12px',
-          marginTop: '24px',
           flexWrap: 'wrap'
         }}>
           <button
@@ -651,7 +591,7 @@ const finalizeInventory = useCallback(() => {
             {globalProducts.reduce((sum, p) => {
               const stock = (stockByStore[currentStoreId] || {})[p.id] || 0;
               return sum + (stock * (p.costPrice || 0));
-            }, 0).toLocaleString()} {appSettings.currency}
+            }, 0).toLocaleString()} {appSettings?.currency || 'FCFA'}
           </div>
         </div>
 
@@ -678,7 +618,7 @@ const finalizeInventory = useCallback(() => {
     </div>
   );
 
-  // Vue de comptage (suite dans le prochain message pour éviter la coupure)
+  // Vue de comptage
   const renderCountingView = () => (
     <div style={{ padding: '24px' }}>
       {/* Header avec statistiques de progression */}
@@ -787,52 +727,52 @@ const finalizeInventory = useCallback(() => {
           </div>
 
           <div style={{ textAlign: 'center' }}>
-           <div style={{ 
-             fontSize: '24px', 
-             fontWeight: '700', 
-             color: sessionStats.discrepancies > 0 ? '#ef4444' : '#10b981',
-             marginBottom: '4px'
-           }}>
-             {sessionStats.discrepancies}
-           </div>
-           <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
-             Écarts
-           </div>
-         </div>
+            <div style={{ 
+              fontSize: '24px', 
+              fontWeight: '700', 
+              color: sessionStats.discrepancies > 0 ? '#ef4444' : '#10b981',
+              marginBottom: '4px'
+            }}>
+              {sessionStats.discrepancies}
+            </div>
+            <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
+              Écarts
+            </div>
+          </div>
 
-         <div style={{ textAlign: 'center' }}>
-           <div style={{ 
-             fontSize: '24px', 
-             fontWeight: '700', 
-             color: sessionStats.accuracy >= 95 ? '#10b981' : sessionStats.accuracy >= 85 ? '#f59e0b' : '#ef4444',
-             marginBottom: '4px'
-           }}>
-             {sessionStats.accuracy}%
-           </div>
-           <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
-             Précision
-           </div>
-         </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ 
+              fontSize: '24px', 
+              fontWeight: '700', 
+              color: sessionStats.accuracy >= 95 ? '#10b981' : sessionStats.accuracy >= 85 ? '#f59e0b' : '#ef4444',
+              marginBottom: '4px'
+            }}>
+              {sessionStats.accuracy}%
+            </div>
+            <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
+              Précision
+            </div>
+          </div>
 
-         <div style={{ textAlign: 'center' }}>
-           <div style={{ 
-             fontSize: '16px', 
-             fontWeight: '700', 
-             color: sessionStats.totalDiscrepancyValue >= 0 ? '#10b981' : '#ef4444',
-             marginBottom: '4px'
-           }}>
-             {sessionStats.totalDiscrepancyValue.toLocaleString()} {appSettings.currency}
-           </div>
-           <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
-             Impact financier
-           </div>
-         </div>
-       </div>
-     </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ 
+              fontSize: '16px', 
+              fontWeight: '700', 
+              color: sessionStats.totalDiscrepancyValue >= 0 ? '#10b981' : '#ef4444',
+              marginBottom: '4px'
+            }}>
+              {sessionStats.totalDiscrepancyValue.toLocaleString()} {appSettings?.currency || 'FCFA'}
+            </div>
+            <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#6b7280' }}>
+              Impact financier
+            </div>
+          </div>
+        </div>
+      </div>
 
-     {/* Zone de scan rapide */}
-     <div style={{
-       background: isDark ? '#374151' : 'white',
+      {/* Zone de scan rapide */}
+      <div style={{
+        background: isDark ? '#374151' : 'white',
        borderRadius: '12px',
        padding: '20px',
        marginBottom: '24px',
@@ -1361,907 +1301,58 @@ const finalizeInventory = useCallback(() => {
    </div>
  );
 
- // Vue de révision/validation
- const renderReviewView = () => {
-   const discrepancies = globalProducts.filter(product => {
-     const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
-     const countedStock = sessionData.productCounts[product.id];
-     return countedStock !== undefined && countedStock !== currentStock;
-   }).map(product => {
-     const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
-     const countedStock = sessionData.productCounts[product.id] || 0;
-     const difference = countedStock - currentStock;
-     return {
-       ...product,
-       currentStock,
-       countedStock,
-       difference,
-       valueImpact: difference * (product.costPrice || 0),
-       note: sessionData.productNotes[product.id] || ''
-     };
-   });
-
-   return (
-     <div style={{ padding: '24px' }}>
-       {/* Header */}
-       <div style={{
-         background: isDark ? '#374151' : '#f8fafc',
-         borderRadius: '12px',
-         padding: '24px',
-         marginBottom: '24px'
+ // Vue de révision (simplifiée)
+ const renderReviewView = () => (
+   <div style={{ padding: '24px' }}>
+     <div style={{
+       background: isDark ? '#374151' : '#f8fafc',
+       borderRadius: '12px',
+       padding: '24px'
+     }}>
+       <h3 style={{
+         fontSize: '20px',
+         fontWeight: '700',
+         color: isDark ? '#f7fafc' : '#1f2937',
+         marginBottom: '16px'
        }}>
-         <div style={{
-           display: 'flex',
-           justifyContent: 'space-between',
-           alignItems: 'center',
-           marginBottom: '16px'
-         }}>
-           <h3 style={{
-             fontSize: '20px',
-             fontWeight: '700',
-             color: isDark ? '#f7fafc' : '#1f2937',
-             margin: 0
-           }}>
-             Révision de l'inventaire
-           </h3>
-
-           <div style={{ display: 'flex', gap: '8px' }}>
-             <button
-               onClick={() => setActiveView('counting')}
-               style={{
-                 padding: '8px 16px',
-                 background: 'transparent',
-                 color: isDark ? '#f7fafc' : '#374151',
-                 border: `2px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-                 borderRadius: '8px',
-                 fontWeight: '600',
-                 cursor: 'pointer',
-                 fontSize: '14px'
-               }}
-             >
-               Retour au comptage
-             </button>
-             
-             <button
-               onClick={finalizeInventory}
-               style={{
-                 padding: '8px 16px',
-                 background: '#10b981',
-                 color: 'white',
-                 border: 'none',
-                 borderRadius: '8px',
-                 fontWeight: '600',
-                 cursor: 'pointer',
-                 fontSize: '14px'
-               }}
-             >
-               Finaliser l'inventaire
-             </button>
-           </div>
-         </div>
-
-         {/* Résumé des discrepances */}
-         <div style={{
-           display: 'grid',
-           gridTemplateColumns: window.innerWidth > 768 ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)',
-           gap: '16px'
-         }}>
-           <div style={{
-             background: discrepancies.length > 0 ? '#fef2f2' : '#f0fdf4',
-             padding: '16px',
-             borderRadius: '8px',
-             border: `1px solid ${discrepancies.length > 0 ? '#fecaca' : '#bbf7d0'}`
-           }}>
-             <div style={{
-               fontSize: '24px',
-               fontWeight: '700',
-               color: discrepancies.length > 0 ? '#ef4444' : '#10b981',
-               marginBottom: '4px'
-             }}>
-               {discrepancies.length}
-             </div>
-             <div style={{ fontSize: '14px', color: '#6b7280' }}>
-               Écarts détectés
-             </div>
-           </div>
-
-           <div style={{
-             background: sessionStats.totalDiscrepancyValue >= 0 ? '#f0fdf4' : '#fef2f2',
-             padding: '16px',
-             borderRadius: '8px',
-             border: `1px solid ${sessionStats.totalDiscrepancyValue >= 0 ? '#bbf7d0' : '#fecaca'}`
-           }}>
-             <div style={{
-               fontSize: '18px',
-               fontWeight: '700',
-               color: sessionStats.totalDiscrepancyValue >= 0 ? '#10b981' : '#ef4444',
-               marginBottom: '4px'
-             }}>
-               {sessionStats.totalDiscrepancyValue.toLocaleString()} {appSettings.currency}
-             </div>
-             <div style={{ fontSize: '14px', color: '#6b7280' }}>
-               Impact financier
-             </div>
-           </div>
-
-           <div style={{
-             background: '#f8fafc',
-             padding: '16px',
-             borderRadius: '8px',
-             border: '1px solid #e2e8f0'
-           }}>
-             <div style={{
-               fontSize: '24px',
-               fontWeight: '700',
-               color: '#10b981',
-               marginBottom: '4px'
-             }}>
-               {sessionStats.positiveAdjustments}
-             </div>
-             <div style={{ fontSize: '14px', color: '#6b7280' }}>
-               Ajustements positifs
-             </div>
-           </div>
-
-           <div style={{
-             background: '#f8fafc',
-             padding: '16px',
-             borderRadius: '8px',
-             border: '1px solid #e2e8f0'
-           }}>
-             <div style={{
-               fontSize: '24px',
-               fontWeight: '700',
-               color: '#ef4444',
-               marginBottom: '4px'
-             }}>
-               {sessionStats.negativeAdjustments}
-             </div>
-             <div style={{ fontSize: '14px', color: '#6b7280' }}>
-               Ajustements négatifs
-             </div>
-           </div>
-         </div>
-       </div>
-
-       {/* Liste des écarts */}
-       {discrepancies.length > 0 ? (
-         <div style={{
-           background: isDark ? '#374151' : 'white',
-           borderRadius: '12px',
-           border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-           overflow: 'hidden'
-         }}>
-           <div style={{
-             background: isDark ? '#4b5563' : '#f8fafc',
-             padding: '16px',
-             borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
-           }}>
-             <h4 style={{
-               fontSize: '16px',
-               fontWeight: '600',
-               color: isDark ? '#f7fafc' : '#1f2937',
-               margin: 0
-             }}>
-               Écarts à valider ({discrepancies.length})
-             </h4>
-           </div>
-
-           <div style={{ overflowX: 'auto' }}>
-             <table style={{
-               width: '100%',
-               borderCollapse: 'collapse'
-             }}>
-               <thead>
-                 <tr style={{
-                   background: isDark ? '#4b5563' : '#f8fafc',
-                   borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
-                 }}>
-                   <th style={{
-                     padding: '12px 16px',
-                     textAlign: 'left',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#374151'
-                   }}>
-                     Produit
-                   </th>
-                   <th style={{
-                     padding: '12px 16px',
-                     textAlign: 'center',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#374151'
-                   }}>
-                     Stock Système
-                   </th>
-                   <th style={{
-                     padding: '12px 16px',
-                     textAlign: 'center',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#374151'
-                   }}>
-                     Comptage
-                   </th>
-                   <th style={{
-                     padding: '12px 16px',
-                     textAlign: 'center',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#374151'
-                   }}>
-                     Écart
-                   </th>
-                   <th style={{
-                     padding: '12px 16px',
-                     textAlign: 'right',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#374151'
-                   }}>
-                     Impact
-                   </th>
-                   <th style={{
-                     padding: '12px 16px',
-                     textAlign: 'left',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#374151'
-           }}>
-                     Note
-                   </th>
-                   <th style={{
-                     padding: '12px 16px',
-                     textAlign: 'center',
-                     fontSize: '14px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#374151'
-                   }}>
-                     Actions
-                   </th>
-                 </tr>
-               </thead>
-               <tbody>
-                 {discrepancies.map((item, index) => (
-                   <tr key={item.id} style={{
-                     borderBottom: `1px solid ${isDark ? '#374151' : '#f1f5f9'}`,
-                     background: index % 2 === 0 ? 'transparent' : (isDark ? '#374151' : '#f8fafc')
-                   }}>
-                     <td style={{
-                       padding: '12px 16px',
-                       color: isDark ? '#f7fafc' : '#1f2937'
-                     }}>
-                       <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                         {item.name}
-                       </div>
-                       <div style={{
-                         fontSize: '12px',
-                         color: isDark ? '#a0aec0' : '#6b7280'
-                       }}>
-                         {item.sku} • {item.category}
-                       </div>
-                     </td>
-
-                     <td style={{
-                       padding: '12px 16px',
-                       textAlign: 'center',
-                       fontSize: '16px',
-                       fontWeight: '600',
-                       color: isDark ? '#f7fafc' : '#1f2937'
-                     }}>
-                       {item.currentStock}
-                     </td>
-
-                     <td style={{
-                       padding: '12px 16px',
-                       textAlign: 'center'
-                     }}>
-                       <input
-                         type="number"
-                         value={item.countedStock}
-                         onChange={(e) => updateProductCount(item.id, e.target.value)}
-                         style={{
-                           width: '80px',
-                           padding: '8px',
-                           textAlign: 'center',
-                           border: `2px solid ${item.difference > 0 ? '#10b981' : '#ef4444'}`,
-                           borderRadius: '6px',
-                           background: isDark ? '#4b5563' : 'white',
-                           color: isDark ? '#f7fafc' : '#1f2937',
-                           fontSize: '16px',
-                           fontWeight: '600'
-                         }}
-                       />
-                     </td>
-
-                     <td style={{
-                       padding: '12px 16px',
-                       textAlign: 'center',
-                       fontSize: '16px',
-                       fontWeight: '700',
-                       color: item.difference > 0 ? '#10b981' : '#ef4444'
-                     }}>
-                       <div style={{
-                         display: 'flex',
-                         alignItems: 'center',
-                         justifyContent: 'center',
-                         gap: '4px'
-                       }}>
-                         {item.difference > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                         {item.difference > 0 ? '+' : ''}{item.difference}
-                       </div>
-                     </td>
-
-                     <td style={{
-                       padding: '12px 16px',
-                       textAlign: 'right',
-                       fontSize: '14px',
-                       fontWeight: '600',
-                       color: item.valueImpact >= 0 ? '#10b981' : '#ef4444'
-                     }}>
-                       {item.valueImpact >= 0 ? '+' : ''}{item.valueImpact.toLocaleString()} {appSettings.currency}
-                     </td>
-
-                     <td style={{
-                       padding: '12px 16px',
-                       color: isDark ? '#f7fafc' : '#1f2937'
-                     }}>
-                       <input
-                         type="text"
-                         value={item.note}
-                         onChange={(e) => {
-                           const newNotes = { ...sessionData.productNotes };
-                           if (e.target.value.trim()) {
-                             newNotes[item.id] = e.target.value;
-                           } else {
-                             delete newNotes[item.id];
-                           }
-                           setSessionData(prev => ({ ...prev, productNotes: newNotes }));
-                         }}
-                         placeholder="Motif de l'écart..."
-                         style={{
-                           width: '150px',
-                           padding: '6px 8px',
-                           border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-                           borderRadius: '4px',
-                           background: isDark ? '#4b5563' : 'white',
-                           color: isDark ? '#f7fafc' : '#1f2937',
-                           fontSize: '12px'
-                         }}
-                       />
-                     </td>
-
-                     <td style={{
-                       padding: '12px 16px',
-                       textAlign: 'center'
-                     }}>
-                       <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                         <button
-                           onClick={() => updateProductCount(item.id, item.currentStock)}
-                           title="Restaurer stock système"
-                           style={{
-                             padding: '6px 8px',
-                             background: '#f59e0b',
-                             color: 'white',
-                             border: 'none',
-                             borderRadius: '4px',
-                             cursor: 'pointer',
-                             fontSize: '12px'
-                           }}
-                         >
-                           Annuler
-                         </button>
-                         
-                         <button
-                           onClick={() => {
-                             // Marquer comme vérifié (could add a verification state)
-                             console.log(`Écart vérifié pour ${item.name}`);
-                           }}
-                           title="Marquer comme vérifié"
-                           style={{
-                             padding: '6px 8px',
-                             background: '#10b981',
-                             color: 'white',
-                             border: 'none',
-                             borderRadius: '4px',
-                             cursor: 'pointer',
-                             fontSize: '12px'
-                           }}
-                         >
-                           ✓ OK
-                         </button>
-                       </div>
-                     </td>
-                   </tr>
-                 ))}
-               </tbody>
-             </table>
-           </div>
-         </div>
-       ) : (
-         <div style={{
-           background: isDark ? '#374151' : 'white',
-           borderRadius: '12px',
-           padding: '48px 24px',
-           textAlign: 'center',
-           border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
-         }}>
-           <CheckCircle size={64} color="#10b981" style={{ margin: '0 auto 16px' }} />
-           <h3 style={{
-             fontSize: '24px',
-             fontWeight: '700',
-             color: '#10b981',
-             margin: '0 0 8px 0'
-           }}>
-             Inventaire parfait !
-           </h3>
-           <p style={{
-             color: isDark ? '#a0aec0' : '#6b7280',
-             margin: '0 0 24px 0',
-             fontSize: '16px'
-           }}>
-             Aucun écart détecté. Tous les stocks correspondent.
-           </p>
-           <button
-             onClick={finalizeInventory}
-             style={{
-               padding: '12px 24px',
-               background: '#10b981',
-               color: 'white',
-               border: 'none',
-               borderRadius: '8px',
-               fontWeight: '600',
-               cursor: 'pointer',
-               fontSize: '16px'
-             }}
-           >
-             Finaliser l'inventaire
-           </button>
-         </div>
-       )}
+         Révision des écarts
+       </h3>
+       <p style={{
+         color: isDark ? '#a0aec0' : '#6b7280'
+       }}>
+         {sessionStats.discrepancies} écart(s) détecté(s)
+       </p>
+       <button
+         onClick={() => setActiveView('counting')}
+         style={{
+           padding: '8px 16px',
+           background: '#3b82f6',
+           color: 'white',
+           border: 'none',
+           borderRadius: '8px',
+           marginTop: '16px',
+           cursor: 'pointer'
+         }}
+       >
+         Retour au comptage
+       </button>
      </div>
-   );
- };
+   </div>
+ );
 
  // Vue historique
  const renderHistoryView = () => {
    const [inventorySessions, setInventorySessions] = useState([]);
-   const [selectedSession, setSelectedSession] = useState(null);
 
    useEffect(() => {
-     const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
-     setInventorySessions(sessions.reverse()); // Plus récents en premier
+     try {
+       const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
+       setInventorySessions(sessions.reverse());
+     } catch (error) {
+       console.error('Erreur chargement sessions:', error);
+       setInventorySessions([]);
+     }
    }, []);
-
-   const exportSession = (session) => {
-     const data = {
-       session,
-       exportedAt: new Date().toISOString(),
-       storeId: currentStoreId
-     };
-
-     const blob = new Blob([JSON.stringify(data, null, 2)], {
-       type: 'application/json'
-     });
-     
-     const url = URL.createObjectURL(blob);
-     const a = document.createElement('a');
-     a.href = url;
-     a.download = `inventaire-${session.id}-${new Date().toISOString().split('T')[0]}.json`;
-     document.body.appendChild(a);
-     a.click();
-     document.body.removeChild(a);
-     URL.revokeObjectURL(url);
-   };
-
-   if (selectedSession) {
-     return (
-       <div style={{ padding: '24px' }}>
-         <div style={{
-           display: 'flex',
-           justifyContent: 'space-between',
-           alignItems: 'center',
-           marginBottom: '24px'
-         }}>
-           <button
-             onClick={() => setSelectedSession(null)}
-             style={{
-               padding: '8px 16px',
-               background: 'transparent',
-               color: isDark ? '#f7fafc' : '#374151',
-               border: `2px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-               borderRadius: '8px',
-               cursor: 'pointer',
-               display: 'flex',
-               alignItems: 'center',
-               gap: '8px'
-             }}
-           >
-             ← Retour à l'historique
-           </button>
-
-           <button
-             onClick={() => exportSession(selectedSession)}
-             style={{
-               padding: '8px 16px',
-               background: '#3b82f6',
-               color: 'white',
-               border: 'none',
-               borderRadius: '8px',
-               cursor: 'pointer',
-               display: 'flex',
-               alignItems: 'center',
-               gap: '8px'
-             }}
-           >
-             <Download size={16} />
-             Exporter
-           </button>
-         </div>
-
-         {/* Détails de la session */}
-         <div style={{
-           background: isDark ? '#374151' : 'white',
-           borderRadius: '12px',
-           padding: '24px',
-           border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-           marginBottom: '24px'
-         }}>
-           <h3 style={{
-             fontSize: '20px',
-             fontWeight: '700',
-             color: isDark ? '#f7fafc' : '#1f2937',
-             margin: '0 0 16px 0'
-           }}>
-             {selectedSession.name}
-           </h3>
-
-           <div style={{
-             display: 'grid',
-             gridTemplateColumns: window.innerWidth > 768 ? 'repeat(3, 1fr)' : '1fr',
-             gap: '16px',
-             marginBottom: '24px'
-           }}>
-             <div>
-               <div style={{
-                 fontSize: '12px',
-                 color: isDark ? '#a0aec0' : '#6b7280',
-                 marginBottom: '4px'
-               }}>
-                 Date de démarrage
-               </div>
-               <div style={{
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 color: isDark ? '#f7fafc' : '#1f2937'
-               }}>
-                 {new Date(selectedSession.startedAt).toLocaleString('fr-FR')}
-               </div>
-             </div>
-
-             <div>
-               <div style={{
-                 fontSize: '12px',
-                 color: isDark ? '#a0aec0' : '#6b7280',
-                 marginBottom: '4px'
-               }}>
-                 Assigné à
-               </div>
-               <div style={{
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 color: isDark ? '#f7fafc' : '#1f2937'
-               }}>
-                 {selectedSession.assignedTo || 'Non assigné'}
-               </div>
-             </div>
-
-             <div>
-               <div style={{
-                 fontSize: '12px',
-                 color: isDark ? '#a0aec0' : '#6b7280',
-                 marginBottom: '4px'
-               }}>
-                 Statut
-               </div>
-               <div style={{
-                 fontSize: '14px',
-                 fontWeight: '600',
-                 color: selectedSession.status === 'completed' ? '#10b981' : 
-                       selectedSession.status === 'cancelled' ? '#ef4444' : '#f59e0b'
-               }}>
-                 {selectedSession.status === 'completed' ? 'Terminé' :
-                  selectedSession.status === 'cancelled' ? 'Annulé' : 'En cours'}
-               </div>
-             </div>
-           </div>
-
-           {selectedSession.notes && (
-             <div style={{
-               background: isDark ? '#4b5563' : '#f8fafc',
-               padding: '16px',
-               borderRadius: '8px',
-               marginBottom: '16px'
-             }}>
-               <div style={{
-                 fontSize: '12px',
-                 color: isDark ? '#a0aec0' : '#6b7280',
-                 marginBottom: '8px'
-               }}>
-                 Notes
-               </div>
-               <div style={{
-                 fontSize: '14px',
-                 color: isDark ? '#f7fafc' : '#1f2937'
-               }}>
-                 {selectedSession.notes}
-               </div>
-             </div>
-           )}
-         </div>
-
-         {/* Statistiques finales */}
-         {selectedSession.finalStats && (
-           <div style={{
-             background: isDark ? '#374151' : 'white',
-             borderRadius: '12px',
-             padding: '24px',
-             border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-             marginBottom: '24px'
-           }}>
-             <h4 style={{
-               fontSize: '16px',
-               fontWeight: '600',
-               color: isDark ? '#f7fafc' : '#1f2937',
-               marginBottom: '16px'
-             }}>
-               Statistiques finales
-             </h4>
-
-             <div style={{
-               display: 'grid',
-               gridTemplateColumns: window.innerWidth > 768 ? 'repeat(4, 1fr)' : 'repeat(2, 1fr)',
-               gap: '16px'
-             }}>
-               <div style={{ textAlign: 'center' }}>
-                 <div style={{
-                   fontSize: '24px',
-                   fontWeight: '700',
-                   color: '#3b82f6',
-                   marginBottom: '4px'
-                 }}>
-                   {selectedSession.finalStats.countedProducts}
-                 </div>
-                 <div style={{
-                   fontSize: '12px',
-                   color: isDark ? '#a0aec0' : '#6b7280'
-                 }}>
-                   Produits comptés
-                 </div>
-               </div>
-
-               <div style={{ textAlign: 'center' }}>
-                 <div style={{
-                   fontSize: '24px',
-                   fontWeight: '700',
-                   color: selectedSession.finalStats.discrepancies > 0 ? '#ef4444' : '#10b981',
-                   marginBottom: '4px'
-                 }}>
-                   {selectedSession.finalStats.discrepancies}
-                 </div>
-                 <div style={{
-                   fontSize: '12px',
-                   color: isDark ? '#a0aec0' : '#6b7280'
-                 }}>
-                   Écarts détectés
-                 </div>
-               </div>
-
-               <div style={{ textAlign: 'center' }}>
-                 <div style={{
-                   fontSize: '24px',
-                   fontWeight: '700',
-                   color: selectedSession.finalStats.accuracy >= 95 ? '#10b981' : 
-                         selectedSession.finalStats.accuracy >= 85 ? '#f59e0b' : '#ef4444',
-                   marginBottom: '4px'
-                 }}>
-                   {selectedSession.finalStats.accuracy}%
-                 </div>
-                 <div style={{
-                   fontSize: '12px',
-                   color: isDark ? '#a0aec0' : '#6b7280'
-                 }}>
-                   Précision
-                 </div>
-               </div>
-
-               <div style={{ textAlign: 'center' }}>
-                 <div style={{
-                   fontSize: '18px',
-                   fontWeight: '700',
-                   color: selectedSession.finalStats.totalDiscrepancyValue >= 0 ? '#10b981' : '#ef4444',
-                   marginBottom: '4px'
-                 }}>
-                   {selectedSession.finalStats.totalDiscrepancyValue.toLocaleString()} {appSettings.currency}
-                 </div>
-                 <div style={{
-                   fontSize: '12px',
-                   color: isDark ? '#a0aec0' : '#6b7280'
-                 }}>
-                   Impact financier
-                 </div>
-               </div>
-             </div>
-           </div>
-         )}
-
-         {/* Liste des écarts */}
-         {selectedSession.discrepancies && selectedSession.discrepancies.length > 0 && (
-           <div style={{
-             background: isDark ? '#374151' : 'white',
-             borderRadius: '12px',
-             border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-             overflow: 'hidden'
-           }}>
-             <div style={{
-               background: isDark ? '#4b5563' : '#f8fafc',
-               padding: '16px',
-               borderBottom: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`
-             }}>
-               <h4 style={{
-                 fontSize: '16px',
-                 fontWeight: '600',
-                 color: isDark ? '#f7fafc' : '#1f2937',
-                 margin: 0
-               }}>
-                 Détail des écarts ({selectedSession.discrepancies.length})
-               </h4>
-             </div>
-
-             <div style={{ overflowX: 'auto' }}>
-               <table style={{
-                 width: '100%',
-                 borderCollapse: 'collapse'
-               }}>
-                 <thead>
-                   <tr style={{
-                     background: isDark ? '#4b5563' : '#f8fafc'
-                   }}>
-                     <th style={{
-                       padding: '12px 16px',
-                       textAlign: 'left',
-                       fontSize: '14px',
-                       fontWeight: '600',
-                       color: isDark ? '#f7fafc' : '#374151'
-                     }}>
-                       Produit
-                     </th>
-                     <th style={{
-                       padding: '12px 16px',
-                       textAlign: 'center',
-                       fontSize: '14px',
-                       fontWeight: '600',
-                       color: isDark ? '#f7fafc' : '#374151'
-                     }}>
-                       Stock Initial
-                     </th>
-                     <th style={{
-                       padding: '12px 16px',
-                       textAlign: 'center',
-                       fontSize: '14px',
-                       fontWeight: '600',
-                       color: isDark ? '#f7fafc' : '#374151'
-                     }}>
-                       Comptage
-                     </th>
-                     <th style={{
-                       padding: '12px 16px',
-                       textAlign: 'center',
-                       fontSize: '14px',
-                       fontWeight: '600',
-                       color: isDark ? '#f7fafc' : '#374151'
-                     }}>
-                       Écart
-                     </th>
-                     <th style={{
-                       padding: '12px 16px',
-                       textAlign: 'right',
-                       fontSize: '14px',
-                       fontWeight: '600',
-                       color: isDark ? '#f7fafc' : '#374151'
-                     }}>
-                       Impact
-                     </th>
-                     <th style={{
-                       padding: '12px 16px',
-                       textAlign: 'left',
-                       fontSize: '14px',
-                       fontWeight: '600',
-                       color: isDark ? '#f7fafc' : '#374151'
-                     }}>
-                       Note
-                     </th>
-                   </tr>
-                 </thead>
-                 <tbody>
-                   {selectedSession.discrepancies.map((item, index) => (
-                     <tr key={item.productId} style={{
-                       borderBottom: `1px solid ${isDark ? '#374151' : '#f1f5f9'}`,
-                       background: index % 2 === 0 ? 'transparent' : (isDark ? '#374151' : '#f8fafc')
-                     }}>
-                       <td style={{
-                         padding: '12px 16px',
-                         color: isDark ? '#f7fafc' : '#1f2937'
-                       }}>
-                         <div style={{ fontWeight: '600', marginBottom: '4px' }}>
-                           {item.productName}
-                         </div>
-                         <div style={{
-                           fontSize: '12px',
-                           color: isDark ? '#a0aec0' : '#6b7280'
-                         }}>
-                           {item.sku}
-                         </div>
-                       </td>
-
-                       <td style={{
-                         padding: '12px 16px',
-                         textAlign: 'center',
-                         fontSize: '14px',
-                         fontWeight: '600',
-                         color: isDark ? '#f7fafc' : '#1f2937'
-                       }}>
-                         {item.currentStock}
-                       </td>
-
-                       <td style={{
-                         padding: '12px 16px',
-                         textAlign: 'center',
-                         fontSize: '14px',
-                         fontWeight: '600',
-                         color: isDark ? '#f7fafc' : '#1f2937'
-                       }}>
-                         {item.countedStock}
-                       </td>
-
-                       <td style={{
-                         padding: '12px 16px',
-                         textAlign: 'center',
-                         fontSize: '14px',
-                         fontWeight: '700',
-                         color: item.difference > 0 ? '#10b981' : '#ef4444'
-                       }}>
-                         {item.difference > 0 ? '+' : ''}{item.difference}
-                       </td>
-
-                       <td style={{
-                         padding: '12px 16px',
-                         textAlign: 'right',
-                         fontSize: '14px',
-                         fontWeight: '600',
-                         color: item.valueImpact >= 0 ? '#10b981' : '#ef4444'
-                       }}>
-                         {item.valueImpact >= 0 ? '+' : ''}{item.valueImpact.toLocaleString()} {appSettings.currency}
-                       </td>
-
-                       <td style={{
-                         padding: '12px 16px',
-                         fontSize: '12px',
-                         color: isDark ? '#a0aec0' : '#6b7280'
-                       }}>
-                         {item.note || '-'}
-                       </td>
-                     </tr>
-                   ))}
-                 </tbody>
-               </table>
-             </div>
-           </div>
-         )}
-       </div>
-     );
-   }
 
    return (
      <div style={{ padding: '24px' }}>
@@ -2300,10 +1391,7 @@ const finalizeInventory = useCallback(() => {
        </div>
 
        {inventorySessions.length > 0 ? (
-         <div style={{
-           display: 'grid',
-           gap: '16px'
-         }}>
+         <div style={{ display: 'grid', gap: '16px' }}>
            {inventorySessions.map(session => (
              <div
                key={session.id}
@@ -2311,136 +1399,36 @@ const finalizeInventory = useCallback(() => {
                  background: isDark ? '#374151' : 'white',
                  borderRadius: '12px',
                  padding: '20px',
-                 border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`,
-                 cursor: 'pointer',
-                 transition: 'all 0.2s ease'
-               }}
-               onClick={() => setSelectedSession(session)}
-               onMouseEnter={(e) => {
-                 e.target.style.borderColor = '#3b82f6';
-               }}
-               onMouseLeave={(e) => {
-                 e.target.style.borderColor = isDark ? '#4b5563' : '#e5e7eb';
+                 border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
                }}
              >
-               <div style={{
-                 display: 'flex',
-                 justifyContent: 'space-between',
-                 alignItems: 'flex-start',
-                 marginBottom: '12px'
+               <h4 style={{
+                 fontSize: '16px',
+                 fontWeight: '600',
+                 color: isDark ? '#f7fafc' : '#1f2937',
+                 margin: '0 0 8px 0'
                }}>
-                 <div>
-                   <h4 style={{
-                     fontSize: '16px',
-                     fontWeight: '600',
-                     color: isDark ? '#f7fafc' : '#1f2937',
-                     margin: '0 0 8px 0'
-                   }}>
-                     {session.name}
-                   </h4>
-                   <div style={{
-                     fontSize: '14px',
-                     color: isDark ? '#a0aec0' : '#6b7280'
-                   }}>
-                     {new Date(session.startedAt).toLocaleString('fr-FR')}
-                     {session.assignedTo && ` • ${session.assignedTo}`}
-                   </div>
-                 </div>
-
-                 <div style={{
-                   display: 'flex',
-                   alignItems: 'center',
-                   gap: '8px'
-                 }}>
-                   <span style={{
-                     padding: '4px 8px',
-                     borderRadius: '12px',
-                     fontSize: '12px',
-                     fontWeight: '600',
-                     background: session.status === 'completed' ? '#dcfce7' : 
-                               session.status === 'cancelled' ? '#fef2f2' : '#fef3c7',
-                     color: session.status === 'completed' ? '#166534' :
-                            session.status === 'cancelled' ? '#991b1b' : '#92400e'
-                   }}>
-                     {session.status === 'completed' ? 'Terminé' :
-                      session.status === 'cancelled' ? 'Annulé' : 'En cours'}
-                   </span>
-                 </div>
+                 {session.name}
+               </h4>
+               <div style={{
+                 fontSize: '14px',
+                 color: isDark ? '#a0aec0' : '#6b7280'
+               }}>
+                 {new Date(session.startedAt).toLocaleString('fr-FR')}
+                 {session.assignedTo && ` • ${session.assignedTo}`}
                </div>
-
-               {session.finalStats && (
-                 <div style={{
-                   display: 'grid',
-                   gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-                   gap: '12px',
-                   marginTop: '16px'
-                 }}>
-                   <div style={{ textAlign: 'center' }}>
-                     <div style={{
-                       fontSize: '18px',
-                       fontWeight: '700',
-                       color: '#3b82f6'
-                     }}>
-                       {session.finalStats.countedProducts}
-                     </div>
-                     <div style={{
-                       fontSize: '12px',
-                       color: isDark ? '#a0aec0' : '#6b7280'
-                     }}>
-                       Produits
-                     </div>
-                   </div>
-
-                   <div style={{ textAlign: 'center' }}>
-                     <div style={{
-                       fontSize: '18px',
-                       fontWeight: '700',
-                       color: session.finalStats.discrepancies > 0 ? '#ef4444' : '#10b981'
-                     }}>
-                       {session.finalStats.discrepancies}
-                     </div>
-                     <div style={{
-                       fontSize: '12px',
-                       color: isDark ? '#a0aec0' : '#6b7280'
-                     }}>
-                       Écarts
-                     </div>
-                   </div>
-
-                   <div style={{ textAlign: 'center' }}>
-                     <div style={{
-                       fontSize: '18px',
-                       fontWeight: '700',
-                       color: session.finalStats.accuracy >= 95 ? '#10b981' : 
-                             session.finalStats.accuracy >= 85 ? '#f59e0b' : '#ef4444'
-                     }}>
-                       {session.finalStats.accuracy}%
-                     </div>
-                     <div style={{
-                       fontSize: '12px',
-                       color: isDark ? '#a0aec0' : '#6b7280'
-                     }}>
-                       Précision
-                     </div>
-                   </div>
-
-                   <div style={{ textAlign: 'center' }}>
-                     <div style={{
-                       fontSize: '14px',
-                       fontWeight: '700',
-                       color: session.finalStats.totalDiscrepancyValue >= 0 ? '#10b981' : '#ef4444'
-                     }}>
-                       {session.finalStats.totalDiscrepancyValue >= 0 ? '+' : ''}{session.finalStats.totalDiscrepancyValue.toLocaleString()} {appSettings.currency}
-                     </div>
-                     <div style={{
-                       fontSize: '12px',
-                       color: isDark ? '#a0aec0' : '#6b7280'
-                     }}>
-                       Impact
-                     </div>
-                   </div>
-                 </div>
-               )}
+               <div style={{
+                 marginTop: '12px',
+                 padding: '8px 12px',
+                 background: session.status === 'completed' ? '#dcfce7' : '#fef3c7',
+                 color: session.status === 'completed' ? '#166534' : '#92400e',
+                 borderRadius: '6px',
+                 fontSize: '12px',
+                 fontWeight: '600',
+                 display: 'inline-block'
+               }}>
+                 {session.status === 'completed' ? 'Terminé' : 'En cours'}
+               </div>
              </div>
            ))}
          </div>
@@ -2491,7 +1479,23 @@ const finalizeInventory = useCallback(() => {
      </div>
    );
  };
-  
+
+ // Rendu conditionnel selon la vue active
+ const renderContent = () => {
+   switch (activeView) {
+     case 'preparation':
+       return renderPreparationView();
+     case 'counting':
+       return renderCountingView();
+     case 'review':
+       return renderReviewView();
+     case 'history':
+       return renderHistoryView();
+     default:
+       return renderPreparationView();
+   }
+ };
+
  // Rendu principal avec navigation
  return (
    <div style={{
@@ -2625,7 +1629,7 @@ const finalizeInventory = useCallback(() => {
      </div>
 
      {/* Styles pour l'animation */}
-     <style jsx>{`
+     <style>{`
        @keyframes pulse {
          0%, 100% { opacity: 1; }
          50% { opacity: 0.5; }
