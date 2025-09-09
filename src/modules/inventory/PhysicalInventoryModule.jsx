@@ -380,7 +380,7 @@ const finalizeInventory = useCallback(() => {
     }
   }
 }, [inventorySession, globalProducts, sessionData, stockByStore, currentStoreId, 
-    sessionStats, setStockForStore, appSettings.currency]);
+    sessionStats, setStockForStore, appSettings.currency, addInventoryRecord]);
   
   // Rendu conditionnel selon la vue active
   const renderContent = () => {
@@ -2491,7 +2491,172 @@ const finalizeInventory = useCallback(() => {
      </div>
    );
  };
+// Vue de révision (simplifiée)
+const renderReviewView = () => (
+  <div style={{ padding: '24px' }}>
+    <div style={{
+      background: isDark ? '#374151' : '#f8fafc',
+      borderRadius: '12px',
+      padding: '24px'
+    }}>
+      <h3 style={{
+        fontSize: '20px',
+        fontWeight: '700',
+        color: isDark ? '#f7fafc' : '#1f2937',
+        marginBottom: '16px'
+      }}>
+        Révision des écarts
+      </h3>
+      <p style={{
+        color: isDark ? '#a0aec0' : '#6b7280'
+      }}>
+        {sessionStats.discrepancies} écart(s) détecté(s)
+      </p>
+      <button
+        onClick={() => setActiveView('counting')}
+        style={{
+          padding: '8px 16px',
+          background: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          marginTop: '16px'
+        }}
+      >
+        Retour au comptage
+      </button>
+    </div>
+  </div>
+);
 
+// Vue historique (simplifiée)
+const renderHistoryView = () => {
+  const [inventorySessions, setInventorySessions] = useState([]);
+
+  useEffect(() => {
+    try {
+      const sessions = JSON.parse(localStorage.getItem('pos_inventory_sessions') || '[]');
+      setInventorySessions(sessions.reverse());
+    } catch (error) {
+      console.error('Erreur chargement sessions:', error);
+      setInventorySessions([]);
+    }
+  }, []);
+
+  return (
+    <div style={{ padding: '24px' }}>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px'
+      }}>
+        <h3 style={{
+          fontSize: '20px',
+          fontWeight: '700',
+          color: isDark ? '#f7fafc' : '#1f2937',
+          margin: 0
+        }}>
+          Historique des inventaires
+        </h3>
+
+        <button
+          onClick={() => setActiveView('preparation')}
+          style={{
+            padding: '8px 16px',
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Plus size={16} />
+          Nouvel inventaire
+        </button>
+      </div>
+
+      {inventorySessions.length > 0 ? (
+        <div style={{ display: 'grid', gap: '16px' }}>
+          {inventorySessions.map(session => (
+            <div
+              key={session.id}
+              style={{
+                background: isDark ? '#374151' : 'white',
+                borderRadius: '12px',
+                padding: '20px',
+                border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
+              }}
+            >
+              <h4 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: isDark ? '#f7fafc' : '#1f2937',
+                margin: '0 0 8px 0'
+              }}>
+                {session.name}
+              </h4>
+              <div style={{
+                fontSize: '14px',
+                color: isDark ? '#a0aec0' : '#6b7280'
+              }}>
+                {new Date(session.startedAt).toLocaleString('fr-FR')}
+                {session.assignedTo && ` • ${session.assignedTo}`}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{
+          background: isDark ? '#374151' : 'white',
+          borderRadius: '12px',
+          padding: '48px 24px',
+          textAlign: 'center',
+          border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
+        }}>
+          <History size={64} color="#9ca3af" style={{ margin: '0 auto 16px' }} />
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: isDark ? '#f7fafc' : '#1f2937',
+            margin: '0 0 8px 0'
+          }}>
+            Aucun inventaire trouvé
+          </h3>
+          <p style={{
+            color: isDark ? '#a0aec0' : '#6b7280',
+            margin: '0 0 24px 0'
+          }}>
+            Commencez votre premier inventaire physique
+          </p>
+          <button
+            onClick={() => setActiveView('preparation')}
+            style={{
+              padding: '12px 24px',
+              background: '#10b981',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              margin: '0 auto'
+            }}
+          >
+            <ClipboardList size={18} />
+            Créer un inventaire
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+  
  // Rendu principal avec navigation
  return (
    <div style={{
