@@ -31,7 +31,29 @@ const POSModule = ({ onNavigate }) => {
     salesHistory = []
   } = useApp();
 
-  const isDark = appSettings.darkMode || false;
+ const isDark = appSettings.darkMode || false;
+
+// ==================== HOOKS PERSONNALISÉS ====================
+const { 
+  cart, 
+  cartStats, 
+  addToCart, 
+  updateQuantity, 
+  removeFromCart, 
+  clearCart 
+} = useCart(globalProducts, appSettings);
+
+const categories = useCategories(globalProducts);
+
+// ==================== ÉTATS LOCAUX ====================
+const [searchQuery, setSearchQuery] = useState('');
+const [selectedCategory, setSelectedCategory] = useState('all');
+const [selectedCustomer, setSelectedCustomer] = useState(customers?.[0] || { id: 1, name: 'Client Comptant' });
+const [showPaymentModal, setShowPaymentModal] = useState(false);
+const [paymentMethod, setPaymentMethod] = useState('cash');
+const [amountDisplay, setAmountDisplay] = useState('');
+const [viewMode, setViewMode] = useState('grid');
+const amountReceivedRef = useRef('');
 
 
 // ==================== GESTION CAISSE SYNCHRONISÉE AVEC MODERNCASHREGISTER ====================
@@ -1005,7 +1027,7 @@ const formatAmount = (amount) => {
            overflowY: 'auto',
            padding: '8px'
          }}>
-           {cart.map(item => (
+           {.map(item => (
              <div key={item.id} style={{
                display: 'flex',
                alignItems: 'center',
@@ -1128,7 +1150,7 @@ const formatAmount = (amount) => {
 
                {/* Suppression */}
                <button
-                 onClick={() => removeFromCart(item.id)}
+                 onClick={() => removeFrom(item.id)}
                  style={{
                    background: 'none',
                    border: 'none',
@@ -1168,20 +1190,20 @@ const formatAmount = (amount) => {
                fontWeight: '800',
                color: '#3b82f6'
              }}>
-               {cartStats.finalTotal.toLocaleString()} {appSettings.currency}
+               {Stats.finalTotal.toLocaleString()} {appSettings.currency}
              </span>
            </div>
 
            {/* Bouton paiement mini */}
            <button
              onClick={() => setShowPaymentModal(true)}
-             disabled={cart.length === 0 || !cashSession}
+             disabled={.length === 0 || !cashSession}
              style={{
                width: '100%',
                padding: '8px',
                borderRadius: '8px',
                border: 'none',
-               background: (cart.length === 0 || !cashSession) ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
+               background: (.length === 0 || !cashSession) ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
                color: 'white',
                fontSize: '12px',
                fontWeight: '600',
