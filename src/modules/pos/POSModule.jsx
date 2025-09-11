@@ -8,7 +8,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useCart } from '../../hooks/useCart';
-import { useCategories } from '../../hooks/useCategories';
 import { 
   getCashSession, 
   saveCashSession, 
@@ -18,6 +17,76 @@ import {
   clearCashData 
 } from '../../services/cash.service';
 import toast from 'react-hot-toast';
+
+// ✅ Hook useCategories local pour éviter les conflits
+const useLocalCategories = (products) => {
+  return useMemo(() => {
+    if (!Array.isArray(products) || products.length === 0) {
+      return [{ id: 'all', name: 'Tout', icon: '🏪', count: 0 }];
+    }
+
+    // Compter les produits par catégorie
+    const categoryCounts = products.reduce((acc, product) => {
+      const category = product?.category || 'Divers';
+      acc[category] = (acc[category] || 0) + 1;
+      return acc;
+    }, {});
+    
+    // Commencer par "Tout"
+    const categoryList = [
+      { 
+        id: 'all', 
+        name: 'Tout', 
+        icon: '🏪', 
+        count: products.length 
+      }
+    ];
+    
+    // Icônes prédéfinies par catégorie
+    const categoryIcons = {
+      'Boissons': '🥤',
+      'Alimentaire': '🍞', 
+      'Hygiène': '🧼',
+      'Snacks': '🍿', 
+      'Fruits': '🍎', 
+      'Légumes': '🥬',
+      'Viande': '🥩', 
+      'Poisson': '🐟', 
+      'Épicerie': '🛒',
+      'Électronique': '📱', 
+      'Vêtements': '👕', 
+      'Maison': '🏠',
+      'Santé': '💊', 
+      'Beauté': '💄', 
+      'Sport': '⚽',
+      'Jouets': '🧸',
+      'Livres': '📚',
+      'Auto': '🚗',
+      'Jardin': '🌱',
+      'Divers': '📦'
+    };
+    
+    // Ajouter chaque catégorie trouvée
+    Object.entries(categoryCounts).forEach(([name, count]) => {
+      if (name !== 'undefined' && name.trim()) {
+        categoryList.push({
+          id: name.toLowerCase().replace(/\s+/g, '-'), // ID URL-friendly
+          name,
+          icon: categoryIcons[name] || '📦', // Icône par défaut
+          count
+        });
+      }
+    });
+    
+    // Trier par nombre de produits (décroissant) après "Tout"
+    const sortedCategories = [
+      categoryList[0], // Garder "Tout" en premier
+      ...categoryList.slice(1).sort((a, b) => b.count - a.count)
+    ];
+    
+    return sortedCategories;
+  }, [products]);
+};
 
 const POSModule = ({ onNavigate }) => {
   const { 
@@ -43,7 +112,8 @@ const POSModule = ({ onNavigate }) => {
     clearCart 
   } = useCart(globalProducts, appSettings);
 
-  const categories = useCategories(globalProducts);
+  // ✅ Utilisation du hook local pour éviter les conflits
+  const categories = useLocalCategories(globalProducts);
 
   // ==================== ÉTATS LOCAUX ====================
   const [searchQuery, setSearchQuery] = useState('');
@@ -165,13 +235,19 @@ const POSModule = ({ onNavigate }) => {
     let filtered = globalProducts;
     
     if (selectedCategory !== 'all') {
-      filtered = filtered.filter(p => p.category === selectedCategory);
+      // Trouver le nom de la catégorie à partir de l'ID
+      const selectedCategoryData = categories.find(cat => cat.id === selectedCategory);
+      const categoryName = selectedCategoryData?.name;
+      
+      if (categoryName && categoryName !== 'Tout') {
+        filtered = filtered.filter(p => p.category === categoryName);
+      }
     }
     
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(query) ||
+        p.name?.toLowerCase().includes(query) ||
         p.sku?.toLowerCase().includes(query) ||
         p.barcode?.includes(query) ||
         p.category?.toLowerCase().includes(query)
@@ -179,7 +255,7 @@ const POSModule = ({ onNavigate }) => {
     }
     
     return filtered.slice(0, 50);
-  }, [globalProducts, selectedCategory, searchQuery]);
+  }, [globalProducts, selectedCategory, searchQuery, categories]);
 
   // ==================== GESTION DU PAIEMENT ====================
   const handleCompleteSale = useCallback(async () => {
@@ -251,8 +327,44 @@ const POSModule = ({ onNavigate }) => {
     }
   }, [cartStats.finalTotal]);
 
-  // ==================== RENDU ====================
-  if (!globalProducts?.length) {
+  // ==================== RENDU AVEC GESTION D'ERREUR ====================
+  
+  // ✅ Vérification des données critiques
+  if (!Array.isArray(globalProducts)) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: isDark ? '#111827' : '#f9fafb'
+      }}>
+        <div style={{
+          textAlign: 'center',
+          color: isDark ? '#9ca3af' : '#6b7280'
+        }}>
+          <AlertTriangle size={48} style={{ marginBottom: '16px', color: '#ef4444' }} />
+          <p>Erreur: Données produits invalides</p>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              marginTop: '12px',
+              padding: '8px 16px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer'
+            }}
+          >
+            Recharger
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (globalProducts.length === 0) {
     return (
       <div style={{
         display: 'flex',
@@ -398,32 +510,51 @@ const POSModule = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Filtres catégories */}
+        {/* Filtres catégories - ✅ SÉCURISÉ */}
         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-          {['all', ...categories].map(cat => (
-            <button
-              key={cat}
-              onClick={() => setSelectedCategory(cat)}
-              disabled={!cashSession}
-              style={{
-                padding: '4px 8px',
-                borderRadius: '12px',
-                border: 'none',
-                fontSize: '10px',
-                fontWeight: '600',
-                cursor: cashSession ? 'pointer' : 'not-allowed',
-                background: selectedCategory === cat
-                  ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
-                  : isDark ? '#374151' : '#f3f4f6',
-                color: selectedCategory === cat
-                  ? 'white'
-                  : isDark ? '#d1d5db' : '#6b7280',
-                opacity: !cashSession ? 0.5 : 1
-              }}
-            >
-              {cat === 'all' ? 'Tous' : cat}
-            </button>
-          ))}
+          {Array.isArray(categories) && categories.map(category => {
+            // ✅ Vérification supplémentaire pour éviter l'erreur React #31
+            if (!category || typeof category !== 'object' || !category.id) {
+              console.warn('Catégorie invalide détectée:', category);
+              return null;
+            }
+
+            return (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                disabled={!cashSession}
+                style={{
+                  padding: '4px 8px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  cursor: cashSession ? 'pointer' : 'not-allowed',
+                  background: selectedCategory === category.id
+                    ? 'linear-gradient(135deg, #3b82f6, #1d4ed8)'
+                    : isDark ? '#374151' : '#f3f4f6',
+                  color: selectedCategory === category.id
+                    ? 'white'
+                    : isDark ? '#d1d5db' : '#6b7280',
+                  opacity: !cashSession ? 0.5 : 1,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '2px'
+                }}
+              >
+                <span style={{ fontSize: '8px' }}>{category.icon || '📦'}</span>
+                <span>{category.name || 'Sans nom'}</span>
+                <span style={{ 
+                  fontSize: '8px', 
+                  opacity: 0.7,
+                  marginLeft: '2px'
+                }}>
+                  ({category.count || 0})
+                </span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -717,17 +848,17 @@ const POSModule = ({ onNavigate }) => {
                   marginBottom: '2px'
                 }}>
                   <span>Sous-total:</span>
-                  <span>{cartStats.subtotal?.toLocaleString()} {appSettings.currency}</span>
+                  <span>{cartStats.totalAmount?.toLocaleString()} {appSettings.currency}</span>
                 </div>
                 
-                {cartStats.tax > 0 && (
+                {cartStats.totalTax > 0 && (
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     marginBottom: '2px'
                   }}>
                     <span>TVA ({appSettings.taxRate}%):</span>
-                    <span>{cartStats.tax?.toLocaleString()} {appSettings.currency}</span>
+                    <span>{cartStats.totalTax?.toLocaleString()} {appSettings.currency}</span>
                   </div>
                 )}
               </div>
@@ -1130,11 +1261,11 @@ const POSModule = ({ onNavigate }) => {
                     fontWeight: '600',
                     color: isDark ? '#f9fafb' : '#111827'
                   }}>
-                    {cartStats.subtotal?.toLocaleString()} {appSettings.currency}
+                    {cartStats.totalAmount?.toLocaleString()} {appSettings.currency}
                   </span>
                 </div>
                 
-                {cartStats.tax > 0 && (
+                {cartStats.totalTax > 0 && (
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -1151,7 +1282,7 @@ const POSModule = ({ onNavigate }) => {
                       fontWeight: '600',
                       color: isDark ? '#f9fafb' : '#111827'
                     }}>
-                      {cartStats.tax?.toLocaleString()} {appSettings.currency}
+                      {cartStats.totalTax?.toLocaleString()} {appSettings.currency}
                     </span>
                   </div>
                 )}
