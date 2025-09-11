@@ -789,6 +789,7 @@ if (success) {
   Toast.error('Erreur lors de la modification du produit');
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
+    }
       Toast.error('Erreur lors de la modification du produit');
     }
   }, [editingProduct, updateProduct]);
