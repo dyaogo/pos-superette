@@ -340,7 +340,8 @@ const ModernCashRegister = ({ salesHistory = [], appSettings = {} }) => {
       backgroundColor: isDark ? '#4b5563' : 'white',
       color: isDark ? '#f9fafb' : '#111827',
       fontSize: '14px',
-      marginBottom: '16px'
+      marginBottom: '16px',
+      boxSizing: 'border-box'
     },
     table: {
       width: '100%',
@@ -592,7 +593,7 @@ const ModernCashRegister = ({ salesHistory = [], appSettings = {} }) => {
                 display: 'flex', 
                 justifyContent: 'space-between',
                 paddingTop: '8px',
-                borderTop: `1px solid ${isDark ? '#6b7280' : '#d1d5db}`,
+                borderTop: `1px solid ${isDark ? '#6b7280' : '#d1d5db'}`,
                 fontWeight: '700',
                 fontSize: '16px'
               }}>
