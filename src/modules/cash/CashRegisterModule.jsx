@@ -76,22 +76,32 @@ useEffect(() => {
 const getSessionTotals = () => {
   const sessionSales = getSessionSales();
   
-  // ✅ CORRECTION : Filtrer les ventes avec des paymentMethod valides (pas numériques)
+  console.log('🔍 Ventes de la session:', sessionSales.length);
+  
+  // ✅ FILTRE CORRECT : Ignorer les ventes avec paymentMethod numérique
   const validSales = sessionSales.filter(s => 
-    s.paymentMethod && typeof s.paymentMethod === 'string'
+    s && 
+    s.paymentMethod && 
+    typeof s.paymentMethod === 'string' && // Seulement les strings !
+    s.total && 
+    s.total > 0
   );
+  
+  console.log('✅ Ventes valides:', validSales.length);
   
   const cashSales = validSales.filter(s => s.paymentMethod === 'cash');
   const cardSales = validSales.filter(s => s.paymentMethod === 'card');
   
-  // ✅ NOUVEAU : Calculer les opérations de caisse (entrées/sorties)
-  const cashOperationsTotal = cashOperations.reduce((total, op) => {
+  console.log('💰 Ventes en espèces:', cashSales.length, 'Total:', cashSales.reduce((sum, s) => sum + s.total, 0));
+  
+  // Calcul des opérations de caisse
+  const cashOperationsTotal = (cashOperations || []).reduce((total, op) => {
     if (op.type === 'in') {
       return total + op.amount;
     } else if (op.type === 'out') {
       return total - op.amount;
     }
-    return total; // Ignorer les opérations d'ouverture/fermeture
+    return total;
   }, 0);
 
   return {
