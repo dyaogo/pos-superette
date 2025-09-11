@@ -1,4 +1,4 @@
-// src/modules/pos/POSModule.jsx - Version ultra compacte avec gestion caisse unifiée
+// src/modules/pos/POSModule.jsx - Version corrigée avec images et synchronisation caisse
 
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { 
@@ -125,7 +125,7 @@ const POSModule = ({ onNavigate }) => {
   const [viewMode, setViewMode] = useState('grid');
   const amountReceivedRef = useRef('');
 
-  // ==================== GESTION CAISSE SYNCHRONISÉE AVEC MODERNCASHREGISTER ====================
+  // ==================== GESTION CAISSE SYNCHRONISÉE ==================== 
   const [cashSession, setCashSession] = useState(null);
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
@@ -133,7 +133,7 @@ const POSModule = ({ onNavigate }) => {
   const [closingCash, setClosingCash] = useState('');
   const [notes, setNotes] = useState('');
 
-  // ✅ SYNCHRONISATION avec ModernCashRegister (même clés)
+  // ✅ SYNCHRONISATION CORRIGÉE avec ModernCashRegister
   useEffect(() => {
     const checkCashSession = () => {
       const session = localStorage.getItem('cash_session_v2');
@@ -152,7 +152,7 @@ const POSModule = ({ onNavigate }) => {
     // Vérification initiale
     checkCashSession();
 
-    // Vérification périodique pour synchronisation
+    // Vérification périodique pour synchronisation en temps réel
     const interval = setInterval(checkCashSession, 1000);
 
     return () => clearInterval(interval);
@@ -257,23 +257,53 @@ const POSModule = ({ onNavigate }) => {
     return filtered.slice(0, 50);
   }, [globalProducts, selectedCategory, searchQuery, categories]);
 
-  // ==================== GESTION DU PAIEMENT ====================
+  // ==================== GESTION DU PAIEMENT CORRIGÉE ==================== 
   const handleCompleteSale = useCallback(async () => {
+    // ✅ VÉRIFICATION STRICTE DE LA CAISSE
     if (!cashSession) {
-      toast.error('Caisse fermée');
+      toast.error('⚠️ Caisse fermée ! Impossible de procéder à la vente.');
+      return;
+    }
+
+    // ✅ VÉRIFICATIONS SUPPLÉMENTAIRES
+    if (cart.length === 0) {
+      toast.error('Panier vide !');
+      return;
+    }
+
+    if (paymentMethod === 'cash' && parseFloat(amountReceivedRef.current) < cartStats.finalTotal) {
+      toast.error('Montant insuffisant !');
+      return;
+    }
+
+    if (paymentMethod === 'credit' && selectedCustomer.id === 1) {
+      toast.error('Veuillez sélectionner un client pour le crédit !');
       return;
     }
 
     try {
       const saleData = {
-        items: cart,
+        id: Date.now(),
+        date: new Date().toISOString(),
+        items: cart.map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          quantity: item.quantity,
+          total: item.price * item.quantity
+        })),
         customer: selectedCustomer,
         paymentMethod,
         amountReceived: paymentMethod === 'cash' ? parseFloat(amountReceivedRef.current) : cartStats.finalTotal,
         change: paymentMethod === 'cash' ? parseFloat(amountReceivedRef.current) - cartStats.finalTotal : 0,
-        timestamp: new Date().toISOString()
+        subtotal: cartStats.totalAmount,
+        tax: cartStats.totalTax,
+        total: cartStats.finalTotal,
+        timestamp: new Date().toISOString(),
+        cashSession: cashSession.id // ✅ LIEN AVEC LA SESSION CAISSE
       };
 
+      // ✅ GESTION DU CRÉDIT
       if (paymentMethod === 'credit') {
         const newCredit = {
           id: Date.now(),
@@ -291,22 +321,24 @@ const POSModule = ({ onNavigate }) => {
         setCredits(prev => [...prev, newCredit]);
       }
 
+      // ✅ ENREGISTRER LA VENTE (synchronisé avec le module caisse)
       await processSale(saleData);
       
+      // ✅ NETTOYAGE
       clearCart();
       setShowPaymentModal(false);
       setPaymentMethod('cash');
       amountReceivedRef.current = '';
       setAmountDisplay('');
       
-      toast.success('Vente terminée !');
+      toast.success(`💰 Vente terminée ! Total: ${cartStats.finalTotal.toLocaleString()} ${appSettings.currency}`);
       
     } catch (error) {
       console.error('Erreur vente:', error);
-      toast.error('Erreur lors de la vente');
+      toast.error('❌ Erreur lors de la vente');
     }
   }, [
-    cashSession, cart, selectedCustomer, paymentMethod, cartStats.finalTotal,
+    cashSession, cart, selectedCustomer, paymentMethod, cartStats,
     processSale, clearCart, setCredits
   ]);
 
@@ -437,7 +469,7 @@ const POSModule = ({ onNavigate }) => {
             </h1>
           </div>
 
-          {/* Statut caisse compact */}
+          {/* ✅ STATUT CAISSE AMÉLIORÉ */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {!cashSession && (
               <button
@@ -479,7 +511,7 @@ const POSModule = ({ onNavigate }) => {
           </div>
         </div>
 
-        {/* Recherche + Toggle mini */}
+        {/* Recherche */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
           <div style={{ position: 'relative', flex: 1 }}>
             <Search size={14} style={{
@@ -522,7 +554,7 @@ const POSModule = ({ onNavigate }) => {
             return (
               <button
                 key={category.id}
-                onClick={() => setSelectedCategory(category.id)}
+                onClick={() => cashSession && setSelectedCategory(category.id)} // ✅ DÉSACTIVER SI CAISSE FERMÉE
                 disabled={!cashSession}
                 style={{
                   padding: '4px 8px',
@@ -565,7 +597,7 @@ const POSModule = ({ onNavigate }) => {
         overflow: 'hidden'
       }}>
         
-        {/* ==================== GRILLE PRODUITS ==================== */}
+        {/* ==================== GRILLE PRODUITS AVEC IMAGES CORRIGÉES ==================== */}
         <div style={{
           flex: 1,
           padding: '12px',
@@ -579,16 +611,17 @@ const POSModule = ({ onNavigate }) => {
             {filteredProducts.map(product => (
               <div
                 key={product.id}
-                onClick={() => cashSession && addToCart(product)}
+                onClick={() => cashSession && product.stock > 0 && addToCart(product)} // ✅ VÉRIFICATIONS MULTIPLES
                 style={{
                   background: isDark ? '#1f2937' : 'white',
                   border: `1px solid ${isDark ? '#374151' : '#e5e7eb'}`,
                   borderRadius: '8px',
                   padding: '8px',
-                  cursor: cashSession ? 'pointer' : 'not-allowed',
+                  cursor: (cashSession && product.stock > 0) ? 'pointer' : 'not-allowed',
                   transition: 'all 0.2s',
                   opacity: (!cashSession || product.stock <= 0) ? 0.5 : 1,
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  position: 'relative'
                 }}
                 onMouseEnter={(e) => {
                   if (cashSession && product.stock > 0) {
@@ -603,18 +636,48 @@ const POSModule = ({ onNavigate }) => {
                   e.target.style.boxShadow = 'none';
                 }}
               >
+                {/* ✅ GESTION CORRECTE DES IMAGES */}
                 <div style={{
                   width: '40px',
                   height: '40px',
-                  background: 'linear-gradient(135deg, #f59e0b, #d97706)',
                   borderRadius: '8px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   margin: '0 auto 6px',
-                  color: 'white'
+                  background: product.image && product.image.startsWith('data:') 
+                    ? 'transparent' 
+                    : 'linear-gradient(135deg, #f59e0b, #d97706)',
+                  overflow: 'hidden'
                 }}>
-                  <Package size={16} />
+                  {product.image && product.image.startsWith('data:') ? (
+                    // ✅ IMAGE UPLOADÉE (base64)
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '6px'
+                      }}
+                    />
+                  ) : product.imageUrl ? (
+                    // ✅ IMAGE URL
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '6px'
+                      }}
+                    />
+                  ) : (
+                    // ✅ ICÔNE PAR DÉFAUT
+                    <Package size={16} color="white" />
+                  )}
                 </div>
                 
                 <div style={{
@@ -642,6 +705,37 @@ const POSModule = ({ onNavigate }) => {
                 }}>
                   Stock: {product.stock}
                 </div>
+                
+                {/* ✅ INDICATEUR ÉTAT PRODUIT */}
+                {!cashSession && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '8px',
+                    padding: '2px 4px',
+                    borderRadius: '4px'
+                  }}>
+                    🔒
+                  </div>
+                )}
+                
+                {product.stock === 0 && (
+                  <div style={{
+                    position: 'absolute',
+                    top: '4px',
+                    right: '4px',
+                    background: '#ef4444',
+                    color: 'white',
+                    fontSize: '8px',
+                    padding: '2px 4px',
+                    borderRadius: '4px'
+                  }}>
+                    Rupture
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -708,6 +802,11 @@ const POSModule = ({ onNavigate }) => {
               }}>
                 <ShoppingCart size={32} style={{ opacity: 0.3, marginBottom: '8px' }} />
                 <p style={{ fontSize: '12px', margin: 0 }}>Panier vide</p>
+                {!cashSession && (
+                  <p style={{ fontSize: '10px', margin: '4px 0 0 0', color: '#ef4444' }}>
+                    Caisse fermée
+                  </p>
+                )}
               </div>
             ) : (
               cart.map(item => (
@@ -918,7 +1017,7 @@ const POSModule = ({ onNavigate }) => {
 
       {/* ==================== MODALS ==================== */}
       
-      {/* ✅ MODAL D'OUVERTURE IDENTIQUE AU MODULE CAISSE */}
+      {/* ✅ MODAL D'OUVERTURE */}
       {showOpenModal && (
         <div style={{
           position: 'fixed',
@@ -1008,7 +1107,7 @@ const POSModule = ({ onNavigate }) => {
         </div>
       )}
 
-      {/* ✅ MODAL DE FERMETURE IDENTIQUE AU MODULE CAISSE */}
+      {/* ✅ MODAL DE FERMETURE */}
       {showCloseModal && (
         <div style={{
           position: 'fixed',
@@ -1036,7 +1135,7 @@ const POSModule = ({ onNavigate }) => {
               Fermeture de Caisse
             </h3>
             
-            {/* ✅ RÉCAPITULATIF COMPLET COMME MODULE CAISSE */}
+            {/* Récapitulatif */}
             <div style={{ 
               marginBottom: '20px',
               padding: '15px',
