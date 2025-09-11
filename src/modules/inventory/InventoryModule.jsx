@@ -787,9 +787,10 @@ if (success) {
   Toast.success(`Produit "${updatedData.name}" modifié avec succès`);
 } else {
   Toast.error('Erreur lors de la modification du produit');
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('Erreur lors de la modification:', error);
-    }
+    
       Toast.error('Erreur lors de la modification du produit');
     }
   }, [editingProduct, updateProduct]);
