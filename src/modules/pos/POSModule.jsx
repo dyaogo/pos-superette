@@ -1048,7 +1048,7 @@ const formatAmount = (amount) => {
                  alignItems: 'center',
                  justifyContent: 'center',
                  overflow: 'hidden',
-                 flexShrink: 0
+                 flexShrink: 0,
                }}>
                  {item.image ? (
                    <img 
