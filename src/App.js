@@ -6,7 +6,7 @@ import SalesHistoryModule from './modules/pos/SalesHistoryModule';
 import InventoryModule from './modules/inventory/InventoryModule';
 import CustomersModule from './modules/customers/CustomersModule';
 import SettingsModule from './modules/settings/SettingsModule';
-import CashRegisterModule from './modules/cash/CashRegisterModule';
+import ModernCashRegister from './modules/cash/ModernCashRegister';
 import CreditManagementModule from './modules/credits/CreditManagementModule';
 import DashboardModule from './modules/dashboard/DashboardModule';
 import ReportsModule from './modules/reports/ReportsModule';
@@ -100,7 +100,7 @@ function App() {
       case 'settings':
         return <SettingsModule />;
       case 'cash':
-        return <CashRegisterModule />;
+        return <ModernCashRegister salesHistory={salesHistory} appSettings={appSettings} />;
       case 'credits':
         return <CreditManagementModule />;
       case 'employees':
