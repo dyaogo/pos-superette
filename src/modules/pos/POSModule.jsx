@@ -1037,7 +1037,7 @@ const formatAmount = (amount) => {
                borderRadius: '6px',
                marginBottom: '4px',
                border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
-             }}>
+             }}>)
                {/* Image mini */}
                <div style={{
                  width: '24px',
