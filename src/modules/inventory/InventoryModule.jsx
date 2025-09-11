@@ -786,7 +786,7 @@ if (success) {
   setShowEditModal(false);
   Toast.success(`Produit "${updatedData.name}" modifié avec succès`);
 } else {
-  Toast.error('Erreur lors de la modification du produit');
+  Toast.error('Erreur lors de la modification du produit');}
     } 
     catch (error) {
       console.error('Erreur lors de la modification:', error);
