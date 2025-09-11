@@ -161,7 +161,8 @@ const CashRegisterModule = () => {
   };
 
   const totals = cashSession ? getSessionTotals() : null;
-  const expectedCash = cashSession ? cashSession.openingAmount + (totals?.cashSales || 0) : 0;
+  const expectedCash = cashSession ? 
+  cashSession.openingAmount + (totals?.cashSales || 0) + (totals?.cashOperationsTotal || 0) : 0;
 
   const styles = {
     grid: {
