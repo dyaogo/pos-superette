@@ -33,163 +33,317 @@ const POSModule = ({ onNavigate }) => {
 
   const isDark = appSettings.darkMode || false;
 
-  // ==================== GESTION CAISSE SYNCHRONISÉE ====================
-  const [cashSession, setCashSession] = useState(null);
-  const [cashOperations, setCashOperations] = useState([]);
-  const [showOpenModal, setShowOpenModal] = useState(false);
-  const [showCloseModal, setShowCloseModal] = useState(false);
-  const [openingAmount, setOpeningAmount] = useState('50000');
-  const [closingCash, setClosingCash] = useState('');
-  const [notes, setNotes] = useState('');
 
-  // ✅ Surveillance continue de l'état de la caisse (synchronisation)
-  useEffect(() => {
-    const checkCashSession = () => {
-      const session = getCashSession();
-      const operations = getCashOperations();
-      setCashSession(session);
-      if (operations.length) {
-        setCashOperations(operations);
+// ==================== GESTION CAISSE SYNCHRONISÉE AVEC MODERNCASHREGISTER ====================
+const [cashSession, setCashSession] = useState(null);
+const [showOpenModal, setShowOpenModal] = useState(false);
+const [showCloseModal, setShowCloseModal] = useState(false);
+const [openingAmount, setOpeningAmount] = useState('25000');
+const [closingCash, setClosingCash] = useState('');
+const [notes, setNotes] = useState('');
+
+// ✅ SYNCHRONISATION avec ModernCashRegister (même clés)
+useEffect(() => {
+  const checkCashSession = () => {
+    const session = localStorage.getItem('cash_session_v2');
+    if (session) {
+      try {
+        setCashSession(JSON.parse(session));
+      } catch (e) {
+        console.error('Erreur session:', e);
+        setCashSession(null);
       }
-    };
-
-    // Vérification initiale
-    checkCashSession();
-
-    // Vérification périodique toutes les 2 secondes
-    const interval = setInterval(checkCashSession, 2000);
-
-    return () => clearInterval(interval);
-  }, []);
-
-  // ==================== HOOKS PERSONNALISÉS ====================
-  const { 
-    cart, 
-    cartStats, 
-    addToCart, 
-    updateQuantity, 
-    removeFromCart, 
-    clearCart 
-  } = useCart(globalProducts, appSettings);
-  
-  const categories = useCategories(globalProducts);
-
-  // ==================== ÉTATS LOCAUX ====================
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [selectedCustomer, setSelectedCustomer] = useState(customers?.[0] || { id: 1, name: 'Client Comptant' });
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState('cash');
-  const [amountDisplay, setAmountDisplay] = useState('');
-  const [viewMode, setViewMode] = useState('grid');
-  const amountReceivedRef = useRef('');
-
-  // ==================== FONCTIONS CAISSE IDENTIQUES AU MODULE CAISSE ====================
-  const getSessionSales = () => {
-    if (!cashSession) return [];
-    return salesHistory.filter(sale => 
-      new Date(sale.date) >= new Date(cashSession.openedAt)
-    );
+    } else {
+      setCashSession(null);
+    }
   };
 
-  const getSessionTotals = () => {
-  const sessionSales = getSessionSales();
+  // Vérification initiale
+  checkCashSession();
+
+  // Vérification périodique pour synchronisation
+  const interval = setInterval(checkCashSession, 1000);
+
+  return () => clearInterval(interval);
+}, []);
+
+// ✅ FONCTION D'OUVERTURE (synchronisée)
+const openRegister = useCallback(() => {
+  const newSession = {
+    id: Date.now(),
+    openedAt: new Date().toISOString(),
+    openedBy: 'Caissier',
+    initialAmount: parseFloat(openingAmount),
+    status: 'open'
+  };
+
+  const openOperation = {
+    id: Date.now(),
+    type: 'opening',
+    amount: parseFloat(openingAmount),
+    timestamp: new Date().toISOString(),
+    description: 'Ouverture de caisse',
+    operator: 'Caissier'
+  };
+
+  // Sauvegarder avec les mêmes clés que ModernCashRegister
+  localStorage.setItem('cash_session_v2', JSON.stringify(newSession));
+  localStorage.setItem('cash_operations_v2', JSON.stringify([openOperation]));
   
-  // ✅ CORRECTION : Filtrer les ventes avec des paymentMethod valides (pas numériques)
-  const validSales = sessionSales.filter(s => 
-    s.paymentMethod && typeof s.paymentMethod === 'string'
-  );
+  setCashSession(newSession);
+  setShowOpenModal(false);
+  setOpeningAmount('25000');
   
-  const cashSales = validSales.filter(s => s.paymentMethod === 'cash');
-  const cardSales = validSales.filter(s => s.paymentMethod === 'card');
+  toast.success('Caisse ouverte !');
+}, [openingAmount]);
+
+// ✅ FONCTION DE FERMETURE (synchronisée)
+const closeRegister = useCallback(() => {
+  if (!cashSession || !closingCash) return;
+
+  // Calculer les ventes de la session (logique simple)
+  const sessionStart = new Date(cashSession.openedAt);
+  const sessionSales = salesHistory.filter(sale => {
+    if (!sale?.date) return false;
+    const saleDate = new Date(sale.date);
+    return !isNaN(saleDate.getTime()) && saleDate >= sessionStart && sale.total > 0;
+  });
+
+  // Calculer total espèces (traiter toutes les ventes comme espèces pour simplicité)
+  const cashSales = sessionSales.reduce((sum, s) => sum + s.total, 0);
   
-  // ✅ NOUVEAU : Calculer les opérations de caisse (entrées/sorties)
-  const cashOperationsTotal = cashOperations.reduce((total, op) => {
-    if (op.type === 'in') {
-      return total + op.amount;
-    } else if (op.type === 'out') {
-      return total - op.amount;
-    }
-    return total; // Ignorer les opérations d'ouverture/fermeture
+  // Opérations de caisse
+  const operations = JSON.parse(localStorage.getItem('cash_operations_v2') || '[]');
+  const operationsTotal = operations.reduce((total, op) => {
+    if (op.type === 'in') return total + op.amount;
+    if (op.type === 'out') return total - op.amount;
+    return total;
   }, 0);
 
-  return {
-    totalSales: validSales.reduce((sum, s) => sum + s.total, 0),
-    cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
-    cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
-    transactionCount: validSales.length,
-    cashTransactions: cashSales.length,
-    cardTransactions: cardSales.length,
-    cashOperationsTotal
+  const expectedAmount = cashSession.initialAmount + cashSales + operationsTotal;
+  const actualAmount = parseFloat(closingCash);
+  const difference = actualAmount - expectedAmount;
+
+  const closingReport = {
+    sessionId: cashSession.id,
+    openedAt: cashSession.openedAt,
+    closedAt: new Date().toISOString(),
+    openedBy: cashSession.openedBy,
+    closedBy: 'Caissier',
+    initialAmount: cashSession.initialAmount,
+    expectedAmount,
+    actualAmount,
+    difference,
+    totals: {
+      totalSales: cashSales,
+      cashSales,
+      operationsTotal,
+      transactionCount: sessionSales.length
+    },
+    notes,
+    operations
   };
+
+  // Sauvegarder le rapport
+  const reports = JSON.parse(localStorage.getItem('cash_reports_v2') || '[]');
+  reports.push(closingReport);
+  localStorage.setItem('cash_reports_v2', JSON.stringify(reports));
+
+  // Fermer la session (mêmes clés que ModernCashRegister)
+  localStorage.removeItem('cash_session_v2');
+  localStorage.removeItem('cash_operations_v2');
+  setCashSession(null);
+  
+  // Vider le panier
+  clearCart();
+  
+  setShowCloseModal(false);
+  setClosingCash('');
+  setNotes('');
+  
+  const message = `Caisse fermée!\nÉcart: ${difference.toLocaleString()} ${appSettings.currency || 'FCFA'}\n${
+    difference === 0 ? 'Parfait!' : 
+    difference > 0 ? 'Surplus' : 'Manque'
+  }`;
+  
+  toast.success('Caisse fermée !');
+  alert(message);
+}, [cashSession, closingCash, notes, salesHistory, clearCart, appSettings.currency]);
+
+// ✅ CALCUL SIMPLIFIÉ DU MONTANT ATTENDU
+const expectedCashAmount = useMemo(() => {
+  if (!cashSession) return 0;
+
+  const sessionStart = new Date(cashSession.openedAt);
+  const sessionSales = salesHistory.filter(sale => {
+    if (!sale?.date) return false;
+    const saleDate = new Date(sale.date);
+    return !isNaN(saleDate.getTime()) && saleDate >= sessionStart && sale.total > 0;
+  });
+
+  const cashSales = sessionSales.reduce((sum, s) => sum + s.total, 0);
+  
+  const operations = JSON.parse(localStorage.getItem('cash_operations_v2') || '[]');
+  const operationsTotal = operations.reduce((total, op) => {
+    if (op.type === 'in') return total + op.amount;
+    if (op.type === 'out') return total - op.amount;
+    return total;
+  }, 0);
+
+  return cashSession.initialAmount + cashSales + operationsTotal;
+}, [cashSession, salesHistory]);
+
+// ✅ FORMATAGE DES MONTANTS
+const formatAmount = (amount) => {
+  return new Intl.NumberFormat('fr-FR').format(amount || 0);
 };
 
-  const openRegister = useCallback(() => {
-    const session = {
-      id: Date.now(),
-      openedAt: new Date().toISOString(),
-      openedBy: 'Caissier Principal',
-      openingAmount: parseFloat(openingAmount),
-      status: 'open'
-    };
-    
-    setCashSession(session);
-    saveCashSession(session);
-    
-    const operation = {
-      id: Date.now(),
-      type: 'opening',
-      amount: parseFloat(openingAmount),
-      timestamp: new Date().toISOString(),
-      description: 'Ouverture de caisse',
-      user: 'Caissier Principal'
-    };
-    
-    const newOperations = [operation];
-    setCashOperations(newOperations);
-    saveCashOperations(newOperations);
-    
-    setShowOpenModal(false);
-    setOpeningAmount('50000');
-    
-    toast.success(`✅ Caisse ouverte! Fond initial: ${parseFloat(openingAmount).toLocaleString()} ${appSettings.currency}`);
-  }, [openingAmount, appSettings.currency]);
+// ✅ MODAL DE FERMETURE MISE À JOUR (remplacer la modal existante)
+{showCloseModal && (
+  <div style={{
+    position: 'fixed',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    background: 'rgba(0,0,0,0.5)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1000
+  }}>
+    <div style={{
+      background: isDark ? '#374151' : 'white',
+      padding: '24px',
+      borderRadius: '12px',
+      width: '90%',
+      maxWidth: '500px'
+    }}>
+      <h3 style={{ 
+        marginBottom: '20px',
+        color: isDark ? '#f9fafb' : '#111827'
+      }}>
+        Fermeture de Caisse
+      </h3>
+      
+      {/* Récapitulatif */}
+      <div style={{
+        padding: '16px',
+        backgroundColor: isDark ? '#4b5563' : '#f8fafc',
+        borderRadius: '8px',
+        marginBottom: '20px'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <span>Fond initial:</span>
+          <span style={{ fontWeight: '600' }}>{formatAmount(cashSession.initialAmount)} {appSettings.currency || 'FCFA'}</span>
+        </div>
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between',
+          paddingTop: '8px',
+          borderTop: `1px solid ${isDark ? '#6b7280' : '#d1d5db'}`,
+          fontWeight: '700',
+          fontSize: '16px'
+        }}>
+          <span>Attendu:</span>
+          <span style={{ color: '#3b82f6' }}>{formatAmount(expectedCashAmount)} {appSettings.currency || 'FCFA'}</span>
+        </div>
+      </div>
 
-  const closeRegister = useCallback(() => {
-    if (!cashSession) return;
-    
-    const totals = getSessionTotals();
-    const expectedCash = cashSession.openingAmount + totals.cashSales + (totals.cashOperationsTotal || 0);
-    const actualCash = parseFloat(closingCash) || 0;
-    const difference = actualCash - expectedCash;
-    
-    const closingReport = {
-      sessionId: cashSession.id,
-      closedAt: new Date().toISOString(),
-      closedBy: 'Caissier Principal',
-      openingAmount: cashSession.openingAmount,
-      expectedCash,
-      actualCash,
-      difference,
-      totals,
-      notes,
-      operations: cashOperations
-    };
-    
-    addCashReport(closingReport);
-    
-    // ✅ FERMETURE GLOBALE - Vide le panier aussi
-    setCashSession(null);
-    setCashOperations([]);
-    clearCashData();
-    clearCart(); // Vider le panier à la fermeture
-    
-    setShowCloseModal(false);
-    setClosingCash('');
-    setNotes('');
-    
-    toast.success(`✅ Caisse fermée! Écart: ${difference.toLocaleString()} ${appSettings.currency}`);
-  }, [cashSession, closingCash, notes, cashOperations, appSettings.currency, getSessionTotals, clearCart]);
+      <label style={{ display: 'block', marginBottom: '8px', color: isDark ? '#d1d5db' : '#374151' }}>
+        Montant réel compté
+      </label>
+      <input
+        type="number"
+        value={closingCash}
+        onChange={(e) => setClosingCash(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '12px',
+          borderRadius: '8px',
+          border: `1px solid ${isDark ? '#4b5563' : '#d1d5db'}`,
+          backgroundColor: isDark ? '#4b5563' : 'white',
+          color: isDark ? '#f9fafb' : '#111827',
+          fontSize: '14px',
+          marginBottom: '16px',
+          boxSizing: 'border-box'
+        }}
+        autoFocus
+      />
+
+      <label style={{ display: 'block', marginBottom: '8px', color: isDark ? '#d1d5db' : '#374151' }}>
+        Notes (optionnel)
+      </label>
+      <textarea
+        value={notes}
+        onChange={(e) => setNotes(e.target.value)}
+        style={{
+          width: '100%',
+          padding: '12px',
+          borderRadius: '8px',
+          border: `1px solid ${isDark ? '#4b5563' : '#d1d5db'}`,
+          backgroundColor: isDark ? '#4b5563' : 'white',
+          color: isDark ? '#f9fafb' : '#111827',
+          fontSize: '14px',
+          marginBottom: '16px',
+          minHeight: '80px',
+          resize: 'vertical',
+          boxSizing: 'border-box'
+        }}
+        placeholder="Remarques de fin de journée..."
+      />
+
+      {/* Écart en temps réel */}
+      {closingCash && (
+        <div style={{
+          padding: '12px',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          backgroundColor: Math.abs(parseFloat(closingCash) - expectedCashAmount) === 0 ? 
+            '#dcfce7' : '#fee2e2',
+          color: Math.abs(parseFloat(closingCash) - expectedCashAmount) === 0 ? 
+            '#16a34a' : '#dc2626'
+        }}>
+          Écart: {formatAmount(parseFloat(closingCash) - expectedCashAmount)} {appSettings.currency || 'FCFA'}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '12px' }}>
+        <button
+          onClick={() => setShowCloseModal(false)}
+          style={{
+            flex: 1,
+            padding: '12px',
+            background: '#6b7280',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer'
+          }}
+        >
+          Annuler
+        </button>
+        <button
+          onClick={closeRegister}
+          disabled={!closingCash}
+          style={{
+            flex: 1,
+            padding: '12px',
+            background: closingCash ? '#ef4444' : '#94a3b8',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: closingCash ? 'pointer' : 'not-allowed',
+            fontWeight: '600',
+            opacity: !closingCash ? 0.5 : 1
+          }}
+        >
+          Fermer Caisse
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
   // ==================== FILTRAGE PRODUITS ====================
   const filteredProducts = useMemo(() => {
