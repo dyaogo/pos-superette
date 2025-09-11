@@ -94,8 +94,14 @@ const POSModule = ({ onNavigate }) => {
 
   const getSessionTotals = () => {
   const sessionSales = getSessionSales();
-  const cashSales = sessionSales.filter(s => s.paymentMethod === 'cash');
-  const cardSales = sessionSales.filter(s => s.paymentMethod === 'card');
+  
+  // ✅ CORRECTION : Filtrer les ventes avec des paymentMethod valides (pas numériques)
+  const validSales = sessionSales.filter(s => 
+    s.paymentMethod && typeof s.paymentMethod === 'string'
+  );
+  
+  const cashSales = validSales.filter(s => s.paymentMethod === 'cash');
+  const cardSales = validSales.filter(s => s.paymentMethod === 'card');
   
   // ✅ NOUVEAU : Calculer les opérations de caisse (entrées/sorties)
   const cashOperationsTotal = cashOperations.reduce((total, op) => {
@@ -108,13 +114,13 @@ const POSModule = ({ onNavigate }) => {
   }, 0);
 
   return {
-    totalSales: sessionSales.reduce((sum, s) => sum + s.total, 0),
+    totalSales: validSales.reduce((sum, s) => sum + s.total, 0),
     cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
     cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
-    transactionCount: sessionSales.length,
+    transactionCount: validSales.length,
     cashTransactions: cashSales.length,
     cardTransactions: cardSales.length,
-    cashOperationsTotal // ✅ NOUVEAU : Total des opérations de caisse
+    cashOperationsTotal
   };
 };
 
