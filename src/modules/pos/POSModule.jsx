@@ -93,19 +93,30 @@ const POSModule = ({ onNavigate }) => {
   };
 
   const getSessionTotals = () => {
-    const sessionSales = getSessionSales();
-    const cashSales = sessionSales.filter(s => s.paymentMethod === 'cash');
-    const cardSales = sessionSales.filter(s => s.paymentMethod === 'card');
-    
-    return {
-      totalSales: sessionSales.reduce((sum, s) => sum + s.total, 0),
-      cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
-      cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
-      transactionCount: sessionSales.length,
-      cashTransactions: cashSales.length,
-      cardTransactions: cardSales.length
-    };
+  const sessionSales = getSessionSales();
+  const cashSales = sessionSales.filter(s => s.paymentMethod === 'cash');
+  const cardSales = sessionSales.filter(s => s.paymentMethod === 'card');
+  
+  // ✅ NOUVEAU : Calculer les opérations de caisse (entrées/sorties)
+  const cashOperationsTotal = cashOperations.reduce((total, op) => {
+    if (op.type === 'in') {
+      return total + op.amount;
+    } else if (op.type === 'out') {
+      return total - op.amount;
+    }
+    return total; // Ignorer les opérations d'ouverture/fermeture
+  }, 0);
+
+  return {
+    totalSales: sessionSales.reduce((sum, s) => sum + s.total, 0),
+    cashSales: cashSales.reduce((sum, s) => sum + s.total, 0),
+    cardSales: cardSales.reduce((sum, s) => sum + s.total, 0),
+    transactionCount: sessionSales.length,
+    cashTransactions: cashSales.length,
+    cardTransactions: cardSales.length,
+    cashOperationsTotal // ✅ NOUVEAU : Total des opérations de caisse
   };
+};
 
   const openRegister = useCallback(() => {
     const session = {
