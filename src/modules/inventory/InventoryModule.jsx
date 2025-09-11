@@ -763,7 +763,7 @@ const InventoryModule = () => {
 
       // Mise à jour du produit dans le contexte
       // Note: Cette fonction devra être ajoutée au contexte AppContext
-      const updatedProduct = {
+      const updatedData = {
         ...editingProduct,
         name: productData.name,
         category: productData.category || 'Divers',
@@ -777,7 +777,6 @@ const InventoryModule = () => {
         image: productData.image || ''
       };
 
-      // TODO: Ajouter updateProduct au contexte
       // ✅ CORRECTION : Appeler la fonction updateProduct du contexte
 const success = updateProduct(editingProduct.id, updatedData);
 
