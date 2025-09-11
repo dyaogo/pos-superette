@@ -153,7 +153,7 @@ const POSModule = ({ onNavigate }) => {
     if (!cashSession) return;
     
     const totals = getSessionTotals();
-    const expectedCash = cashSession.openingAmount + totals.cashSales;
+    const expectedCash = cashSession.openingAmount + totals.cashSales + (totals.cashOperationsTotal || 0);
     const actualCash = parseFloat(closingCash) || 0;
     const difference = actualCash - expectedCash;
     
