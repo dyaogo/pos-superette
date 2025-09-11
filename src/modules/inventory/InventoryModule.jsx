@@ -614,6 +614,7 @@ const InventoryModule = () => {
   const {
     globalProducts = [],
     addProduct,
+    updateProduct,
     addStock,
     removeProduct,
     salesHistory = [],
@@ -777,16 +778,20 @@ const InventoryModule = () => {
       };
 
       // TODO: Ajouter updateProduct au contexte
-      console.log('Produit mis à jour:', updatedProduct);
-      
-      setEditingProduct(null);
-      setShowEditModal(false);
-      Toast.success(`Produit "${updatedProduct.name}" modifié avec succès`);
+      // ✅ CORRECTION : Appeler la fonction updateProduct du contexte
+const success = updateProduct(editingProduct.id, updatedData);
+
+if (success) {
+  setEditingProduct(null);
+  setShowEditModal(false);
+  Toast.success(`Produit "${updatedData.name}" modifié avec succès`);
+} else {
+  Toast.error('Erreur lors de la modification du produit');
     } catch (error) {
       console.error('Erreur lors de la modification:', error);
       Toast.error('Erreur lors de la modification du produit');
     }
-  }, [editingProduct]);
+  }, [editingProduct, updateProduct]);
 
   const handleDeleteProduct = useCallback(async (productId) => {
     try {
