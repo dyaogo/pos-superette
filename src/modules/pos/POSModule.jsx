@@ -1179,7 +1179,7 @@ const POSModule = ({ onNavigate }) => {
              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Attendu:</span>
                <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                 {((cashSession?.openingAmount || 0) + getSessionTotals().cashSales).toLocaleString()} {appSettings.currency}
+                 {((cashSession?.openingAmount || 0) + getSessionTotals().cashSales + (getSessionTotals().cashOperationsTotal || 0)).toLocaleString()} {appSettings.currency}
                </span>
              </div>
            </div>
