@@ -1027,7 +1027,7 @@ const formatAmount = (amount) => {
            overflowY: 'auto',
            padding: '8px'
          }}>
-           {.map(item => (
+           {cart.map(item => (
              <div key={item.id} style={{
                display: 'flex',
                alignItems: 'center',
@@ -1037,7 +1037,7 @@ const formatAmount = (amount) => {
                borderRadius: '6px',
                marginBottom: '4px',
                border: `1px solid ${isDark ? '#4b5563' : '#e5e7eb'}`
-             }}>)
+             }}>
                {/* Image mini */}
                <div style={{
                  width: '24px',
@@ -1197,13 +1197,13 @@ const formatAmount = (amount) => {
            {/* Bouton paiement mini */}
            <button
              onClick={() => setShowPaymentModal(true)}
-             disabled={.length === 0 || !cashSession}
+             disabled={cart.length === 0 || !cashSession}
              style={{
                width: '100%',
                padding: '8px',
                borderRadius: '8px',
                border: 'none',
-               background: (.length === 0 || !cashSession) ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
+               background: (cart.length === 0 || !cashSession) ? '#9ca3af' : 'linear-gradient(135deg, #10b981, #059669)',
                color: 'white',
                fontSize: '12px',
                fontWeight: '600',
