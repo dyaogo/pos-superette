@@ -112,7 +112,7 @@ const CashRegisterModule = () => {
     if (!cashSession || !closingCash) return;
     
     const totals = getSessionTotals();
-    const expectedCash = cashSession.openingAmount + totals.cashSales;
+    const expectedCash = cashSession.openingAmount + totals.cashSales + (totals.cashOperationsTotal || 0);
     const actualCash = parseFloat(closingCash);
     const difference = actualCash - expectedCash;
     
