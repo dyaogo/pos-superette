@@ -231,10 +231,24 @@ export const usePOSIntegration = () => {
       // Traitement via AppContext (système existant) pour compatibilité
       if (appProcessSale) {
         try {
-          await appProcessSale(storeSale);
+          // Format attendu par AppContext: processSale(items, customer, paymentMethod, paymentAmount)
+          const appResult = appProcessSale(
+            cart.map(item => ({
+              id: item.id,
+              name: item.name,
+              price: item.price,
+              quantity: item.quantity
+            })),
+            selectedCustomer || { id: 1, name: 'Client Comptant' },
+            paymentData.method,
+            paymentData.amountReceived || cartStats.total
+          );
+          
+          console.log('✅ Vente synchronisée avec AppContext:', appResult);
         } catch (error) {
-          console.warn('Erreur sync AppContext:', error);
-          // Ne pas échouer si AppContext échoue
+          console.error('❌ Erreur sync AppContext:', error);
+          // Ne pas échouer si AppContext échoue, mais informer
+          toast.error('Vente enregistrée mais sync AppContext échouée');
         }
       }
       
