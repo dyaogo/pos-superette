@@ -74,7 +74,7 @@ function App() {
       'cash',
       'credits',
       'employees',
-      'returns'
+      'returns',
       'test-pos'  // ✅ AJOUTÉ
     ],
     cashier: ['dashboard', 'pos', 'sales-history', 'cash', 'customers', 'returns']
