@@ -832,7 +832,7 @@ const PaymentModal = ({
           }}>
             {[
               { method: 'cash', icon: '💵', label: 'Espèces' },
-              { method: 'card', icon: '📱', label: 'Mobile' },
+              { method: 'card', icon: '📱', label: 'Mobile' },    // 💡 MODIFIÉ : 💳 → 📱, 'Carte' → 'Mobile'
               { method: 'credit', icon: '📋', label: 'Crédit' }
             ].map(({ method, icon, label }) => (
               <button
