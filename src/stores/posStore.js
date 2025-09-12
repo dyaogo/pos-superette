@@ -266,6 +266,8 @@ export const usePOSStore = create()(
             draft.salesHistory.unshift(sale);
             draft.cart = [];
             draft.showPaymentModal = false;
+            });
+          
           // ✅ NOUVEAU : Forcer la mise à jour de l'AppContext
         try {
           // Déclencher une re-synchronisation immédiate
