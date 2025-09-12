@@ -14,6 +14,7 @@ import EmployeesModule from './modules/employees/EmployeesModule';
 import ReturnsModule from './modules/returns/ReturnsModule';
 import { MobileNavigation, useResponsive } from './components/ResponsiveComponents';
 import StoreSelector from './components/StoreSelector';
+import TestPOSModule from './modules/pos/TestPOSModule';
 import {
   ShoppingCart,
   Package,
