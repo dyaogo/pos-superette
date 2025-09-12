@@ -266,9 +266,20 @@ export const usePOSStore = create()(
             draft.salesHistory.unshift(sale);
             draft.cart = [];
             draft.showPaymentModal = false;
-          });
+          // ✅ NOUVEAU : Forcer la mise à jour de l'AppContext
+        try {
+          // Déclencher une re-synchronisation immédiate
+          const currentAppHistory = JSON.parse(localStorage.getItem(`pos_${localStorage.getItem('pos_current_store') || 'WK001'}_sales`) || '[]');
+          currentAppHistory.unshift(sale);
+          localStorage.setItem(`pos_${localStorage.getItem('pos_current_store') || 'WK001'}_sales`, JSON.stringify(currentAppHistory));
           
-          return sale;
+          // Déclencher un événement pour forcer la re-synchronisation
+          window.dispatchEvent(new CustomEvent('pos-sale-added', { detail: sale }));
+        } catch (error) {
+          console.warn('Erreur mise à jour localStorage:', error);
+        }
+        
+        return sale;
         },
         
         /**
