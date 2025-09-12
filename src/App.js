@@ -46,7 +46,7 @@ function App() {
   } = useApp();
   const { user, role, login, logout, loading } = useAuth();
   const { isMobile } = useResponsive();
-  const [activeModule, setActiveModule] = useState('dashboard');
+  const [activeModule, setActiveModule] = useState('test-pos');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
