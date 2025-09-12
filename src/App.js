@@ -108,8 +108,11 @@ function App() {
         return <EmployeesModule />;
       case 'returns':
         return <ReturnsModule />;
+      case 'test-pos':
+        return <TestPOSModule />;
       default:
         return <DashboardModule onNavigate={setActiveModule} />;
+        
     }
   };
 
