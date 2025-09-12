@@ -354,7 +354,7 @@ export const usePOSStore = create()(
             totalSales: validSales.reduce((sum, s) => sum + s.total, 0),
             totalTransactions: validSales.length,
             cashSales: validSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + s.total, 0),
-            cardSales: validSales.filter(s => s.paymentMethod === 'card').reduce((sum, s) => sum + s.total, 0),
+            mobileSales: sessionSales.filter(s => s.paymentMethod === 'card').length, // Note: le data reste 'card' mais on l'affiche comme mobile            
             creditSales: validSales.filter(s => s.paymentMethod === 'credit').reduce((sum, s) => sum + s.total, 0),
             averageTicket: validSales.length > 0 ? validSales.reduce((sum, s) => sum + s.total, 0) / validSales.length : 0
           };
