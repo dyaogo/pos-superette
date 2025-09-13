@@ -222,7 +222,7 @@ export const usePOSIntegration = () => {
         amountReceived: paymentData.amountReceived || cartStats.total,
         changeAmount: paymentData.method === 'cash' 
           ? Math.max(0, (paymentData.amountReceived || 0) - cartStats.total)
-          : 0
+          : 0,
 
               // CORRECTION : Lier à la session de caisse
         cashSessionId: cashSession?.id,
