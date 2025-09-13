@@ -518,7 +518,6 @@ const POSModule = ({ onNavigate }) => {
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                style={styles.input}
                 style={{ ...styles.input, width: '200px' }}
               >
                 <option value="all">Toutes catégories</option>
