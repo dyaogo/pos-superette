@@ -68,14 +68,21 @@ export const usePOSStore = create()(
           
           const sessionSales = state.salesHistory.filter(sale => 
             new Date(sale.createdAt || sale.date) >= new Date(state.cashSession.openedAt) &&
-            sale.cashSessionId === state.cashSession.id
+            (sale.cashSessionId === state.cashSession.id || sale.cashSession === state.cashSession.id)
           );
           
+          // CORRECTION 1: Inclure les opérations de caisse dans le calcul
           const cashSalesTotal = sessionSales
             .filter(s => s.paymentMethod === 'cash')
             .reduce((sum, s) => sum + (s.total || 0), 0);
           
-          const expectedCash = state.cashSession.initialAmount + cashSalesTotal;
+          const cashOperationsTotal = (state.cashOperations || []).reduce((total, op) => {
+            if (op.type === 'in') return total + op.amount;
+            if (op.type === 'out') return total - op.amount;
+            return total;
+          }, 0);
+          
+          const expectedCash = state.cashSession.initialAmount + cashSalesTotal + cashOperationsTotal;
           const difference = actualCash - expectedCash;
           
           const closingReport = {
@@ -89,6 +96,8 @@ export const usePOSStore = create()(
             difference,
             salesCount: sessionSales.length,
             totalSales: sessionSales.reduce((sum, s) => sum + (s.total || 0), 0),
+            cashSales: cashSalesTotal,
+            cashOperationsTotal, // AJOUT: Inclure les opérations
             notes,
             operations: [...state.cashOperations]
           };
@@ -118,6 +127,7 @@ export const usePOSStore = create()(
               state.cashSession = JSON.parse(session);
             }
             
+            // CORRECTION 2: S'assurer de récupérer les opérations
             if (operations) {
               state.cashOperations = JSON.parse(operations);
             }
@@ -249,7 +259,7 @@ export const usePOSStore = create()(
             change: saleData.changeAmount || 0,
             changeAmount: saleData.changeAmount || 0, // Format moderne
             
-            // Métadonnées
+            // CORRECTION 3: Lier correctement à la session
             cashSession: state.cashSession.id, // Format existant
             cashSessionId: state.cashSession.id, // Format moderne
             operatorId: saleData.operatorId || 'caissier_1',
@@ -266,22 +276,22 @@ export const usePOSStore = create()(
             draft.salesHistory.unshift(sale);
             draft.cart = [];
             draft.showPaymentModal = false;
-            });
+          });
           
-          // ✅ NOUVEAU : Forcer la mise à jour de l'AppContext
-        try {
-          // Déclencher une re-synchronisation immédiate
-          const currentAppHistory = JSON.parse(localStorage.getItem(`pos_${localStorage.getItem('pos_current_store') || 'WK001'}_sales`) || '[]');
-          currentAppHistory.unshift(sale);
-          localStorage.setItem(`pos_${localStorage.getItem('pos_current_store') || 'WK001'}_sales`, JSON.stringify(currentAppHistory));
+          // CORRECTION 4: Forcer la mise à jour de l'AppContext
+          try {
+            // Déclencher une re-synchronisation immédiate
+            const currentAppHistory = JSON.parse(localStorage.getItem(`pos_${localStorage.getItem('pos_current_store') || 'WK001'}_sales`) || '[]');
+            currentAppHistory.unshift(sale);
+            localStorage.setItem(`pos_${localStorage.getItem('pos_current_store') || 'WK001'}_sales`, JSON.stringify(currentAppHistory));
+            
+            // Déclencher un événement pour forcer la re-synchronisation
+            window.dispatchEvent(new CustomEvent('pos-sale-added', { detail: sale }));
+          } catch (error) {
+            console.warn('Erreur mise à jour localStorage:', error);
+          }
           
-          // Déclencher un événement pour forcer la re-synchronisation
-          window.dispatchEvent(new CustomEvent('pos-sale-added', { detail: sale }));
-        } catch (error) {
-          console.warn('Erreur mise à jour localStorage:', error);
-        }
-        
-        return sale;
+          return sale;
         },
         
         /**
@@ -341,21 +351,38 @@ export const usePOSStore = create()(
         },
         
         /**
-         * Statistiques de la session
+         * CORRECTION 5: Statistiques de session avec opérations de caisse
          */
         getSessionStats: () => {
+          const { cashOperations } = get();
           const sessionSales = get().getSessionSales();
           
           const validSales = sessionSales.filter(s => 
             s && s.paymentMethod && typeof s.paymentMethod === 'string' && s.total > 0
           );
           
+          // Calculer les opérations de caisse
+          const cashOperationsTotal = (cashOperations || []).reduce((total, op) => {
+            if (op.type === 'in') return total + op.amount;
+            if (op.type === 'out') return total - op.amount;
+            return total;
+          }, 0);
+          
           return {
             totalSales: validSales.reduce((sum, s) => sum + s.total, 0),
             totalTransactions: validSales.length,
             cashSales: validSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + s.total, 0),
-            mobileSales: sessionSales.filter(s => s.paymentMethod === 'card').length, // Note: le data reste 'card' mais on l'affiche comme mobile            
+            mobileSales: validSales.filter(s => s.paymentMethod === 'card').reduce((sum, s) => sum + s.total, 0), // CORRECTION: Calculer le montant, pas le nombre
             creditSales: validSales.filter(s => s.paymentMethod === 'credit').reduce((sum, s) => sum + s.total, 0),
+            
+            // AJOUT: Inclure les opérations de caisse
+            cashOperationsTotal,
+            
+            // Nombre de transactions par type
+            cashTransactions: validSales.filter(s => s.paymentMethod === 'cash').length,
+            mobileTransactions: validSales.filter(s => s.paymentMethod === 'card').length,
+            creditTransactions: validSales.filter(s => s.paymentMethod === 'credit').length,
+            
             averageTicket: validSales.length > 0 ? validSales.reduce((sum, s) => sum + s.total, 0) / validSales.length : 0
           };
         },
