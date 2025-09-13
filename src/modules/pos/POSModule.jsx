@@ -69,61 +69,48 @@ const POSModule = ({ onNavigate }) => {
 
   const isDark = appSettings?.darkMode || false;
 
-  // Remplacer la fonction de calcul des montants rapides
+  // Remplacer cartStats?.finalTotal par cartStats?.total
 const quickAmounts = useMemo(() => {
-  if (!cartStats?.finalTotal || cartStats.finalTotal === 0) {
+  if (!cartStats?.total || cartStats.total === 0) {
     return [500, 1000, 2000, 5000, 10000, 20000, 50000];
   }
   
-  const total = cartStats.finalTotal;
+  const total = cartStats.total;
   const amounts = [];
   
   // TOUJOURS inclure le montant exact en premier
   amounts.push(total);
   
-  // Calculer les montants arrondis supérieurs intelligents
-  // comme dans votre ancien module
-  const roundTo = (value, nearest) => Math.ceil(value / nearest) * nearest;
+  // Fonction pour arrondir au supérieur
+  const roundUp = (value, nearest) => Math.ceil(value / nearest) * nearest;
   
-  // Si le total est inférieur à 1000, proposer des arrondis à 100
+  // Pour les montants élevés comme votre cas (39 589)
   if (total < 1000) {
-    amounts.push(roundTo(total, 100));
-    amounts.push(roundTo(total, 500));
-    amounts.push(1000);
-    amounts.push(2000);
-    amounts.push(5000);
-  }
-  // Si le total est entre 1000 et 10000
-  else if (total < 10000) {
-    amounts.push(roundTo(total, 500));
-    amounts.push(roundTo(total, 1000));
-    amounts.push(roundTo(total, 5000));
-    amounts.push(10000);
-    amounts.push(20000);
-  }
-  // Si le total est supérieur à 10000
-  else {
-    amounts.push(roundTo(total, 1000));
-    amounts.push(roundTo(total, 5000));
-    amounts.push(roundTo(total, 10000));
-    amounts.push(50000);
-    amounts.push(100000);
+    if (!amounts.includes(roundUp(total, 100))) amounts.push(roundUp(total, 100));
+    if (!amounts.includes(roundUp(total, 500))) amounts.push(roundUp(total, 500));
+    amounts.push(1000, 2000, 5000, 10000);
+  } else if (total < 10000) {
+    if (!amounts.includes(roundUp(total, 500))) amounts.push(roundUp(total, 500));
+    if (!amounts.includes(roundUp(total, 1000))) amounts.push(roundUp(total, 1000));
+    amounts.push(10000, 15000, 20000, 50000);
+  } else if (total < 50000) {
+    // Pour 39 589 FCFA
+    if (!amounts.includes(40000)) amounts.push(40000);
+    if (!amounts.includes(45000)) amounts.push(45000);
+    if (!amounts.includes(50000)) amounts.push(50000);
+    amounts.push(60000, 70000, 100000);
+  } else {
+    if (!amounts.includes(roundUp(total, 5000))) amounts.push(roundUp(total, 5000));
+    if (!amounts.includes(roundUp(total, 10000))) amounts.push(roundUp(total, 10000));
+    amounts.push(100000, 150000, 200000);
   }
   
-  // Filtrer les doublons et garder seulement 7 montants
-  const uniqueAmounts = [...new Set(amounts)];
+  // Éliminer les doublons et trier
+  let uniqueAmounts = [...new Set(amounts)].sort((a, b) => a - b);
   
-  // S'assurer d'avoir au moins 7 options
-  const defaultAmounts = [500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
-  for (const amount of defaultAmounts) {
-    if (uniqueAmounts.length >= 7) break;
-    if (!uniqueAmounts.includes(amount)) {
-      uniqueAmounts.push(amount);
-    }
-  }
-  
+  // Garder seulement 7 montants
   return uniqueAmounts.slice(0, 7);
-}, [cartStats?.finalTotal]);
+}, [cartStats?.total]); // ICI: utiliser cartStats?.total au lieu de cartStats?.finalTotal
 
   // Catégories de produits
   const categories = useMemo(() => {
