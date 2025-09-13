@@ -69,48 +69,39 @@ const POSModule = ({ onNavigate }) => {
 
   const isDark = appSettings?.darkMode || false;
 
-  // Remplacer cartStats?.finalTotal par cartStats?.total
+// Remplacer la fonction quickAmounts
 const quickAmounts = useMemo(() => {
   if (!cartStats?.total || cartStats.total === 0) {
-    return [500, 1000, 2000, 5000, 10000, 20000, 50000];
+    return ['exact', 5000, 10000, 20000];
   }
   
   const total = cartStats.total;
-  const amounts = [];
-  
-  // TOUJOURS inclure le montant exact en premier
-  amounts.push(total);
+  const amounts = ['exact']; // Toujours commencer par "exact"
   
   // Fonction pour arrondir au supérieur
   const roundUp = (value, nearest) => Math.ceil(value / nearest) * nearest;
   
-  // Pour les montants élevés comme votre cas (39 589)
   if (total < 1000) {
-    if (!amounts.includes(roundUp(total, 100))) amounts.push(roundUp(total, 100));
-    if (!amounts.includes(roundUp(total, 500))) amounts.push(roundUp(total, 500));
-    amounts.push(1000, 2000, 5000, 10000);
+    amounts.push(1000, 2000, 5000);
   } else if (total < 10000) {
-    if (!amounts.includes(roundUp(total, 500))) amounts.push(roundUp(total, 500));
-    if (!amounts.includes(roundUp(total, 1000))) amounts.push(roundUp(total, 1000));
-    amounts.push(10000, 15000, 20000, 50000);
+    amounts.push(roundUp(total, 1000), 10000, 20000);
   } else if (total < 50000) {
-    // Pour 39 589 FCFA
-    if (!amounts.includes(40000)) amounts.push(40000);
-    if (!amounts.includes(45000)) amounts.push(45000);
-    if (!amounts.includes(50000)) amounts.push(50000);
-    amounts.push(60000, 70000, 100000);
+    // Pour 39 589 FCFA -> suggérer 40000, 50000, 100000
+    amounts.push(40000, 50000, 100000);
   } else {
-    if (!amounts.includes(roundUp(total, 5000))) amounts.push(roundUp(total, 5000));
-    if (!amounts.includes(roundUp(total, 10000))) amounts.push(roundUp(total, 10000));
-    amounts.push(100000, 150000, 200000);
+    amounts.push(roundUp(total, 10000), 100000, 200000);
   }
   
-  // Éliminer les doublons et trier
-  let uniqueAmounts = [...new Set(amounts)].sort((a, b) => a - b);
+  // Éliminer les doublons sauf "exact" et garder seulement 4 au total
+  const uniqueAmounts = ['exact'];
+  for (let i = 1; i < amounts.length && uniqueAmounts.length < 4; i++) {
+    if (amounts[i] !== total && !uniqueAmounts.includes(amounts[i])) {
+      uniqueAmounts.push(amounts[i]);
+    }
+  }
   
-  // Garder seulement 7 montants
   return uniqueAmounts.slice(0, 4);
-}, [cartStats?.total]); // ICI: utiliser cartStats?.total au lieu de cartStats?.finalTotal
+}, [cartStats?.total]);
 
   // Catégories de produits
   const categories = useMemo(() => {
@@ -913,93 +904,70 @@ const quickAmounts = useMemo(() => {
                 </label>
                 
                 {/* Montants rapides intelligents avec mise en évidence du montant exact */}
-                <div style={{
-                  display: 'flex',
-                  gap: '8px',
-                  flexWrap: 'wrap',
-                  marginBottom: '12px'
-                }}>
-                  {quickAmounts.map((amount, index) => {
-                    const isExactAmount = index === 0 && amount === cartStats.total;
-                    return (
-                      <button
-                        key={`${amount}-${index}`}
-                        onClick={() => setPaymentAmount(amount.toString())}
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '6px',
-                          border: isExactAmount 
-                            ? '2px solid #10b981'
-                            : `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                          background: paymentAmount === amount.toString() 
-                            ? '#3b82f6' 
-                            : isExactAmount
-                              ? isDark ? '#065f46' : '#d1fae5'
-                              : isDark ? '#374151' : 'white',
-                          color: paymentAmount === amount.toString() 
-                            ? 'white' 
-                            : isExactAmount
-                              ? '#10b981'
-                              : isDark ? '#e5e7eb' : '#64748b',
-                          cursor: 'pointer',
-                          fontSize: '14px',
-                          fontWeight: isExactAmount ? '700' : '400',
-                          transition: 'all 0.2s',
-                          position: 'relative',
-                          transform: isExactAmount ? 'scale(1.05)' : 'scale(1)'
-                        }}
-                        onMouseEnter={(e) => {
-                          if (!isExactAmount) {
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
-                          }
-                        }}
-                        onMouseLeave={(e) => {
-                          if (!isExactAmount) {
-                            e.currentTarget.style.transform = 'scale(1)';
-                            e.currentTarget.style.boxShadow = 'none';
-                          }
-                        }}
-                      >
-                        {formatCurrency(amount)}
-                        {isExactAmount && (
-                          <span style={{
-                            position: 'absolute',
-                            top: '-8px',
-                            right: '-8px',
-                            background: '#10b981',
-                            color: 'white',
-                            borderRadius: '50%',
-                            width: '20px',
-                            height: '20px',
-                            fontSize: '12px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
-                          }}>
-                            ✓
-                          </span>
-                        )}
-                        {isExactAmount && (
-                          <span style={{
-                            position: 'absolute',
-                            bottom: '-20px',
-                            left: '50%',
-                            transform: 'translateX(-50%)',
-                            fontSize: '10px',
-                            color: '#10b981',
-                            fontWeight: '600',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            EXACT
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
+               {/* Montants rapides - 4 boutons sur une ligne */}
+<div style={{
+  display: 'flex',
+  gap: '8px',
+  marginBottom: '12px'
+}}>
+  {quickAmounts.map((amount, index) => {
+    const isExact = amount === 'exact';
+    return (
+      <button
+        key={`${amount}-${index}`}
+        onClick={() => setPaymentAmount(isExact ? cartStats.total.toString() : amount.toString())}
+        style={{
+          flex: 1, // Pour que les 4 boutons prennent la même largeur
+          padding: '10px 8px',
+          borderRadius: '6px',
+          border: isExact 
+            ? '2px solid #10b981'
+            : `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          background: paymentAmount === (isExact ? cartStats.total.toString() : amount.toString())
+            ? '#3b82f6' 
+            : isExact
+              ? isDark ? '#065f46' : '#d1fae5'
+              : isDark ? '#374151' : 'white',
+          color: paymentAmount === (isExact ? cartStats.total.toString() : amount.toString())
+            ? 'white' 
+            : isExact
+              ? '#10b981'
+              : isDark ? '#e5e7eb' : '#64748b',
+          cursor: 'pointer',
+          fontSize: '14px',
+          fontWeight: isExact ? '700' : '400',
+          transition: 'all 0.2s',
+          position: 'relative'
+        }}
+      >
+        {isExact ? (
+          <>
+            <span>Exact</span>
+            <span style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              background: '#10b981',
+              color: 'white',
+              borderRadius: '50%',
+              width: '18px',
+              height: '18px',
+              fontSize: '11px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold'
+            }}>
+              ✓
+            </span>
+          </>
+        ) : (
+          formatCurrency(amount)
+        )}
+      </button>
+    );
+  })}
+</div>
                 
                 <input
                   type="number"
