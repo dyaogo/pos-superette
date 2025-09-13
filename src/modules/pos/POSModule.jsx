@@ -851,7 +851,7 @@ const POSModule = ({ onNavigate }) => {
               </div>
             </div>
 
-            {/* Montant reçu pour espèces */}
+            {/* Montant reçu pour espèces avec pavé numérique */}
             {paymentMethod === 'cash' && (
               <div style={{ marginBottom: '20px' }}>
                 <label style={{
@@ -862,16 +862,31 @@ const POSModule = ({ onNavigate }) => {
                   color: isDark ? '#e5e7eb' : '#374151'
                 }}>
                   Montant reçu
+                  <button
+                    onClick={() => setUseNumpad(!useNumpad)}
+                    style={{
+                      marginLeft: '12px',
+                      padding: '4px 8px',
+                      fontSize: '12px',
+                      background: useNumpad ? '#3b82f6' : 'transparent',
+                      color: useNumpad ? 'white' : isDark ? '#9ca3af' : '#6b7280',
+                      border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`,
+                      borderRadius: '4px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    {useNumpad ? '🔢 Pavé actif' : '⌨️ Clavier'}
+                  </button>
                 </label>
                 
-                {/* Montants rapides */}
+                {/* Montants rapides intelligents */}
                 <div style={{
                   display: 'flex',
                   gap: '8px',
                   flexWrap: 'wrap',
                   marginBottom: '12px'
                 }}>
-                  {quickAmounts.map(amount => (
+                  {quickAmounts.map((amount, index) => (
                     <button
                       key={amount}
                       onClick={() => setPaymentAmount(amount.toString())}
@@ -881,17 +896,40 @@ const POSModule = ({ onNavigate }) => {
                         border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
                         background: paymentAmount === amount.toString() 
                           ? '#3b82f6' 
-                          : isDark ? '#374151' : 'white',
+                          : amount === cartStats.total
+                            ? isDark ? '#065f46' : '#d1fae5'
+                            : isDark ? '#374151' : 'white',
                         color: paymentAmount === amount.toString() 
                           ? 'white' 
-                          : isDark ? '#e5e7eb' : '#64748b',
+                          : amount === cartStats.total
+                            ? '#10b981'
+                            : isDark ? '#e5e7eb' : '#64748b',
                         cursor: 'pointer',
                         fontSize: '14px',
-                        fontWeight: paymentAmount === amount.toString() ? '600' : '400',
-                        transition: 'all 0.2s'
+                        fontWeight: amount === cartStats.total ? '600' : '400',
+                        transition: 'all 0.2s',
+                        position: 'relative'
                       }}
                     >
                       {formatCurrency(amount)}
+                      {amount === cartStats.total && (
+                        <span style={{
+                          position: 'absolute',
+                          top: '-6px',
+                          right: '-6px',
+                          background: '#10b981',
+                          color: 'white',
+                          borderRadius: '50%',
+                          width: '16px',
+                          height: '16px',
+                          fontSize: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          ✓
+                        </span>
+                      )}
                     </button>
                   ))}
                 </div>
@@ -901,13 +939,86 @@ const POSModule = ({ onNavigate }) => {
                   placeholder="Ou entrez le montant..."
                   value={paymentAmount}
                   onChange={(e) => setPaymentAmount(e.target.value)}
+                  readOnly={useNumpad}
                   style={{
                     ...styles.input,
                     fontSize: '18px',
                     padding: '12px',
-                    fontWeight: '600'
+                    fontWeight: '600',
+                    cursor: useNumpad ? 'not-allowed' : 'text'
                   }}
                 />
+                
+                {/* Pavé numérique */}
+                {useNumpad && (
+                  <div style={{
+                    marginTop: '12px',
+                    padding: '12px',
+                    background: isDark ? '#2d3748' : '#f9fafb',
+                    borderRadius: '8px',
+                    border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`
+                  }}>
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, 1fr)',
+                      gap: '8px'
+                    }}>
+                      {['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '00', 'C'].map(key => (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            if (key === 'C') {
+                              setPaymentAmount('');
+                            } else {
+                              setPaymentAmount(prev => prev + key);
+                            }
+                          }}
+                          style={{
+                            padding: '12px',
+                            fontSize: '16px',
+                            fontWeight: '600',
+                            background: key === 'C' 
+                              ? '#ef4444' 
+                              : isDark ? '#374151' : 'white',
+                            color: key === 'C' 
+                              ? 'white' 
+                              : isDark ? '#f7fafc' : '#1a202c',
+                            border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`,
+                            borderRadius: '6px',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'scale(1)';
+                          }}
+                        >
+                          {key === 'C' ? '🗑️' : key}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    {/* Bouton effacer dernier caractère */}
+                    <button
+                      onClick={() => setPaymentAmount(prev => prev.slice(0, -1))}
+                      style={{
+                        width: '100%',
+                        marginTop: '8px',
+                        padding: '10px',
+                        background: isDark ? '#4a5568' : '#e5e7eb',
+                        color: isDark ? '#f7fafc' : '#374151',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      ⌫ Effacer dernier chiffre
+                    </button>
+                  </div>
+                )}
                 
                 {/* Monnaie à rendre */}
                 {paymentAmount && parseFloat(paymentAmount) >= cartStats.total && (
