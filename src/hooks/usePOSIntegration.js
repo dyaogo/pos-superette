@@ -223,6 +223,15 @@ export const usePOSIntegration = () => {
         changeAmount: paymentData.method === 'cash' 
           ? Math.max(0, (paymentData.amountReceived || 0) - cartStats.total)
           : 0
+
+              // CORRECTION : Lier à la session de caisse
+        cashSessionId: cashSession?.id,
+        cashSession: cashSession?.id, // Pour compatibilité
+        
+        // Dates cohérentes
+        createdAt: new Date().toISOString(),
+        date: new Date().toISOString()
+      
       };
       
       // Traitement via le store (nouveau système)
