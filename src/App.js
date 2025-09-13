@@ -14,7 +14,7 @@ import EmployeesModule from './modules/employees/EmployeesModule';
 import ReturnsModule from './modules/returns/ReturnsModule';
 import { MobileNavigation, useResponsive } from './components/ResponsiveComponents';
 import StoreSelector from './components/StoreSelector';
-import TestPOSModule from './modules/pos/TestPOSModule';
+//import TestPOSModule from './modules/pos/TestPOSModule';
 import {
   ShoppingCart,
   Package,
@@ -76,7 +76,7 @@ function App() {
       'credits',
       'employees',
       'returns',
-      'test-pos'  // ✅ AJOUTÉ
+     // 'test-pos'  // ✅ AJOUTÉ
     ],
     cashier: ['dashboard', 'pos', 'sales-history', 'cash', 'customers', 'returns']
   };
@@ -110,8 +110,8 @@ function App() {
         return <EmployeesModule />;
       case 'returns':
         return <ReturnsModule />;
-      case 'test-pos':
-        return <TestPOSModule />;
+      //case 'test-pos':
+       // return <TestPOSModule />;
       default:
         return <DashboardModule onNavigate={setActiveModule} />;
         
