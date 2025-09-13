@@ -19,7 +19,7 @@ import { useApp } from '../../contexts/AppContext';
  * Peut coexister avec l'ancien POSModule pendant la phase de test
  */
 const TestPOSModule = () => {
-  const { globalProducts, customers, appSettings } = useApp();
+  const { globalProducts, customers, appSettings, salesHistory } = useApp();
   const {
     // État
     cart,
@@ -58,14 +58,26 @@ const TestPOSModule = () => {
   const isDark = appSettings?.darkMode || false;
 
   // CORRECTION: Calcul du montant attendu avec opérations de caisse
-  const expectedAmount = useMemo(() => {
-    if (!cashSession || !sessionStats) return 0;
-    
-    return (cashSession.initialAmount || 0) + 
-           (sessionStats.cashSales || 0) + 
-           (sessionStats.cashOperationsTotal || 0);
-  }, [cashSession, sessionStats]);
-
+  // Et remplacez le calcul expectedAmount par :
+const expectedAmount = useMemo(() => {
+  if (!cashSession) return 0;
+  
+  // Ventes de la session depuis AppContext (source de vérité)
+  const sessionSales = (salesHistory || []).filter(sale => {
+    const saleDate = new Date(sale.createdAt || sale.date);
+    const sessionDate = new Date(cashSession.openedAt);
+    return saleDate >= sessionDate;
+  });
+  
+  const cashSales = sessionSales
+    .filter(s => s && s.paymentMethod === 'cash' && s.total > 0)
+    .reduce((sum, s) => sum + s.total, 0);
+  
+  return (cashSession.initialAmount || 0) + 
+         cashSales + 
+         (sessionStats?.cashOperationsTotal || 0);
+}, [cashSession, salesHistory, sessionStats?.cashOperationsTotal]);
+  
   // Produits filtrés pour la recherche
   const filteredProducts = useMemo(() => {
     if (!searchQuery.trim()) return (globalProducts || []).slice(0, 20);
