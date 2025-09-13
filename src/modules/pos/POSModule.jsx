@@ -109,7 +109,7 @@ const quickAmounts = useMemo(() => {
   let uniqueAmounts = [...new Set(amounts)].sort((a, b) => a - b);
   
   // Garder seulement 7 montants
-  return uniqueAmounts.slice(0, 7);
+  return uniqueAmounts.slice(0, 4);
 }, [cartStats?.total]); // ICI: utiliser cartStats?.total au lieu de cartStats?.finalTotal
 
   // Catégories de produits
