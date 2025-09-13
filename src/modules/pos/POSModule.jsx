@@ -65,6 +65,7 @@ const POSModule = ({ onNavigate }) => {
   const [showClosingPanel, setShowClosingPanel] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [useNumpad, setUseNumpad] = useState(false);
 
   const isDark = appSettings?.darkMode || false;
 
