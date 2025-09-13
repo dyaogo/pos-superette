@@ -65,7 +65,6 @@ const POSModule = ({ onNavigate }) => {
   const [showClosingPanel, setShowClosingPanel] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
-  const [useNumpad, setUseNumpad] = useState(false);
 
   const isDark = appSettings?.darkMode || false;
 
@@ -880,59 +879,93 @@ const POSModule = ({ onNavigate }) => {
                   </button>
                 </label>
                 
-                {/* Montants rapides intelligents */}
+                {/* Montants rapides intelligents avec mise en évidence du montant exact */}
                 <div style={{
                   display: 'flex',
                   gap: '8px',
                   flexWrap: 'wrap',
                   marginBottom: '12px'
                 }}>
-                  {quickAmounts.map((amount, index) => (
-                    <button
-                      key={amount}
-                      onClick={() => setPaymentAmount(amount.toString())}
-                      style={{
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                        background: paymentAmount === amount.toString() 
-                          ? '#3b82f6' 
-                          : amount === cartStats.total
-                            ? isDark ? '#065f46' : '#d1fae5'
-                            : isDark ? '#374151' : 'white',
-                        color: paymentAmount === amount.toString() 
-                          ? 'white' 
-                          : amount === cartStats.total
-                            ? '#10b981'
-                            : isDark ? '#e5e7eb' : '#64748b',
-                        cursor: 'pointer',
-                        fontSize: '14px',
-                        fontWeight: amount === cartStats.total ? '600' : '400',
-                        transition: 'all 0.2s',
-                        position: 'relative'
-                      }}
-                    >
-                      {formatCurrency(amount)}
-                      {amount === cartStats.total && (
-                        <span style={{
-                          position: 'absolute',
-                          top: '-6px',
-                          right: '-6px',
-                          background: '#10b981',
-                          color: 'white',
-                          borderRadius: '50%',
-                          width: '16px',
-                          height: '16px',
-                          fontSize: '10px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          ✓
-                        </span>
-                      )}
-                    </button>
-                  ))}
+                  {quickAmounts.map((amount, index) => {
+                    const isExactAmount = index === 0 && amount === cartStats.total;
+                    return (
+                      <button
+                        key={`${amount}-${index}`}
+                        onClick={() => setPaymentAmount(amount.toString())}
+                        style={{
+                          padding: '8px 16px',
+                          borderRadius: '6px',
+                          border: isExactAmount 
+                            ? '2px solid #10b981'
+                            : `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                          background: paymentAmount === amount.toString() 
+                            ? '#3b82f6' 
+                            : isExactAmount
+                              ? isDark ? '#065f46' : '#d1fae5'
+                              : isDark ? '#374151' : 'white',
+                          color: paymentAmount === amount.toString() 
+                            ? 'white' 
+                            : isExactAmount
+                              ? '#10b981'
+                              : isDark ? '#e5e7eb' : '#64748b',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: isExactAmount ? '700' : '400',
+                          transition: 'all 0.2s',
+                          position: 'relative',
+                          transform: isExactAmount ? 'scale(1.05)' : 'scale(1)'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isExactAmount) {
+                            e.currentTarget.style.transform = 'scale(1.05)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isExactAmount) {
+                            e.currentTarget.style.transform = 'scale(1)';
+                            e.currentTarget.style.boxShadow = 'none';
+                          }
+                        }}
+                      >
+                        {formatCurrency(amount)}
+                        {isExactAmount && (
+                          <span style={{
+                            position: 'absolute',
+                            top: '-8px',
+                            right: '-8px',
+                            background: '#10b981',
+                            color: 'white',
+                            borderRadius: '50%',
+                            width: '20px',
+                            height: '20px',
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 'bold',
+                            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                          }}>
+                            ✓
+                          </span>
+                        )}
+                        {isExactAmount && (
+                          <span style={{
+                            position: 'absolute',
+                            bottom: '-20px',
+                            left: '50%',
+                            transform: 'translateX(-50%)',
+                            fontSize: '10px',
+                            color: '#10b981',
+                            fontWeight: '600',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            EXACT
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
                 
                 <input
