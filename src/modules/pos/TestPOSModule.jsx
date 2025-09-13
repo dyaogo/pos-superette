@@ -53,8 +53,18 @@ const TestPOSModule = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [openingAmount, setOpeningAmount] = useState('25000');
   const [closingAmount, setClosingAmount] = useState('');
+  const [showClosingPanel, setShowClosingPanel] = useState(false); // AJOUT: État pour panneau repliable
 
   const isDark = appSettings?.darkMode || false;
+
+  // CORRECTION: Calcul du montant attendu avec opérations de caisse
+  const expectedAmount = useMemo(() => {
+    if (!cashSession || !sessionStats) return 0;
+    
+    return (cashSession.initialAmount || 0) + 
+           (sessionStats.cashSales || 0) + 
+           (sessionStats.cashOperationsTotal || 0);
+  }, [cashSession, sessionStats]);
 
   // Produits filtrés pour la recherche
   const filteredProducts = useMemo(() => {
@@ -188,143 +198,191 @@ const TestPOSModule = () => {
               </button>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', alignItems: 'flex-start' }}>
-              {/* Informations de session */}
-              <div style={{
-                background: isDark ? '#374151' : '#f8fafc',
-                padding: '16px',
-                borderRadius: '8px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                minWidth: '300px'
-              }}>
-                <h4 style={{
-                  margin: '0 0 12px 0',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  color: isDark ? '#f7fafc' : '#1a202c'
+            // MODIFICATION: Interface repliable pour la fermeture
+            <div>
+              {!showClosingPanel ? (
+                // Bouton simple
+                <button
+                  onClick={() => setShowClosingPanel(true)}
+                  style={{
+                    ...baseStyles.button.primary,
+                    background: '#ef4444'
+                  }}
+                >
+                  🔒 Fermer Caisse
+                </button>
+              ) : (
+                // Panneau détaillé repliable
+                <div style={{ 
+                  background: isDark ? '#374151' : '#f8fafc',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                  position: 'relative'
                 }}>
-                  📊 Résumé de session
-                </h4>
-                
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: '1fr 1fr',
-                  gap: '8px',
-                  fontSize: '12px'
-                }}>
-                  <div>
-                    <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ouverture:</span>
-                    <div style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#1a202c' }}>
-                      {formatCurrency(cashSession?.initialAmount || 0)}
-                    </div>
-                  </div>
+                  {/* Bouton pour refermer */}
+                  <button 
+                    onClick={() => setShowClosingPanel(false)}
+                    style={{ 
+                      position: 'absolute',
+                      top: '8px',
+                      right: '8px',
+                      background: 'none', 
+                      border: 'none', 
+                      cursor: 'pointer',
+                      fontSize: '18px',
+                      color: isDark ? '#a0aec0' : '#64748b'
+                    }}
+                  >
+                    ✕
+                  </button>
                   
-                  <div>
-                    <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes espèces:</span>
-                    <div style={{ fontWeight: '600', color: '#10b981' }}>
-                      {formatCurrency(sessionStats?.cashSales || 0)}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes mobiles:</span>
-                    <div style={{ fontWeight: '600', color: '#3b82f6' }}>
-                      {formatCurrency(sessionStats?.cardSales || 0)}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Crédits:</span>
-                    <div style={{ fontWeight: '600', color: '#f59e0b' }}>
-                      {formatCurrency(sessionStats?.creditSales || 0)}
-                    </div>
-                  </div>
-                </div>
-                
-                <div style={{
-                  marginTop: '12px',
-                  paddingTop: '12px',
-                  borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
-                }}>
-                  <span style={{
+                  {/* Résumé de session */}
+                  <h4 style={{
+                    margin: '0 0 12px 0',
                     fontSize: '14px',
                     fontWeight: '600',
                     color: isDark ? '#f7fafc' : '#1a202c'
                   }}>
-                    💰 Montant attendu:
-                  </span>
-                  <span style={{
-                    fontSize: '16px',
-                    fontWeight: '700',
-                    color: '#10b981'
-                  }}>
-                    {formatCurrency((cashSession?.initialAmount || 0) + (sessionStats?.cashSales || 0))}
-                  </span>
-                </div>
-              </div>
-              
-              {/* Champs de fermeture */}
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'end', flexWrap: 'wrap' }}>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    color: isDark ? '#f7fafc' : '#1a202c',
-                    marginBottom: '4px'
-                  }}>
-                    Montant réel en caisse
-                  </label>
-                  <input
-                    type="number"
-                    placeholder={`Attendu: ${formatCurrency((cashSession?.initialAmount || 0) + (sessionStats?.cashSales || 0))}`}
-                    value={closingAmount}
-                    onChange={(e) => setClosingAmount(e.target.value)}
-                    style={{
-                      padding: '12px',
-                      border: `2px solid ${
-                        closingAmount && Math.abs(parseFloat(closingAmount) - ((cashSession?.initialAmount || 0) + (sessionStats?.cashSales || 0))) > 100
-                          ? '#ef4444' // Rouge si écart important
-                          : isDark ? '#4a5568' : '#d1d5db'
-                      }`,
-                      borderRadius: '8px',
-                      background: isDark ? '#374151' : 'white',
-                      color: isDark ? '#f7fafc' : '#374151',
-                      width: '180px',
-                      fontSize: '14px'
-                    }}
-                  />
+                    📊 Résumé de session
+                  </h4>
                   
-                  {/* Indicateur d'écart */}
-                  {closingAmount && (
-                    <div style={{
-                      marginTop: '4px',
-                      fontSize: '12px',
-                      color: Math.abs(parseFloat(closingAmount) - ((cashSession?.initialAmount || 0) + (sessionStats?.cashSales || 0))) > 100 
-                        ? '#ef4444' 
-                        : '#10b981'
-                    }}>
-                      Écart: {formatCurrency(parseFloat(closingAmount) - ((cashSession?.initialAmount || 0) + (sessionStats?.cashSales || 0)))}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '8px',
+                    fontSize: '12px',
+                    marginBottom: '12px'
+                  }}>
+                    <div>
+                      <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ouverture:</span>
+                      <div style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#1a202c' }}>
+                        {formatCurrency(cashSession?.initialAmount || 0)}
+                      </div>
                     </div>
-                  )}
+                    
+                    <div>
+                      <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes espèces:</span>
+                      <div style={{ fontWeight: '600', color: '#10b981' }}>
+                        {formatCurrency(sessionStats?.cashSales || 0)}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes mobiles:</span>
+                      <div style={{ fontWeight: '600', color: '#3b82f6' }}>
+                        {formatCurrency(sessionStats?.mobileSales || 0)}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Crédits:</span>
+                      <div style={{ fontWeight: '600', color: '#f59e0b' }}>
+                        {formatCurrency(sessionStats?.creditSales || 0)}
+                      </div>
+                    </div>
+                    
+                    {/* AJOUT: Affichage des opérations de caisse */}
+                    <div>
+                      <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Opérations caisse:</span>
+                      <div style={{ 
+                        fontWeight: '600', 
+                        color: (sessionStats?.cashOperationsTotal || 0) >= 0 ? '#10b981' : '#ef4444'
+                      }}>
+                        {formatCurrency(sessionStats?.cashOperationsTotal || 0)}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div style={{
+                    paddingTop: '12px',
+                    borderTop: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    marginBottom: '16px'
+                  }}>
+                    <span style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: isDark ? '#f7fafc' : '#1a202c'
+                    }}>
+                      💰 Montant attendu:
+                    </span>
+                    <span style={{
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      color: '#10b981'
+                    }}>
+                      {formatCurrency(expectedAmount)}
+                    </span>
+                  </div>
+                  
+                  {/* Champs de fermeture */}
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'end', flexWrap: 'wrap' }}>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '12px',
+                        fontWeight: '500',
+                        color: isDark ? '#f7fafc' : '#1a202c',
+                        marginBottom: '4px'
+                      }}>
+                        Montant réel en caisse
+                      </label>
+                      <input
+                        type="number"
+                        placeholder={`Attendu: ${formatCurrency(expectedAmount)}`}
+                        value={closingAmount}
+                        onChange={(e) => setClosingAmount(e.target.value)}
+                        style={{
+                          padding: '12px',
+                          border: `2px solid ${
+                            closingAmount && Math.abs(parseFloat(closingAmount) - expectedAmount) > 100
+                              ? '#ef4444' // Rouge si écart important
+                              : isDark ? '#4a5568' : '#d1d5db'
+                          }`,
+                          borderRadius: '8px',
+                          background: isDark ? '#374151' : 'white',
+                          color: isDark ? '#f7fafc' : '#374151',
+                          width: '180px',
+                          fontSize: '14px'
+                        }}
+                      />
+                      
+                      {/* Indicateur d'écart */}
+                      {closingAmount && (
+                        <div style={{
+                          marginTop: '4px',
+                          fontSize: '12px',
+                          color: Math.abs(parseFloat(closingAmount) - expectedAmount) > 100 
+                            ? '#ef4444' 
+                            : '#10b981'
+                        }}>
+                          Écart: {formatCurrency(parseFloat(closingAmount) - expectedAmount)}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button
+                      onClick={() => {
+                        handleCloseCashSession(parseFloat(closingAmount));
+                        setShowClosingPanel(false);
+                        setClosingAmount('');
+                      }}
+                      style={{
+                        ...baseStyles.button.primary,
+                        background: '#ef4444',
+                        opacity: closingAmount ? 1 : 0.5,
+                        cursor: closingAmount ? 'pointer' : 'not-allowed'
+                      }}
+                      disabled={!closingAmount}
+                    >
+                      🔒 Confirmer Fermeture
+                    </button>
+                  </div>
                 </div>
-                
-                <button
-                  onClick={() => handleCloseCashSession(parseFloat(closingAmount))}
-                  style={{
-                    ...baseStyles.button.primary,
-                    background: '#ef4444',
-                    opacity: closingAmount ? 1 : 0.5,
-                    cursor: closingAmount ? 'pointer' : 'not-allowed'
-                  }}
-                  disabled={!closingAmount}
-                >
-                  🔒 Fermer Caisse
-                </button>
-              </div>
+              )}
             </div>
           )}
         </div>
@@ -636,7 +694,6 @@ const TestPOSModule = () => {
         </div>
       </div>
 
-      {/* Modal de paiement */}
       {/* Modal de paiement intelligente */}
       {showPaymentModal && (
         <PaymentModal
@@ -689,6 +746,12 @@ const TestPOSModule = () => {
           </div>
           <div>
             <strong>Produits disponibles:</strong> {globalProducts?.length || 0}
+          </div>
+          <div>
+            <strong>Montant attendu:</strong> {formatCurrency(expectedAmount)}
+          </div>
+          <div>
+            <strong>Opérations caisse:</strong> {formatCurrency(sessionStats?.cashOperationsTotal || 0)}
           </div>
         </div>
       </div>
@@ -782,7 +845,7 @@ const PaymentModal = ({
       }}>
         <h2 style={{
           fontSize: '24px',
-          fontWeight: '700',
+      fontWeight: '700',
           color: isDark ? '#f7fafc' : '#1a202c',
           marginBottom: '24px',
           textAlign: 'center'
@@ -833,7 +896,7 @@ const PaymentModal = ({
           }}>
             {[
               { method: 'cash', icon: '💵', label: 'Espèces' },
-              { method: 'card', icon: '📱', label: 'Mobile' },    // 💡 MODIFIÉ : 💳 → 📱, 'Carte' → 'Mobile'
+              { method: 'card', icon: '📱', label: 'Mobile' },
               { method: 'credit', icon: '📋', label: 'Crédit' }
             ].map(({ method, icon, label }) => (
               <button
@@ -1071,4 +1134,5 @@ const PaymentModal = ({
     </div>
   );
 };
+
 export default TestPOSModule;
