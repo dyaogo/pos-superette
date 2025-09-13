@@ -309,9 +309,25 @@ export const usePOSIntegration = () => {
   // ==================== UTILITAIRES ====================
   
   const formatCurrency = useCallback((amount, currency) => {
-    const curr = currency || appSettings?.currency || 'FCFA';
-    return `${amount.toLocaleString()} ${curr}`;
-  }, [appSettings]);
+  const curr = currency || appSettings?.currency || 'FCFA';
+  
+  // Validation et conversion sécurisée
+  let value = 0;
+  if (amount !== undefined && amount !== null) {
+    value = typeof amount === 'number' ? amount : parseFloat(amount);
+    if (isNaN(value)) {
+      value = 0;
+    }
+  }
+  
+  // Formater avec gestion d'erreur
+  try {
+    return `${value.toLocaleString('fr-FR')} ${curr}`;
+  } catch (error) {
+    console.warn('Erreur formatage monnaie:', error);
+    return `${value} ${curr}`;
+  }
+}, [appSettings]);
   
   const formatReceiptNumber = useCallback((saleId) => {
     return `REC${saleId.toString().slice(-6)}`;
