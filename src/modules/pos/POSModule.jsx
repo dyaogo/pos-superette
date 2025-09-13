@@ -69,8 +69,61 @@ const POSModule = ({ onNavigate }) => {
 
   const isDark = appSettings?.darkMode || false;
 
-  // Montants rapides pour paiement
-  const quickAmounts = [500, 1000, 2000, 5000, 10000, 20000, 50000];
+  // Remplacer la fonction de calcul des montants rapides
+const quickAmounts = useMemo(() => {
+  if (!cartStats?.finalTotal || cartStats.finalTotal === 0) {
+    return [500, 1000, 2000, 5000, 10000, 20000, 50000];
+  }
+  
+  const total = cartStats.finalTotal;
+  const amounts = [];
+  
+  // TOUJOURS inclure le montant exact en premier
+  amounts.push(total);
+  
+  // Calculer les montants arrondis supérieurs intelligents
+  // comme dans votre ancien module
+  const roundTo = (value, nearest) => Math.ceil(value / nearest) * nearest;
+  
+  // Si le total est inférieur à 1000, proposer des arrondis à 100
+  if (total < 1000) {
+    amounts.push(roundTo(total, 100));
+    amounts.push(roundTo(total, 500));
+    amounts.push(1000);
+    amounts.push(2000);
+    amounts.push(5000);
+  }
+  // Si le total est entre 1000 et 10000
+  else if (total < 10000) {
+    amounts.push(roundTo(total, 500));
+    amounts.push(roundTo(total, 1000));
+    amounts.push(roundTo(total, 5000));
+    amounts.push(10000);
+    amounts.push(20000);
+  }
+  // Si le total est supérieur à 10000
+  else {
+    amounts.push(roundTo(total, 1000));
+    amounts.push(roundTo(total, 5000));
+    amounts.push(roundTo(total, 10000));
+    amounts.push(50000);
+    amounts.push(100000);
+  }
+  
+  // Filtrer les doublons et garder seulement 7 montants
+  const uniqueAmounts = [...new Set(amounts)];
+  
+  // S'assurer d'avoir au moins 7 options
+  const defaultAmounts = [500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
+  for (const amount of defaultAmounts) {
+    if (uniqueAmounts.length >= 7) break;
+    if (!uniqueAmounts.includes(amount)) {
+      uniqueAmounts.push(amount);
+    }
+  }
+  
+  return uniqueAmounts.slice(0, 7);
+}, [cartStats?.finalTotal]);
 
   // Catégories de produits
   const categories = useMemo(() => {
@@ -197,29 +250,21 @@ const POSModule = ({ onNavigate }) => {
   }, [canProcessSale, cart, clearCart, updateCartItemQuantity, showShortcutsHelp]);
 
   // ==================== GESTIONNAIRES ====================
-  const handlePayment = async () => {
-    const paymentData = {
-      method: paymentMethod,
-      amountReceived: paymentAmount ? parseFloat(paymentAmount) : cartStats.total
-    };
-    
-    const result = await handleProcessSale(paymentData);
-    
-    if (result.success) {
-      setPaymentAmount('');
-      setShowPaymentModal(false);
-      
-      // Navigation vers historique si défini
-      if (onNavigate) {
-        setTimeout(() => {
-          if (window.confirm('Voir le ticket dans l\'historique ?')) {
-            onNavigate('sales-history');
-          }
-        }, 1000);
-      }
-    }
+ const handlePayment = async () => {
+  const paymentData = {
+    method: paymentMethod,
+    amountReceived: paymentAmount ? parseFloat(paymentAmount) : cartStats.total
   };
-
+  
+  const result = await handleProcessSale(paymentData);
+  
+  if (result.success) {
+    setPaymentAmount('');
+    setShowPaymentModal(false);
+    // Juste un toast de succès, pas de popup
+    toast.success('✅ Vente enregistrée avec succès !');
+  }
+};
   const handleCloseSession = async () => {
     if (!closingAmount) {
       toast.error('Veuillez entrer le montant en caisse');
