@@ -30,6 +30,7 @@ const TestPOSModule = () => {
     paymentMethod,
     showPaymentModal,
     cashSession,
+    sessionStats,
     
     // Actions
     handleAddToCart,
