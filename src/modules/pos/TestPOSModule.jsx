@@ -77,6 +77,34 @@ const expectedAmount = useMemo(() => {
          cashSales + 
          (sessionStats?.cashOperationsTotal || 0);
 }, [cashSession, salesHistory, sessionStats?.cashOperationsTotal]);
+
+// Ajoutez ce calcul détaillé juste après le calcul de expectedAmount :
+const sessionDetails = useMemo(() => {
+  if (!cashSession || !salesHistory) return {
+    cashSales: 0,
+    mobileSales: 0,
+    creditSales: 0,
+    cashOperationsTotal: sessionStats?.cashOperationsTotal || 0
+  };
+  
+  // Ventes de la session depuis AppContext
+  const sessionSales = salesHistory.filter(sale => {
+    const saleDate = new Date(sale.createdAt || sale.date);
+    const sessionDate = new Date(cashSession.openedAt);
+    return saleDate >= sessionDate;
+  });
+  
+  const validSales = sessionSales.filter(s => 
+    s && s.paymentMethod && typeof s.paymentMethod === 'string' && s.total > 0
+  );
+  
+  return {
+    cashSales: validSales.filter(s => s.paymentMethod === 'cash').reduce((sum, s) => sum + s.total, 0),
+    mobileSales: validSales.filter(s => s.paymentMethod === 'card').reduce((sum, s) => sum + s.total, 0),
+    creditSales: validSales.filter(s => s.paymentMethod === 'credit').reduce((sum, s) => sum + s.total, 0),
+    cashOperationsTotal: sessionStats?.cashOperationsTotal || 0
+  };
+}, [cashSession, salesHistory, sessionStats?.cashOperationsTotal]);
   
   // Produits filtrés pour la recherche
   const filteredProducts = useMemo(() => {
@@ -276,21 +304,21 @@ const expectedAmount = useMemo(() => {
                     <div>
                       <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes espèces:</span>
                       <div style={{ fontWeight: '600', color: '#10b981' }}>
-                        {formatCurrency(sessionStats?.cashSales || 0)}
+                        {formatCurrency(sessionDetails.cashSales || 0)}
                       </div>
                     </div>
                     
                     <div>
                       <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes mobiles:</span>
                       <div style={{ fontWeight: '600', color: '#3b82f6' }}>
-                        {formatCurrency(sessionStats?.mobileSales || 0)}
+                        {formatCurrency(sessionDetails.mobileSales || 0)}
                       </div>
                     </div>
                     
                     <div>
                       <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Crédits:</span>
                       <div style={{ fontWeight: '600', color: '#f59e0b' }}>
-                        {formatCurrency(sessionStats?.creditSales || 0)}
+                        {formatCurrency(sessionDetails.creditSales || 0)}
                       </div>
                     </div>
                     
@@ -299,9 +327,9 @@ const expectedAmount = useMemo(() => {
                       <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Opérations caisse:</span>
                       <div style={{ 
                         fontWeight: '600', 
-                        color: (sessionStats?.cashOperationsTotal || 0) >= 0 ? '#10b981' : '#ef4444'
+                        color: (sessionDetails.cashOperationsTotal || 0) >= 0 ? '#10b981' : '#ef4444'
                       }}>
-                        {formatCurrency(sessionStats?.cashOperationsTotal || 0)}
+                        {formatCurrency(sessionDetails.cashOperationsTotal || 0)}
                       </div>
                     </div>
                   </div>
