@@ -163,72 +163,138 @@ const POSModule = ({ onNavigate }) => {
   }, [cart, handleAddToCart, isDark]);
 
   // CORRECTION: Calculer le résumé des ventes de la session en cours
-  const sessionSalesReport = useMemo(() => {
-    if (!cashSession?.id) {
-      return {
-        totalSales: 0,
-        cashSales: 0,
-        cardSales: 0,
-        mobileSales: 0,
-        creditSales: 0,
-        transactionCount: 0,
-        expectedCash: cashSession?.openingAmount || 0
-      };
-    }
+  // Remplacez la fonction sessionSalesReport par cette version corrigée :
+const sessionSalesReport = useMemo(() => {
+  console.log('=== DEBUG SESSION SALES REPORT ===');
+  console.log('cashSession:', cashSession);
+  console.log('salesHistory:', salesHistory);
 
-    // Filtrer les ventes avec plusieurs critères
-    const sessionSales = salesHistory.filter(sale => {
-      const matchesSession = sale.sessionId === cashSession.id;
-      const matchesDate = cashSession.openedAt && sale.timestamp && 
-        new Date(sale.timestamp) >= new Date(cashSession.openedAt);
-      
-      return matchesSession || matchesDate;
-    });
-
-    console.log('Session ID:', cashSession.id);
-    console.log('Sales found for session:', sessionSales.length);
-    console.log('Session sales:', sessionSales);
-
-    const report = {
+  if (!cashSession?.id || !salesHistory || !Array.isArray(salesHistory)) {
+    return {
       totalSales: 0,
       cashSales: 0,
       cardSales: 0,
       mobileSales: 0,
       creditSales: 0,
-      transactionCount: sessionSales.length,
+      transactionCount: 0,
       expectedCash: cashSession?.openingAmount || 0
     };
+  }
 
-    sessionSales.forEach(sale => {
-      const amount = sale.total || sale.amount || 0;
+  // CORRECTION: Filtrage plus large - toutes les ventes d'aujourd'hui
+  const today = new Date();
+  const todayStart = new Date(today.setHours(0, 0, 0, 0));
+  
+  console.log('Today start:', todayStart);
+  console.log('Filtering sales...');
+
+  const sessionSales = salesHistory.filter(sale => {
+    // Vérifier différents formats de date
+    let saleDate = null;
+    
+    if (sale.timestamp) {
+      saleDate = new Date(sale.timestamp);
+    } else if (sale.date) {
+      saleDate = new Date(sale.date);
+    } else if (sale.createdAt) {
+      saleDate = new Date(sale.createdAt);
+    }
+
+    if (!saleDate) {
+      console.log('Sale without date:', sale);
+      return false;
+    }
+
+    const saleDateStart = new Date(saleDate.setHours(0, 0, 0, 0));
+    const isToday = saleDateStart.getTime() === todayStart.getTime();
+    
+    console.log(`Sale ${sale.id || 'unknown'}: date=${saleDate}, isToday=${isToday}`);
+    
+    return isToday;
+  });
+
+  console.log('Session sales found:', sessionSales.length);
+
+  const report = {
+    totalSales: 0,
+    cashSales: 0,
+    cardSales: 0,
+    mobileSales: 0,
+    creditSales: 0,
+    transactionCount: sessionSales.length,
+    expectedCash: cashSession?.openingAmount || 0
+  };
+
+  sessionSales.forEach((sale, index) => {
+    console.log(`Processing sale ${index + 1}:`, sale);
+    
+    // CORRECTION: Gestion de tous les champs possibles pour le montant
+    const amount = sale.total || sale.amount || sale.finalTotal || sale.price || sale.value || 0;
+    console.log(`Sale amount: ${amount}`);
+    
+    if (amount > 0) {
       report.totalSales += amount;
 
-      const paymentMethod = sale.paymentMethod || sale.payment_method || 'cash';
+      // CORRECTION: Gestion du mode de paiement "Autre" et autres variantes
+      let paymentMethod = sale.paymentMethod || sale.payment_method || sale.method || sale.type || 'cash';
       
-      switch (paymentMethod.toLowerCase()) {
+      // Si le mode est "Autre", "autre", ou vide, considérer comme espèces par défaut
+      if (!paymentMethod || paymentMethod.toLowerCase() === 'autre' || paymentMethod.toLowerCase() === 'other') {
+        paymentMethod = 'cash';
+      }
+      
+      console.log(`Payment method: '${paymentMethod}' (original: '${sale.paymentMethod}')`);
+      
+      switch (paymentMethod.toLowerCase().trim()) {
         case 'cash':
         case 'especes':
         case 'espèces':
+        case 'liquide':
+        case 'comptant':
+        case 'autre':
+        case 'other':
+        case '':
           report.cashSales += amount;
+          console.log(`Added ${amount} to cash sales`);
           break;
         case 'card':
         case 'carte':
+        case 'cb':
+        case 'bancaire':
           report.cardSales += amount;
+          console.log(`Added ${amount} to card sales`);
           break;
         case 'mobile':
+        case 'momo':
+        case 'orange':
+        case 'wave':
           report.mobileSales += amount;
+          console.log(`Added ${amount} to mobile sales`);
           break;
         case 'credit':
         case 'crédit':
+        case 'debt':
+        case 'fiado':
           report.creditSales += amount;
+          console.log(`Added ${amount} to credit sales`);
+          break;
+        default:
+          // Par défaut, tout va en espèces
+          report.cashSales += amount;
+          console.log(`Unknown payment method '${paymentMethod}', added ${amount} to cash sales`);
           break;
       }
-    });
+    }
+  });
 
-    report.expectedCash = (cashSession?.openingAmount || 0) + report.cashSales;
+  // Calculer le montant attendu en caisse
+  report.expectedCash = (cashSession?.openingAmount || 0) + report.cashSales;
 
-    return report;
-  }, [cashSession, salesHistory]);
+  console.log('Final report:', report);
+  console.log('=== END DEBUG ===');
+
+  return report;
+}, [cashSession, salesHistory]);
 
   // Styles de base
   const styles = {
