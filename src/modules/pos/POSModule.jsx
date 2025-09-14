@@ -873,211 +873,212 @@ const quickAmounts = useMemo(() => {
             </div>
 
             {/* Montant reçu pour espèces avec pavé numérique */}
-            {paymentMethod === 'cash' && (
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{
-                  display: 'block',
-                  marginBottom: '8px',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  color: isDark ? '#e5e7eb' : '#374151'
-                }}>
-                  Montant reçu
-                  <button
-                    onClick={() => setUseNumpad(!useNumpad)}
-                    style={{
-                      marginLeft: '12px',
-                      padding: '4px 8px',
-                      fontSize: '12px',
-                      background: useNumpad ? '#3b82f6' : 'transparent',
-                      color: useNumpad ? 'white' : isDark ? '#9ca3af' : '#6b7280',
-                      border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`,
-                      borderRadius: '4px',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    {useNumpad ? '🔢 Pavé actif' : '⌨️ Clavier'}
-                  </button>
-                </label>
-                
-                {/* Montants rapides intelligents avec mise en évidence du montant exact */}
-               {/* Montants rapides - 4 boutons sur une ligne */}
-<div style={{
-  display: 'flex',
-  gap: '8px',
-  marginBottom: '12px'
-}}>
-  {quickAmounts.map((amount, index) => {
-    const isExact = amount === 'exact';
-    return (
+            {/* Montant reçu pour espèces avec pavé numérique */}
+{paymentMethod === 'cash' && (
+  <div style={{ marginBottom: '20px' }}>
+    <label style={{
+      display: 'block',
+      marginBottom: '8px',
+      fontSize: '14px',
+      fontWeight: '500',
+      color: isDark ? '#e5e7eb' : '#374151'
+    }}>
+      Montant reçu
       <button
-        key={`${amount}-${index}`}
-        onClick={() => setPaymentAmount(isExact ? cartStats.total.toString() : amount.toString())}
+        onClick={() => setUseNumpad(!useNumpad)}
         style={{
-          flex: 1,
-          padding: '10px 8px',
-          borderRadius: '6px',
-          border: isExact 
-            ? '2px solid #10b981'
-            : `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-          background: paymentAmount === (isExact ? cartStats.total.toString() : amount.toString())
-            ? '#3b82f6' 
-            : isExact
-              ? isDark ? '#065f46' : '#d1fae5'
-              : isDark ? '#374151' : 'white',
-          color: paymentAmount === (isExact ? cartStats.total.toString() : amount.toString())
-            ? 'white' 
-            : isExact
-              ? '#10b981'
-              : isDark ? '#e5e7eb' : '#64748b',
-          cursor: 'pointer',
-          fontSize: '14px',
-          fontWeight: isExact ? '700' : '400',
-          transition: 'all 0.2s',
-          position: 'relative'
+          marginLeft: '12px',
+          padding: '4px 8px',
+          fontSize: '12px',
+          background: useNumpad ? '#3b82f6' : 'transparent',
+          color: useNumpad ? 'white' : isDark ? '#9ca3af' : '#6b7280',
+          border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`,
+          borderRadius: '4px',
+          cursor: 'pointer'
         }}
       >
-        {isExact ? (
-          <>
-            <span>Exact</span>
-            <span style={{
-              position: 'absolute',
-              top: '-8px',
-              right: '-8px',
-              background: '#10b981',
-              color: 'white',
-              borderRadius: '50%',
-              width: '18px',
-              height: '18px',
-              fontSize: '11px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold'
-            }}>
-              ✓
-            </span>
-          </>
-        ) : (
-          formatCurrency(amount)
-        )}
+        {useNumpad ? '🔢 Pavé actif' : '⌨️ Clavier'}
       </button>
-    );
-  })}
-</div>
-                
-                <input
-                  type="number"
-                  placeholder="Ou entrez le montant..."
-                  value={paymentAmount}
-                  onChange={(e) => setPaymentAmount(e.target.value)}
-                  readOnly={useNumpad}
-                  style={{
-                    ...styles.input,
-                    fontSize: '18px',
-                    padding: '12px',
-                    fontWeight: '600',
-                    cursor: useNumpad ? 'not-allowed' : 'text'
-                  }}
-                />
-                
-                {/* Pavé numérique */}
-                {useNumpad && (
-                  <div style={{
-                    marginTop: '12px',
-                    padding: '12px',
-                    background: isDark ? '#2d3748' : '#f9fafb',
-                    borderRadius: '8px',
-                    border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`
-                  }}>
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, 1fr)',
-                      gap: '8px'
-                    }}>
-                      {['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '00', 'C'].map(key => (
-                        <button
-                          key={key}
-                          onClick={() => {
-                            if (key === 'C') {
-                              setPaymentAmount('');
-                            } else {
-                              setPaymentAmount(prev => prev + key);
-                            }
-                          }}
-                          style={{
-                            padding: '12px',
-                            fontSize: '16px',
-                            fontWeight: '600',
-                            background: key === 'C' 
-                              ? '#ef4444' 
-                              : isDark ? '#374151' : 'white',
-                            color: key === 'C' 
-                              ? 'white' 
-                              : isDark ? '#f7fafc' : '#1a202c',
-                            border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`,
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.transform = 'scale(1.05)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.transform = 'scale(1)';
-                          }}
-                        >
-                          {key === 'C' ? '🗑️' : key}
-                        </button>
-                      ))}
-                    </div>
-                    
-                    {/* Bouton effacer dernier caractère */}
-                    <button
-                      onClick={() => setPaymentAmount(prev => prev.slice(0, -1))}
-                      style={{
-                        width: '100%',
-                        marginTop: '8px',
-                        padding: '10px',
-                        background: isDark ? '#4a5568' : '#e5e7eb',
-                        color: isDark ? '#f7fafc' : '#374151',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      ⌫ Effacer dernier chiffre
-                    </button>
-                  </div>
-                )}
-                
-                {/* Monnaie à rendre */}
-                {paymentAmount && parseFloat(paymentAmount) >= cartStats.total && (
-                  <div style={{
-                    marginTop: '12px',
-                    padding: '12px',
-                    background: isDark ? '#065f46' : '#d1fae5',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center'
-                  }}>
-                    <span style={{ color: '#065f46', fontWeight: '500' }}>
-                      Monnaie à rendre
-                    </span>
-                    <span style={{
-                      fontSize: '20px',
-                      fontWeight: '600',
-                      color: '#065f46'
-                    }}>
-                      {formatCurrency(parseFloat(paymentAmount) - cartStats.total)}
-                    </span>
-                  </div>
-                )}
-              </div>
+    </label>
+    
+    {/* Montants rapides - 4 boutons sur une ligne */}
+    <div style={{
+      display: 'flex',
+      gap: '8px',
+      marginBottom: '12px'
+    }}>
+      {quickAmounts.map((amount, index) => {
+        const isExact = amount === 'exact';
+        return (
+          <button
+            key={`${amount}-${index}`}
+            onClick={() => setPaymentAmount(isExact ? cartStats.total.toString() : amount.toString())}
+            style={{
+              flex: 1,
+              padding: '10px 8px',
+              borderRadius: '6px',
+              border: isExact 
+                ? '2px solid #10b981'
+                : `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+              background: paymentAmount === (isExact ? cartStats.total.toString() : amount.toString())
+                ? '#3b82f6' 
+                : isExact
+                  ? isDark ? '#065f46' : '#d1fae5'
+                  : isDark ? '#374151' : 'white',
+              color: paymentAmount === (isExact ? cartStats.total.toString() : amount.toString())
+                ? 'white' 
+                : isExact
+                  ? '#10b981'
+                  : isDark ? '#e5e7eb' : '#64748b',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: isExact ? '700' : '400',
+              transition: 'all 0.2s',
+              position: 'relative'
+            }}
+          >
+            {isExact ? (
+              <>
+                <span>Exact</span>
+                <span style={{
+                  position: 'absolute',
+                  top: '-8px',
+                  right: '-8px',
+                  background: '#10b981',
+                  color: 'white',
+                  borderRadius: '50%',
+                  width: '18px',
+                  height: '18px',
+                  fontSize: '11px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold'
+                }}>
+                  ✓
+                </span>
+              </>
+            ) : (
+              formatCurrency(amount)
             )}
-
+          </button>
+        );
+      })}
+    </div>
+    
+    {/* Input montant */}
+    <input
+      type="number"
+      placeholder="Ou entrez le montant..."
+      value={paymentAmount}
+      onChange={(e) => setPaymentAmount(e.target.value)}
+      readOnly={useNumpad}
+      style={{
+        ...styles.input,
+        fontSize: '18px',
+        padding: '12px',
+        fontWeight: '600',
+        cursor: useNumpad ? 'not-allowed' : 'text'
+      }}
+    />
+    
+    {/* Pavé numérique - Optionnel */}
+    {useNumpad && (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        background: isDark ? '#2d3748' : '#f9fafb',
+        borderRadius: '8px',
+        border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`
+      }}>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '8px'
+        }}>
+          {['7', '8', '9', '4', '5', '6', '1', '2', '3', '0', '00', 'C'].map(key => (
+            <button
+              key={key}
+              onClick={() => {
+                if (key === 'C') {
+                  setPaymentAmount('');
+                } else {
+                  setPaymentAmount(prev => prev + key);
+                }
+              }}
+              style={{
+                padding: '12px',
+                fontSize: '16px',
+                fontWeight: '600',
+                background: key === 'C' 
+                  ? '#ef4444' 
+                  : isDark ? '#374151' : 'white',
+                color: key === 'C' 
+                  ? 'white' 
+                  : isDark ? '#f7fafc' : '#1a202c',
+                border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              {key === 'C' ? '🗑️' : key}
+            </button>
+          ))}
+        </div>
+        
+        {/* Bouton effacer dernier caractère */}
+        <button
+          onClick={() => setPaymentAmount(prev => prev.slice(0, -1))}
+          style={{
+            width: '100%',
+            marginTop: '8px',
+            padding: '10px',
+            background: isDark ? '#4a5568' : '#e5e7eb',
+            color: isDark ? '#f7fafc' : '#374151',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '14px'
+          }}
+        >
+          ⌫ Effacer dernier chiffre
+        </button>
+      </div>
+    )}
+    
+    {/* MONNAIE À RENDRE - PLACÉE ICI À LA FIN */}
+    {paymentAmount && parseFloat(paymentAmount) >= cartStats.total && (
+      <div style={{
+        marginTop: '12px',
+        padding: '12px',
+        background: isDark ? '#065f46' : '#d1fae5',
+        borderRadius: '8px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <span style={{ color: '#065f46', fontWeight: '500' }}>
+          Monnaie à rendre
+        </span>
+        <span style={{
+          fontSize: '20px',
+          fontWeight: '600',
+          color: '#065f46'
+        }}>
+          {formatCurrency(parseFloat(paymentAmount) - cartStats.total)}
+        </span>
+      </div>
+    )}
+    
+  </div>
+)}
             {/* Note pour crédit */}
             {paymentMethod === 'credit' && (
               <div style={{
