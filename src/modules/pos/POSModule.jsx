@@ -76,9 +76,8 @@ const quickAmounts = useMemo(() => {
   }
   
   const total = cartStats.total;
-  const amounts = ['exact']; // Toujours commencer par "exact"
+  const amounts = ['exact'];
   
-  // Fonction pour arrondir au supérieur
   const roundUp = (value, nearest) => Math.ceil(value / nearest) * nearest;
   
   if (total < 1000) {
@@ -86,13 +85,11 @@ const quickAmounts = useMemo(() => {
   } else if (total < 10000) {
     amounts.push(roundUp(total, 1000), 10000, 20000);
   } else if (total < 50000) {
-    // Pour 39 589 FCFA -> suggérer 40000, 50000, 100000
     amounts.push(40000, 50000, 100000);
   } else {
     amounts.push(roundUp(total, 10000), 100000, 200000);
   }
   
-  // Éliminer les doublons sauf "exact" et garder seulement 4 au total
   const uniqueAmounts = ['exact'];
   for (let i = 1; i < amounts.length && uniqueAmounts.length < 4; i++) {
     if (amounts[i] !== total && !uniqueAmounts.includes(amounts[i])) {
@@ -917,7 +914,7 @@ const quickAmounts = useMemo(() => {
         key={`${amount}-${index}`}
         onClick={() => setPaymentAmount(isExact ? cartStats.total.toString() : amount.toString())}
         style={{
-          flex: 1, // Pour que les 4 boutons prennent la même largeur
+          flex: 1,
           padding: '10px 8px',
           borderRadius: '6px',
           border: isExact 
