@@ -433,11 +433,12 @@ const sessionSalesReport = useMemo(() => {
     }
 
     const paymentData = {
-      paymentMethod,
-      amountReceived: paymentMethod === 'cash' ? parseFloat(paymentAmount) : cartStats.total,
-      change: paymentMethod === 'cash' ? Math.max(0, parseFloat(paymentAmount) - cartStats.total) : 0,
-      customer: selectedCustomer
-    };
+  method: paymentMethod,  // ✅ Utilise "method" comme attendu
+  paymentMethod: paymentMethod,  // ✅ Double pour compatibilité
+  amountReceived: paymentMethod === 'cash' ? parseFloat(paymentAmount) : cartStats.total,
+  change: paymentMethod === 'cash' ? Math.max(0, parseFloat(paymentAmount) - cartStats.total) : 0,
+  customer: selectedCustomer
+};
     
     try {
       const result = await handleProcessSale(paymentData);
