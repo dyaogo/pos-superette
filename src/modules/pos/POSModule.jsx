@@ -1,4 +1,4 @@
-// src/modules/pos/POSModule.jsx - Version complète avec améliorations
+// src/modules/pos/POSModule.jsx - Version complète avec résumé des ventes et réinitialisation
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   ShoppingCart, 
@@ -21,14 +21,16 @@ import {
   Lock,
   Unlock,
   Calculator,
-  Image as ImageIcon
+  Image as ImageIcon,
+  BarChart3,
+  Receipt
 } from 'lucide-react';
 import { usePOSIntegration } from '../../hooks/usePOSIntegration';
 import { useApp } from '../../contexts/AppContext';
 import { toast } from 'react-hot-toast';
 
 /**
- * Module POS Principal - Système complet avec toutes les améliorations
+ * Module POS Principal - Système complet avec résumé des ventes et réinitialisation
  */
 const POSModule = ({ onNavigate }) => {
   const { globalProducts, customers, appSettings, salesHistory } = useApp();
@@ -72,6 +74,74 @@ const POSModule = ({ onNavigate }) => {
   const [showCashManagement, setShowCashManagement] = useState(false);
 
   const isDark = appSettings?.darkMode || false;
+
+  // Fonction pour obtenir le client comptant par défaut
+  const getDefaultCustomer = useCallback(() => {
+    return customers.find(c => c.name === 'Client Comptant' || c.id === 1) || customers[0];
+  }, [customers]);
+
+  // Réinitialiser les valeurs par défaut après chaque vente
+  const resetToDefaults = useCallback(() => {
+    setPaymentMethod('cash');
+    setSelectedCustomer(getDefaultCustomer());
+    setPaymentAmount('');
+  }, [setPaymentMethod, setSelectedCustomer, getDefaultCustomer]);
+
+  // Calculer le résumé des ventes de la session en cours
+  const sessionSalesReport = useMemo(() => {
+    if (!cashSession?.id || !salesHistory) {
+      return {
+        totalSales: 0,
+        cashSales: 0,
+        cardSales: 0,
+        mobileSales: 0,
+        creditSales: 0,
+        transactionCount: 0,
+        expectedCash: cashSession?.openingAmount || 0
+      };
+    }
+
+    // Filtrer les ventes de la session en cours
+    const sessionSales = salesHistory.filter(sale => 
+      sale.sessionId === cashSession.id || 
+      (sale.timestamp && new Date(sale.timestamp) >= new Date(cashSession.openedAt))
+    );
+
+    const report = {
+      totalSales: 0,
+      cashSales: 0,
+      cardSales: 0,
+      mobileSales: 0,
+      creditSales: 0,
+      transactionCount: sessionSales.length,
+      expectedCash: cashSession?.openingAmount || 0
+    };
+
+    sessionSales.forEach(sale => {
+      const amount = sale.total || 0;
+      report.totalSales += amount;
+
+      switch (sale.paymentMethod) {
+        case 'cash':
+          report.cashSales += amount;
+          break;
+        case 'card':
+          report.cardSales += amount;
+          break;
+        case 'mobile':
+          report.mobileSales += amount;
+          break;
+        case 'credit':
+          report.creditSales += amount;
+          break;
+      }
+    });
+
+    // Calculer le montant attendu en caisse
+    report.expectedCash = (cashSession?.openingAmount || 0) + report.cashSales;
+
+    return report;
+  }, [cashSession, salesHistory]);
 
   // Styles de base
   const styles = {
@@ -209,7 +279,7 @@ const POSModule = ({ onNavigate }) => {
     return categoryList;
   }, [globalProducts]);
 
-  // Gestionnaire de paiement
+  // Gestionnaire de paiement modifié avec réinitialisation
   const handlePayment = async () => {
     if (!canSubmitPayment()) {
       toast.error('Paiement incomplet');
@@ -227,9 +297,11 @@ const POSModule = ({ onNavigate }) => {
       const result = await handleProcessSale(paymentData);
       
       if (result.success) {
-        setPaymentAmount('');
         setShowPaymentModal(false);
         toast.success('Vente enregistrée avec succès');
+        
+        // RÉINITIALISATION DES VALEURS PAR DÉFAUT
+        resetToDefaults();
       }
     } catch (error) {
       toast.error('Erreur lors du traitement de la vente');
@@ -256,6 +328,9 @@ const POSModule = ({ onNavigate }) => {
       await handleOpenCashSession(parseFloat(openingAmount));
       setShowCashManagement(false);
       toast.success('Caisse ouverte avec succès');
+      
+      // Réinitialiser aux valeurs par défaut après ouverture
+      resetToDefaults();
     } catch (error) {
       toast.error('Erreur lors de l\'ouverture de la caisse');
     }
@@ -267,10 +342,20 @@ const POSModule = ({ onNavigate }) => {
       setShowCashManagement(false);
       setShowClosingPanel(false);
       toast.success('Caisse fermée avec succès');
+      
+      // Réinitialiser aux valeurs par défaut après fermeture
+      resetToDefaults();
     } catch (error) {
       toast.error('Erreur lors de la fermeture de la caisse');
     }
   };
+
+  // Initialiser les valeurs par défaut au chargement
+  useEffect(() => {
+    if (customers.length > 0 && !selectedCustomer) {
+      resetToDefaults();
+    }
+  }, [customers, selectedCustomer, resetToDefaults]);
 
   // Interface principale
   return (
@@ -747,7 +832,7 @@ const POSModule = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Modal de gestion de caisse */}
+      {/* Modal de gestion de caisse avec résumé des ventes */}
       {showCashManagement && (
         <div style={{
           position: 'fixed',
@@ -766,7 +851,9 @@ const POSModule = ({ onNavigate }) => {
             borderRadius: '16px',
             padding: '24px',
             width: '90%',
-            maxWidth: '400px'
+            maxWidth: '500px',
+            maxHeight: '90vh',
+            overflowY: 'auto'
           }}>
             <div style={{
               display: 'flex',
@@ -862,36 +949,250 @@ const POSModule = ({ onNavigate }) => {
                 </div>
               </div>
             ) : (
-              // Fermeture de caisse
+              // Fermeture de caisse avec résumé des ventes
               <div>
+                {/* Informations de la session */}
                 <div style={{
                   background: isDark ? '#374151' : '#f8fafc',
-                  padding: '12px',
+                  padding: '16px',
                   borderRadius: '8px',
-                  marginBottom: '16px'
+                  marginBottom: '20px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '12px'
+                  }}>
+                    <Receipt size={16} color="#10b981" />
+                    <h4 style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: isDark ? '#f7fafc' : '#1a202c',
+                      margin: 0
+                    }}>
+                      Résumé de la Session #{cashSession?.id}
+                    </h4>
+                  </div>
+                  
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '12px',
+                    fontSize: '14px'
+                  }}>
+                    <div>
+                      <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
+                        Ouverture:
+                      </span>
+                      <div style={{ fontWeight: '600', color: '#10b981' }}>
+                        {formatCurrency(cashSession?.openingAmount || 0)}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
+                        Transactions:
+                      </span>
+                      <div style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#1a202c' }}>
+                        {sessionSalesReport.transactionCount}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Résumé des ventes par mode de paiement */}
+                <div style={{
+                  background: isDark ? '#374151' : '#f8fafc',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  marginBottom: '20px'
+                }}>
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    marginBottom: '12px'
+                  }}>
+                    <BarChart3 size={16} color="#3b82f6" />
+                    <h4 style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: isDark ? '#f7fafc' : '#1a202c',
+                      margin: 0
+                    }}>
+                      Ventes par Mode de Paiement
+                    </h4>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {/* Espèces */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px',
+                      background: isDark ? '#065f46' : '#d1fae5',
+                      borderRadius: '6px'
+                    }}>
+                      <span style={{
+                        fontSize: '14px',
+                        color: '#10b981',
+                        fontWeight: '500'
+                      }}>
+                        💵 Espèces
+                      </span>
+                      <span style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#10b981'
+                      }}>
+                        {formatCurrency(sessionSalesReport.cashSales)}
+                      </span>
+                    </div>
+
+                    {/* Carte */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px',
+                      background: isDark ? '#1e3a8a' : '#dbeafe',
+                      borderRadius: '6px'
+                    }}>
+                      <span style={{
+                        fontSize: '14px',
+                        color: '#3b82f6',
+                        fontWeight: '500'
+                      }}>
+                        💳 Carte
+                      </span>
+                      <span style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#3b82f6'
+                      }}>
+                        {formatCurrency(sessionSalesReport.cardSales)}
+                      </span>
+                    </div>
+
+                    {/* Mobile */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px',
+                      background: isDark ? '#7c2d12' : '#fed7aa',
+                      borderRadius: '6px'
+                    }}>
+                      <span style={{
+                        fontSize: '14px',
+                        color: '#f59e0b',
+                        fontWeight: '500'
+                      }}>
+                        📱 Mobile
+                      </span>
+                      <span style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#f59e0b'
+                      }}>
+                        {formatCurrency(sessionSalesReport.mobileSales)}
+                      </span>
+                    </div>
+
+                    {/* Crédit */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '8px',
+                      background: isDark ? '#7c2d12' : '#fecaca',
+                      borderRadius: '6px'
+                    }}>
+                      <span style={{
+                        fontSize: '14px',
+                        color: '#ef4444',
+                        fontWeight: '500'
+                      }}>
+                        📝 Crédit
+                      </span>
+                      <span style={{
+                        fontSize: '14px',
+                        fontWeight: '600',
+                        color: '#ef4444'
+                      }}>
+                        {formatCurrency(sessionSalesReport.creditSales)}
+                      </span>
+                    </div>
+
+                    {/* Total */}
+                    <div style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '12px',
+                      background: isDark ? '#4a5568' : '#e2e8f0',
+                      borderRadius: '6px',
+                      borderTop: `2px solid ${isDark ? '#6b7280' : '#cbd5e1'}`,
+                      marginTop: '4px'
+                    }}>
+                      <span style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: isDark ? '#f7fafc' : '#1a202c'
+                      }}>
+                        Total Ventes
+                      </span>
+                      <span style={{
+                        fontSize: '16px',
+                        fontWeight: '700',
+                        color: isDark ? '#f7fafc' : '#1a202c'
+                      }}>
+                        {formatCurrency(sessionSalesReport.totalSales)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Montant attendu en caisse */}
+                <div style={{
+                  background: isDark ? '#065f46' : '#d1fae5',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  marginBottom: '20px',
+                  border: '2px solid #10b981'
                 }}>
                   <div style={{
                     display: 'flex',
                     justifyContent: 'space-between',
+                    alignItems: 'center',
                     marginBottom: '8px'
                   }}>
-                    <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
-                      Session ouverte:
-                    </span>
-                    <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#1a202c' }}>
-                      #{cashSession?.id}
+                    <span style={{
+                      fontSize: '14px',
+                      color: '#10b981',
+                      fontWeight: '500'
+                    }}>
+                      💰 Montant attendu en caisse:
                     </span>
                   </div>
                   <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between'
+                    fontSize: '20px',
+                    fontWeight: '700',
+                    color: '#10b981',
+                    textAlign: 'center'
                   }}>
-                    <span style={{ color: isDark ? '#d1d5db' : '#374151' }}>
-                      Montant initial:
-                    </span>
-                    <span style={{ fontWeight: '600', color: '#10b981' }}>
-                      {formatCurrency(cashSession?.openingAmount || 0)}
-                    </span>
+                    {formatCurrency(sessionSalesReport.expectedCash)}
+                  </div>
+                  <div style={{
+                    fontSize: '12px',
+                    color: '#10b981',
+                    textAlign: 'center',
+                    marginTop: '4px',
+                    opacity: 0.8
+                  }}>
+                    (Ouverture + Ventes espèces)
                   </div>
                 </div>
 
@@ -925,7 +1226,7 @@ const POSModule = ({ onNavigate }) => {
                       fontWeight: '500',
                       color: isDark ? '#e5e7eb' : '#374151'
                     }}>
-                      Montant en caisse à la fermeture
+                      Montant réellement compté en caisse
                     </label>
                     <input
                       type="number"
@@ -940,10 +1241,42 @@ const POSModule = ({ onNavigate }) => {
                         color: isDark ? '#f7fafc' : '#374151',
                         fontSize: '16px',
                         textAlign: 'center',
-                        marginBottom: '16px'
+                        marginBottom: '12px'
                       }}
-                      placeholder="Montant compté"
+                      placeholder={`Attendu: ${formatCurrency(sessionSalesReport.expectedCash)}`}
                     />
+
+                    {/* Écart si montant saisi */}
+                    {closingAmount && parseFloat(closingAmount) !== sessionSalesReport.expectedCash && (
+                      <div style={{
+                        padding: '12px',
+                        background: parseFloat(closingAmount) > sessionSalesReport.expectedCash 
+                          ? isDark ? '#065f46' : '#d1fae5'
+                          : isDark ? '#7c2d12' : '#fef2f2',
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        textAlign: 'center'
+                      }}>
+                        <div style={{
+                          fontSize: '14px',
+                          color: parseFloat(closingAmount) > sessionSalesReport.expectedCash 
+                            ? '#10b981' 
+                            : '#ef4444',
+                          fontWeight: '500'
+                        }}>
+                          {parseFloat(closingAmount) > sessionSalesReport.expectedCash ? '📈 Excédent' : '📉 Manquant'}
+                        </div>
+                        <div style={{
+                          fontSize: '18px',
+                          fontWeight: '700',
+                          color: parseFloat(closingAmount) > sessionSalesReport.expectedCash 
+                            ? '#10b981' 
+                            : '#ef4444'
+                        }}>
+                          {formatCurrency(Math.abs(parseFloat(closingAmount) - sessionSalesReport.expectedCash))}
+                        </div>
+                      </div>
+                    )}
                     
                     <div style={{ display: 'flex', gap: '12px' }}>
                       <button
