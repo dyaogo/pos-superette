@@ -1,4 +1,4 @@
-// src/modules/pos/POSModule.jsx - Version complète avec résumé des ventes et réinitialisation
+// src/modules/pos/POSModule.jsx - Version complète corrigée
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { 
   ShoppingCart, 
@@ -29,15 +29,34 @@ import { usePOSIntegration } from '../../hooks/usePOSIntegration';
 import { useApp } from '../../contexts/AppContext';
 import { toast } from 'react-hot-toast';
 
+// Fonction pour calculer les stats du panier avec TVA corrigée
+const calculateCartStatsWithTax = (cart, appSettings) => {
+  const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // CORRECTION: Récupérer le taux de TVA depuis les paramètres utilisateur
+  const taxRate = parseFloat(appSettings?.taxRate || 0);
+  const taxAmount = taxRate > 0 ? (subtotal * taxRate) / 100 : 0;
+  
+  console.log('Calcul TVA - Taux:', taxRate, '% - Sous-total:', subtotal, '- Montant TVA:', taxAmount);
+  
+  return {
+    subtotal,
+    taxAmount,
+    total: subtotal + taxAmount,
+    itemCount: cart.reduce((sum, item) => sum + item.quantity, 0),
+    taxRate
+  };
+};
+
 /**
- * Module POS Principal - Système complet avec résumé des ventes et réinitialisation
+ * Module POS Principal - Version complète corrigée
  */
 const POSModule = ({ onNavigate }) => {
   const { globalProducts, customers, appSettings, salesHistory } = useApp();
   const {
     // État
     cart,
-    cartStats,
+    cartStats: originalCartStats,
     isCashSessionActive,
     canProcessSale,
     selectedCustomer,
@@ -75,6 +94,11 @@ const POSModule = ({ onNavigate }) => {
 
   const isDark = appSettings?.darkMode || false;
 
+  // CORRECTION: Calculer les stats du panier avec la TVA corrigée
+  const cartStats = useMemo(() => {
+    return calculateCartStatsWithTax(cart, appSettings);
+  }, [cart, appSettings]);
+
   // Fonction pour obtenir le client comptant par défaut
   const getDefaultCustomer = useCallback(() => {
     return customers.find(c => c.name === 'Client Comptant' || c.id === 1) || customers[0];
@@ -87,9 +111,60 @@ const POSModule = ({ onNavigate }) => {
     setPaymentAmount('');
   }, [setPaymentMethod, setSelectedCustomer, getDefaultCustomer]);
 
-  // Calculer le résumé des ventes de la session en cours
+  // CORRECTION: Fonction pour vérifier le stock avant ajout au panier
+  const handleAddToCartWithStockCheck = useCallback((product) => {
+    // Vérification 1 : Le produit a-t-il du stock ?
+    if (!product.stock || product.stock <= 0) {
+      toast.error(`❌ Produit en rupture de stock : ${product.name}`, {
+        duration: 3000,
+        style: {
+          background: isDark ? '#7c2d12' : '#fef2f2',
+          color: isDark ? '#fbbf24' : '#dc2626',
+          border: '1px solid #ef4444',
+          borderRadius: '8px',
+          fontSize: '14px'
+        }
+      });
+      return;
+    }
+
+    // Vérification 2 : Y a-t-il déjà ce produit dans le panier ?
+    const existingItem = cart.find(item => item.id === product.id);
+    const currentQuantityInCart = existingItem ? existingItem.quantity : 0;
+    
+    // Vérification 3 : L'ajout dépasserait-il le stock disponible ?
+    if (currentQuantityInCart >= product.stock) {
+      toast.warning(`⚠️ Stock insuffisant pour ${product.name}. Stock disponible: ${product.stock}`, {
+        duration: 3000,
+        style: {
+          background: isDark ? '#7c2d12' : '#fef3c7',
+          color: isDark ? '#fbbf24' : '#92400e',
+          border: '1px solid #f59e0b',
+          borderRadius: '8px',
+          fontSize: '14px'
+        }
+      });
+      return;
+    }
+
+    // Tout est OK - Ajouter au panier
+    handleAddToCart(product);
+    
+    // Toast de succès
+    toast.success(`✅ ${product.name} ajouté au panier`, {
+      duration: 2000,
+      style: {
+        background: isDark ? '#065f46' : '#d1fae5',
+        color: '#10b981',
+        borderRadius: '8px',
+        fontSize: '14px'
+      }
+    });
+  }, [cart, handleAddToCart, isDark]);
+
+  // CORRECTION: Calculer le résumé des ventes de la session en cours
   const sessionSalesReport = useMemo(() => {
-    if (!cashSession?.id || !salesHistory) {
+    if (!cashSession?.id) {
       return {
         totalSales: 0,
         cashSales: 0,
@@ -101,11 +176,18 @@ const POSModule = ({ onNavigate }) => {
       };
     }
 
-    // Filtrer les ventes de la session en cours
-    const sessionSales = salesHistory.filter(sale => 
-      sale.sessionId === cashSession.id || 
-      (sale.timestamp && new Date(sale.timestamp) >= new Date(cashSession.openedAt))
-    );
+    // Filtrer les ventes avec plusieurs critères
+    const sessionSales = salesHistory.filter(sale => {
+      const matchesSession = sale.sessionId === cashSession.id;
+      const matchesDate = cashSession.openedAt && sale.timestamp && 
+        new Date(sale.timestamp) >= new Date(cashSession.openedAt);
+      
+      return matchesSession || matchesDate;
+    });
+
+    console.log('Session ID:', cashSession.id);
+    console.log('Sales found for session:', sessionSales.length);
+    console.log('Session sales:', sessionSales);
 
     const report = {
       totalSales: 0,
@@ -118,26 +200,31 @@ const POSModule = ({ onNavigate }) => {
     };
 
     sessionSales.forEach(sale => {
-      const amount = sale.total || 0;
+      const amount = sale.total || sale.amount || 0;
       report.totalSales += amount;
 
-      switch (sale.paymentMethod) {
+      const paymentMethod = sale.paymentMethod || sale.payment_method || 'cash';
+      
+      switch (paymentMethod.toLowerCase()) {
         case 'cash':
+        case 'especes':
+        case 'espèces':
           report.cashSales += amount;
           break;
         case 'card':
+        case 'carte':
           report.cardSales += amount;
           break;
         case 'mobile':
           report.mobileSales += amount;
           break;
         case 'credit':
+        case 'crédit':
           report.creditSales += amount;
           break;
       }
     });
 
-    // Calculer le montant attendu en caisse
     report.expectedCash = (cashSession?.openingAmount || 0) + report.cashSales;
 
     return report;
@@ -194,19 +281,15 @@ const POSModule = ({ onNavigate }) => {
     const amount = Math.ceil(totalAmount);
     const suggestions = [];
 
-    // Coupures CFA courantes : 500, 1000, 2000, 5000, 10000
     const denominations = [500, 1000, 2000, 5000, 10000];
     
-    // Montant exact
     suggestions.push(amount);
     
-    // Arrondir au millier supérieur
     const nextThousand = Math.ceil(amount / 1000) * 1000;
     if (nextThousand !== amount && nextThousand <= amount + 2000) {
       suggestions.push(nextThousand);
     }
     
-    // Ajouter des montants basés sur les coupures
     for (let denom of denominations.reverse()) {
       const roundedUp = Math.ceil(amount / denom) * denom;
       if (roundedUp > amount && roundedUp <= amount + denom && !suggestions.includes(roundedUp)) {
@@ -214,7 +297,6 @@ const POSModule = ({ onNavigate }) => {
       }
     }
     
-    // Ajouter quelques montants courants si pas déjà présents
     const commonAmounts = [5000, 10000, 20000, 50000];
     for (let common of commonAmounts) {
       if (common > amount && !suggestions.includes(common) && suggestions.length < 6) {
@@ -244,12 +326,10 @@ const POSModule = ({ onNavigate }) => {
   const filteredProducts = useMemo(() => {
     let products = globalProducts || [];
     
-    // Filtre par catégorie
     if (selectedCategory !== 'all') {
       products = products.filter(p => p.category === selectedCategory);
     }
     
-    // Filtre par recherche
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       products = products.filter(p => 
@@ -299,8 +379,6 @@ const POSModule = ({ onNavigate }) => {
       if (result.success) {
         setShowPaymentModal(false);
         toast.success('Vente enregistrée avec succès');
-        
-        // RÉINITIALISATION DES VALEURS PAR DÉFAUT
         resetToDefaults();
       }
     } catch (error) {
@@ -328,8 +406,6 @@ const POSModule = ({ onNavigate }) => {
       await handleOpenCashSession(parseFloat(openingAmount));
       setShowCashManagement(false);
       toast.success('Caisse ouverte avec succès');
-      
-      // Réinitialiser aux valeurs par défaut après ouverture
       resetToDefaults();
     } catch (error) {
       toast.error('Erreur lors de l\'ouverture de la caisse');
@@ -342,8 +418,6 @@ const POSModule = ({ onNavigate }) => {
       setShowCashManagement(false);
       setShowClosingPanel(false);
       toast.success('Caisse fermée avec succès');
-      
-      // Réinitialiser aux valeurs par défaut après fermeture
       resetToDefaults();
     } catch (error) {
       toast.error('Erreur lors de la fermeture de la caisse');
@@ -356,6 +430,10 @@ const POSModule = ({ onNavigate }) => {
       resetToDefaults();
     }
   }, [customers, selectedCustomer, resetToDefaults]);
+
+  // Debug des paramètres TVA
+  console.log('Taux TVA depuis appSettings:', appSettings?.taxRate);
+  console.log('CartStats calculés:', cartStats);
 
   // Interface principale
   return (
@@ -483,7 +561,7 @@ const POSModule = ({ onNavigate }) => {
           </select>
         </div>
 
-        {/* Grille des produits avec images */}
+        {/* Grille des produits avec images et gestion de stock */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
@@ -494,25 +572,56 @@ const POSModule = ({ onNavigate }) => {
           {filteredProducts.map(product => (
             <div
               key={product.id}
-              onClick={() => handleAddToCart(product)}
+              onClick={() => handleAddToCartWithStockCheck(product)}
               style={{
                 padding: '12px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e5e7eb'}`,
+                border: `1px solid ${
+                  product.stock <= 0 
+                    ? '#ef4444' 
+                    : product.stock <= 5 
+                    ? '#f59e0b' 
+                    : isDark ? '#4a5568' : '#e5e7eb'
+                }`,
                 borderRadius: '8px',
-                cursor: 'pointer',
+                cursor: product.stock <= 0 ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
-                background: isDark ? '#374151' : 'white',
+                background: product.stock <= 0 
+                  ? isDark ? '#7c2d12' : '#fef2f2'
+                  : isDark ? '#374151' : 'white',
+                opacity: product.stock <= 0 ? 0.6 : 1,
                 position: 'relative'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'translateY(-2px)';
-                e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
+                if (product.stock > 0) {
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                  e.currentTarget.style.boxShadow = '0 8px 16px rgba(0, 0, 0, 0.1)';
+                }
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'translateY(0)';
-                e.currentTarget.style.boxShadow = 'none';
+                if (product.stock > 0) {
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = 'none';
+                }
               }}
             >
+              {/* Badge rupture de stock */}
+              {product.stock <= 0 && (
+                <div style={{
+                  position: 'absolute',
+                  top: '8px',
+                  right: '8px',
+                  background: '#ef4444',
+                  color: 'white',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  fontSize: '10px',
+                  fontWeight: '600',
+                  zIndex: 1
+                }}>
+                  RUPTURE
+                </div>
+              )}
+
               {/* Image du produit */}
               <div style={{
                 width: '100%',
@@ -753,7 +862,7 @@ const POSModule = ({ onNavigate }) => {
           )}
         </div>
 
-        {/* Résumé du panier */}
+        {/* Résumé du panier avec TVA corrigée */}
         {cart.length > 0 && (
           <>
             <div style={{
@@ -775,14 +884,15 @@ const POSModule = ({ onNavigate }) => {
                 </span>
               </div>
               
-              {cartStats.taxAmount > 0 && (
+              {/* CORRECTION: Affichage TVA corrigé */}
+              {(appSettings?.taxRate > 0) && (
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   marginBottom: '4px'
                 }}>
                   <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>
-                    TVA ({appSettings.taxRate || 0}%)
+                    TVA ({parseFloat(appSettings.taxRate).toFixed(1)}%)
                   </span>
                   <span style={{ color: isDark ? '#f7fafc' : '#1a202c' }}>
                     {formatCurrency(cartStats.taxAmount)}
@@ -832,7 +942,7 @@ const POSModule = ({ onNavigate }) => {
         )}
       </div>
 
-      {/* Modal de gestion de caisse avec résumé des ventes */}
+      {/* Modal de gestion de caisse avec résumé des ventes corrigé */}
       {showCashManagement && (
         <div style={{
           position: 'fixed',
@@ -1580,7 +1690,7 @@ const POSModule = ({ onNavigate }) => {
                         fontSize: '14px',
                         fontWeight: '600',
                         marginBottom: '12px'
-                      }}
+                        }}
                     >
                       💯 Montant exact
                     </button>
