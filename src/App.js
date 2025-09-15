@@ -14,6 +14,7 @@ import EmployeesModule from './modules/employees/EmployeesModule';
 import ReturnsModule from './modules/returns/ReturnsModule';
 import { MobileNavigation, useResponsive } from './components/ResponsiveComponents';
 import StoreSelector from './components/StoreSelector';
+import BackupService from './services/BackupService';
 //import TestPOSModule from './modules/pos/TestPOSModule';
 import {
   ShoppingCart,
@@ -59,6 +60,12 @@ function App() {
   useEffect(() => {
     getStats();
   }, [getStats]);
+
+  useEffect(() => {
+  // Initialiser le service de backup automatique
+  const backupService = new BackupService();
+  window.backupService = backupService; // Pour debug
+}, []);
 
   const isDark = appSettings.darkMode;
 
