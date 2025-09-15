@@ -1,18 +1,3 @@
-// 📁 CORRECTION IMMÉDIATE : src/modules/dashboard/DashboardModule.jsx
-
-// ❌ LIGNE PROBLÉMATIQUE (ligne 15) :
-// import { ..., Refresh } from 'lucide-react';
-
-// ✅ REMPLACER PAR :
-import {
-  ShoppingCart, Package, Users, TrendingUp, TrendingDown, 
-  ArrowUp, ArrowDown, DollarSign, AlertTriangle, 
-  Calendar, Clock, Zap, Star, Target, Activity,
-  PlusCircle, Search, Filter, Download, RefreshCw // 👈 RefreshCw au lieu de Refresh
-} from 'lucide-react';
-
-// ============================================================
-
 // 📁 CORRECTION COMPLÈTE : Remplacer tout le fichier src/modules/dashboard/DashboardModule.jsx
 
 import React, { useState, useEffect } from 'react';
