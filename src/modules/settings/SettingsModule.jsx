@@ -6,6 +6,7 @@ import {
   Phone, MapPin, Clock, Bell
 } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import BackupManager from '../../components/BackupManager';
 
 const SettingsModule = () => {
   const { 
@@ -110,6 +111,7 @@ const SettingsModule = () => {
     { id: 'general', label: 'Général', icon: Settings },
     { id: 'store', label: 'Magasin', icon: Store },
     { id: 'appearance', label: 'Apparence', icon: Palette },
+    { id: 'backup', label: 'Sauvegarde', icon: Database }, // 👈 NOUVEAU
     { id: 'data', label: 'Données', icon: Database },
     { id: 'security', label: 'Sécurité', icon: Shield }
   ];
@@ -261,6 +263,9 @@ const SettingsModule = () => {
           boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
         }}>
           {/* Onglet Général */}
+          {activeTab === 'backup' && (
+            <BackupManager isDark={isDark} />
+          )}
           {activeTab === 'general' && (
             <div>
               <h2 style={{
@@ -662,6 +667,7 @@ const SettingsModule = () => {
             </div>
           )}
 
+          
           {/* Onglet Sécurité */}
           {activeTab === 'security' && (
             <div>
