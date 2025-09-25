@@ -1,21 +1,21 @@
 import { useState, useEffect } from 'react';
-import { useApp } from './contexts/AppContext';
-import { useAuth } from './contexts/AuthContext';
-import POSModule from './modules/pos/POSModule';
-import SalesHistoryModule from './modules/pos/SalesHistoryModule';
-import InventoryModule from './modules/inventory/InventoryModule';
-import CustomersModule from './modules/customers/CustomersModule';
-import SettingsModule from './modules/settings/SettingsModule';
-import ModernCashRegister from './modules/cash/ModernCashRegister';
-import CreditManagementModule from './modules/credits/CreditManagementModule';
-import DashboardModule from './modules/dashboard/DashboardModule';
-import ReportsModule from './modules/reports/ReportsModule';
-import EmployeesModule from './modules/employees/EmployeesModule';
-import ReturnsModule from './modules/returns/ReturnsModule';
-import { MobileNavigation, useResponsive } from './components/ResponsiveComponents';
-import StoreSelector from './components/StoreSelector';
-import BackupService from './services/BackupService';
-import TestPOSModule from './modules/pos/TestPOSModule';
+import { useApp } from '../src/contexts/AppContext';
+import { useAuth } from '../src/contexts/AuthContext';
+import POSModule from '../src/modules/pos/POSModule';
+import SalesHistoryModule from '../src/modules/pos/SalesHistoryModule';
+import InventoryModule from '../src/modules/inventory/InventoryModule';
+import CustomersModule from '../src/modules/customers/CustomersModule';
+import SettingsModule from '../src/modules/settings/SettingsModule';
+import ModernCashRegister from '../src/modules/cash/ModernCashRegister';
+import CreditManagementModule from '../src/modules/credits/CreditManagementModule';
+import DashboardModule from '../src/modules/dashboard/DashboardModule';
+import ReportsModule from '../src/modules/reports/ReportsModule';
+import EmployeesModule from '../src/modules/employees/EmployeesModule';
+import ReturnsModule from '../src/modules/returns/ReturnsModule';
+import { MobileNavigation, useResponsive } from '../src/components/ResponsiveComponents';
+import StoreSelector from '../src/components/StoreSelector';
+import BackupService from '../src/services/BackupService';
+import TestPOSModule from '../src/modules/pos/TestPOSModule';
 import {
   ShoppingCart,
   Package,
@@ -29,9 +29,9 @@ import {
   RotateCcw,
   Receipt,
 } from 'lucide-react';
-import styles from './App.module.css';
-import LoadingSpinner from './components/common/LoadingSpinner';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import styles from '../src/App.module.css';
+import LoadingSpinner from '../src/components/common/LoadingSpinner';
+import ErrorBoundary from '../src/components/common/ErrorBoundary';
 
 // Composant principal avec les Providers
 export default function Home() {

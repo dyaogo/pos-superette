@@ -1,10 +1,13 @@
 import '../src/index.css'; // Vos styles existants
 import { AppProvider } from '../src/contexts/AppContext';
+import { AuthProvider } from '../src/contexts/AuthContext';
 
 function MyApp({ Component, pageProps }) {
   return (
     <AppProvider>
-      <Component {...pageProps} />
+      <AuthProvider>
+        <Component {...pageProps} />
+      </AuthProvider>
     </AppProvider>
   );
 }
