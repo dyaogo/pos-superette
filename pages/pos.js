@@ -98,12 +98,48 @@ export default function POS() {
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
 
-  const handlePayment = (method) => {
-    // Ici on enverrait à l'API
-    alert(`Vente de ${getCartTotal()} FCFA enregistrée (${method})`);
-    setCart([]);
-    setShowPayment(false);
-  };
+  const handlePayment = async (method) => {
+  try {
+    // Préparer les données de vente
+    const saleData = {
+      storeId: 'default', // À récupérer du contexte
+      items: cart.map(item => ({
+        productId: item.id,
+        productName: item.name,
+        quantity: item.quantity,
+        unitPrice: item.sellingPrice
+      })),
+      paymentMethod: method,
+      cashReceived: method === 'cash' ? getCartTotal() : null
+    };
+    
+    // Envoyer à l'API
+    const response = await fetch('/api/sales', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(saleData)
+    });
+    
+    if (response.ok) {
+      const sale = await response.json();
+      alert(`Vente enregistrée!\nReçu: ${sale.receiptNumber}\nTotal: ${sale.total} FCFA`);
+      
+      // Vider le panier
+      setCart([]);
+      setShowPayment(false);
+      
+      // Recharger les produits pour mettre à jour les stocks
+      loadProducts();
+    } else {
+      alert('Erreur lors de l\'enregistrement de la vente');
+    }
+  } catch (error) {
+    console.error('Erreur:', error);
+    alert('Erreur de connexion au serveur');
+  }
+};
 
   if (loading) {
     return <div style={{ padding: '50px', textAlign: 'center' }}>Chargement...</div>;

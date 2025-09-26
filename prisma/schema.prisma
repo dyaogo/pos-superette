@@ -39,8 +39,28 @@ model Sale {
   storeId       String
   receiptNumber String   @unique
   total         Float
+  subtotal      Float    @default(0)
+  tax           Float    @default(0)
+  discount      Float    @default(0)
   paymentMethod String
+  cashReceived  Float?
+  change        Float?
+  customerId    String?
+  cashier       String   @default("Admin")
   createdAt     DateTime @default(now())
   
-  store         Store    @relation(fields: [storeId], references: [id])
+  store         Store      @relation(fields: [storeId], references: [id])
+  items         SaleItem[]
+}
+
+model SaleItem {
+  id          String   @id @default(cuid())
+  saleId      String
+  productId   String
+  productName String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  
+  sale        Sale     @relation(fields: [saleId], references: [id])
 }
