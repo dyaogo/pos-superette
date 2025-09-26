@@ -102,7 +102,7 @@ export default function POS() {
   try {
     // Préparer les données de vente
     const saleData = {
-      storeId: 'default', // À récupérer du contexte
+      //storeId: 'default', // À récupérer du contexte
       items: cart.map(item => ({
         productId: item.id,
         productName: item.name,
