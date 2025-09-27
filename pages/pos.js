@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useOffline } from '../src/hooks/useOffline';
 import { 
   Search, ShoppingCart, Plus, Minus, X, 
-  CreditCard, DollarSign, Smartphone, Trash2 
+  CreditCard, DollarSign, Smartphone, Trash2,
+  WifiOff, Wifi
 } from 'lucide-react';
 
 export default function POS() {
+  const { isOnline, addToQueue } = useOffline();
   const [products, setProducts] = useState([]);
   const [filteredProducts, setFilteredProducts] = useState([]);
   const [cart, setCart] = useState([]);
@@ -23,13 +26,32 @@ export default function POS() {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('/api/products');
-      const data = await res.json();
-      setProducts(data || []);
-      setFilteredProducts(data || []);
+      setLoading(true);
+      
+      if (isOnline) {
+        // Mode online : récupérer depuis l'API
+        const res = await fetch('/api/products');
+        const data = await res.json();
+        setProducts(data || []);
+        
+        // Sauvegarder en cache local
+        localStorage.setItem('cached_products', JSON.stringify(data));
+      } else {
+        // Mode offline : utiliser le cache
+        const cached = localStorage.getItem('cached_products');
+        if (cached) {
+          setProducts(JSON.parse(cached));
+        }
+      }
+      
+      setFilteredProducts(products);
       setLoading(false);
     } catch (error) {
-      console.error('Erreur:', error);
+      // En cas d'erreur, utiliser le cache
+      const cached = localStorage.getItem('cached_products');
+      if (cached) {
+        setProducts(JSON.parse(cached));
+      }
       setLoading(false);
     }
   };
@@ -99,47 +121,64 @@ export default function POS() {
   const categories = ['all', ...new Set(products.map(p => p.category))];
 
   const handlePayment = async (method) => {
-  try {
-    // Préparer les données de vente
-    const saleData = {
-      //storeId: 'default', // À récupérer du contexte
-      items: cart.map(item => ({
-        productId: item.id,
-        productName: item.name,
-        quantity: item.quantity,
-        unitPrice: item.sellingPrice
-      })),
-      paymentMethod: method,
-      cashReceived: method === 'cash' ? getCartTotal() : null
-    };
-    
-    // Envoyer à l'API
-    const response = await fetch('/api/sales', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(saleData)
-    });
-    
-    if (response.ok) {
-      const sale = await response.json();
-      alert(`Vente enregistrée!\nReçu: ${sale.receiptNumber}\nTotal: ${sale.total} FCFA`);
+    try {
+      const saleData = {
+        items: cart.map(item => ({
+          productId: item.id,
+          productName: item.name,
+          quantity: item.quantity,
+          unitPrice: item.sellingPrice
+        })),
+        paymentMethod: method,
+        cashReceived: method === 'cash' ? getCartTotal() : null,
+        timestamp: new Date().toISOString()
+      };
       
-      // Vider le panier
+      if (isOnline) {
+        // Mode online : envoyer directement
+        const response = await fetch('/api/sales', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(saleData)
+        });
+        
+        if (response.ok) {
+          const sale = await response.json();
+          alert(`✅ Vente enregistrée!\n\nReçu: ${sale.receiptNumber}\nTotal: ${sale.total} FCFA`);
+        }
+      } else {
+        // Mode offline : ajouter à la queue
+        const queueId = addToQueue('sale', saleData);
+        alert(`📱 Mode hors ligne\n\nVente enregistrée localement (#${queueId})\nElle sera synchronisée dès le retour de la connexion.`);
+      }
+      
+      // Vider le panier dans tous les cas
       setCart([]);
       setShowPayment(false);
       
-      // Recharger les produits pour mettre à jour les stocks
-      loadProducts();
-    } else {
-      alert('Erreur lors de l\'enregistrement de la vente');
+      // Mettre à jour le stock local
+      updateLocalStock(cart);
+      
+    } catch (error) {
+      console.error('Erreur:', error);
+      alert('❌ Erreur lors de l\'enregistrement');
     }
-  } catch (error) {
-    console.error('Erreur:', error);
-    alert('Erreur de connexion au serveur');
-  }
-};
+  };
+
+  const updateLocalStock = (soldItems) => {
+    const updatedProducts = products.map(product => {
+      const soldItem = soldItems.find(item => item.id === product.id);
+      if (soldItem) {
+        return { ...product, stock: product.stock - soldItem.quantity };
+      }
+      return product;
+    });
+    
+    setProducts(updatedProducts);
+    localStorage.setItem('cached_products', JSON.stringify(updatedProducts));
+  };
 
   if (loading) {
     return <div style={{ padding: '50px', textAlign: 'center' }}>Chargement...</div>;
@@ -147,6 +186,25 @@ export default function POS() {
 
   return (
     <div style={{ display: 'flex', height: 'calc(100vh - 100px)' }}>
+      {/* Indicateur de connexion */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        right: '10px',
+        padding: '8px 16px',
+        background: isOnline ? '#10b981' : '#f59e0b',
+        color: 'white',
+        borderRadius: '20px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '8px',
+        zIndex: 1000,
+        fontSize: '14px'
+      }}>
+        {isOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
+        {isOnline ? 'En ligne' : 'Hors ligne'}
+      </div>
+
       {/* Partie gauche - Produits */}
       <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
         {/* Recherche et filtres */}
