@@ -16,6 +16,8 @@ export default function Layout({ children }) {
     { path: '/customers', icon: Users, label: 'Clients' },
     { path: '/reports', icon: BarChart, label: 'Rapports' },
     { path: '/settings', icon: Settings, label: 'Paramètres' },
+    { path: '/credits', icon: CreditCard, label: 'Crédits' },
+    { path: '/returns', icon: RotateCcw, label: 'Retours' },
   ];
 
   return (
