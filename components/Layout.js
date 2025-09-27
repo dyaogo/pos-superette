@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { 
   Home, ShoppingCart, Package, Users, 
-  Settings, FileText, BarChart, LogOut 
+  Settings, FileText, BarChart, LogOut, RotateCcw, CreditCard 
 } from 'lucide-react';
 
 export default function Layout({ children }) {
