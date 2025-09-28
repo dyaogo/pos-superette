@@ -25,7 +25,7 @@ import {
   BarChart3,
   Receipt
 } from 'lucide-react';
-import { usePOSIntegration } from '../../hooks/usePOSIntegration';
+//import { usePOSIntegration } from '../../hooks/usePOSIntegration';
 import { useApp } from '../../contexts/AppContext';
 import { toast } from 'react-hot-toast';
 

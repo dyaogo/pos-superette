@@ -15,7 +15,7 @@ import ReturnsModule from '../src/modules/returns/ReturnsModule';
 import { MobileNavigation, useResponsive } from '../src/components/ResponsiveComponents';
 import StoreSelector from '../src/components/StoreSelector';
 import BackupService from '../src/services/BackupService';
-import TestPOSModule from '../src/modules/pos/TestPOSModule';
+//import TestPOSModule from '../src/modules/pos/TestPOSModule';
 import {
   ShoppingCart,
   Package,
