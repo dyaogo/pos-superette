@@ -30,41 +30,14 @@ export const AppProvider = ({ children }) => {
 
   // ==================== ÉTATS GLOBAUX ====================
   // Charger l'identifiant du magasin depuis le localStorage si disponible
-  const [currentStoreId, setCurrentStoreId] = useState(() => {
-    try {
-      return localStorage.getItem('pos_current_store') || 'wend-kuuni';
-    } catch (e) {
-      return 'wend-kuuni';
-    }
-  });
+  const [currentStoreId, setCurrentStoreId] = useState([]);
   const [viewMode, setViewMode] = useState('single');
   
   // Catalogue produit global (hors magasin)
-  const [productCatalog, setProductCatalog] = useState(() => {
-    try {
-      const saved = localStorage.getItem('pos_products_catalog');
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [productCatalog, setProductCatalog] = useState([]);
 
   // Stock par magasin { [storeId]: { [productId]: quantity } }
-  const [stockByStore, setStockByStore] = useState(() => {
-    try {
-      const stores = ['wend-kuuni', 'wend-yam'];
-      const initialStock = {};
-      stores.forEach(storeId => {
-        const storeStock = loadInventory(storeId);
-        if (storeStock) {
-          initialStock[storeId] = storeStock;
-        }
-      });
-      return initialStock;
-    } catch (e) {
-      return {};
-    }
-  });
+  const [stockByStore, setStockByStore] = useState([]);
 
   const setStockForStore = (storeId, stock) => {
     setStockByStore(prev => ({ ...prev, [storeId]: stock }));
@@ -72,86 +45,53 @@ export const AppProvider = ({ children }) => {
   };
 
   const [globalProducts, setGlobalProducts] = useState([]);
-  const [salesHistory, setSalesHistory] = useState(() => {
-    try {
-      const storeKey = currentStoreId ? `pos_${currentStoreId}_sales` : 'pos_sales';
-      const saved = localStorage.getItem(storeKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [salesHistory, setSalesHistory] = useState([]);
 
-  const [customers, setCustomers] = useState(() => {
-    try {
-      const storeKey = currentStoreId ? `pos_${currentStoreId}_customers` : 'pos_customers';
-      const saved = localStorage.getItem(storeKey);
-      return saved ? JSON.parse(saved) : [
-        { id: 1, name: 'Client Comptant', phone: '', email: '', totalPurchases: 0, points: 0 }
-      ];
-    } catch (e) {
-      return [{ id: 1, name: 'Client Comptant', phone: '', email: '', totalPurchases: 0, points: 0 }];
-    }
-  });
+  const [customers, setCustomers] = useState([]);
 
-  const [credits, setCredits] = useState(() => {
-    try {
-      const storeKey = currentStoreId ? `pos_${currentStoreId}_credits` : 'pos_credits';
-      const saved = localStorage.getItem(storeKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [credits, setCredits] = useState([]);
 
-  const [employees, setEmployees] = useState(() => {
-    try {
-      const storeKey = currentStoreId ? `pos_${currentStoreId}_employees` : 'pos_employees';
-      const saved = localStorage.getItem(storeKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [employees, setEmployees] = useState([]);
 
-  const [returnsHistory, setReturnsHistory] = useState(() => {
-    try {
-      const storeKey = currentStoreId ? `pos_${currentStoreId}_returns` : 'pos_returns';
-      const saved = localStorage.getItem(storeKey);
-      return saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      return [];
-    }
-  });
+  const [returnsHistory, setReturnsHistory] = useState([]);
 
-  const [appSettings, setAppSettings] = useState(() => {
+  const [appSettings, setAppSettings] = useState([]);
+
+  // Charger les données localStorage après le rendu côté client
+useEffect(() => {
+  if (typeof window !== 'undefined') {
     try {
-      const storeKey = currentStoreId ? `pos_${currentStoreId}_settings` : 'pos_settings';
-      const saved = localStorage.getItem(storeKey);
-      const defaultSettings = {
-        currency: 'FCFA',
-        darkMode: false,
-        taxRate: 18,
-        companyName: 'Mon Superette',
-        receiptFooter: 'Merci de votre visite !',
-        autoBackup: true,
-        lowStockAlert: true,
-        printerEnabled: false
-      };
-      return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
-    } catch (e) {
-      return {
-        currency: 'FCFA',
-        darkMode: false,
-        taxRate: 18,
-        companyName: 'Mon Superette',
-        receiptFooter: 'Merci de votre visite !',
-        autoBackup: true,
-        lowStockAlert: true,
-        printerEnabled: false
-      };
+      // Charger produits
+      const savedProducts = localStorage.getItem('pos_products_catalog');
+      if (savedProducts) {
+        setProductsCatalog(JSON.parse(savedProducts));
+      }
+
+      // Charger ventes
+      const savedSales = localStorage.getItem('pos_sales');
+      if (savedSales) {
+        setSalesHistory(JSON.parse(savedSales));
+      }
+
+      // Charger clients
+      const savedCustomers = localStorage.getItem('pos_customers');
+      if (savedCustomers) {
+        setCustomers(JSON.parse(savedCustomers));
+      } else {
+        setCustomers([{ id: 1, name: 'Client Comptant', phone: '', email: '', totalPurchases: 0, points: 0 }]);
+      }
+
+      // Charger paramètres
+      const savedSettings = localStorage.getItem('pos_settings');
+      if (savedSettings) {
+        setAppSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
+      }
+
+    } catch (error) {
+      console.error('Erreur chargement localStorage:', error);
     }
-  });
+  }
+}, []); // Exécuter une seule fois au montage
 
   // ==================== FONCTIONS DE GESTION ====================
 
