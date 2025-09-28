@@ -1,15 +1,20 @@
 import { useState, useEffect } from 'react';
 
 export function useOffline() {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isOnline, setIsOnline] = useState(true); // valeur par défaut pour SSR
   const [offlineQueue, setOfflineQueue] = useState([]);
 
   useEffect(() => {
-    // Charger la queue depuis localStorage
+    // Initialiser la vraie valeur après montage
+  setIsOnline(navigator.onLine);
+  
+  // Charger la queue depuis localStorage
+  if (typeof window !== 'undefined') {
     const savedQueue = localStorage.getItem('offline_queue');
     if (savedQueue) {
       setOfflineQueue(JSON.parse(savedQueue));
     }
+  }
 
     const handleOnline = () => {
       setIsOnline(true);
