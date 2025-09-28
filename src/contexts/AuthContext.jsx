@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 //import { auth, db } from '../config/firebase';
 //import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+//import { doc, getDoc } from 'firebase/firestore';
 import { useApp } from './AppContext';
 
 const AuthContext = createContext();
