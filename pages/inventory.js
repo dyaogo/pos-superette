@@ -321,34 +321,47 @@ export default function Inventory() {
             <h2>Nouveau Produit</h2>
             
             <form onSubmit={async (e) => {
-              e.preventDefault();
-              
-              const formData = new FormData(e.target);
-              const productData = {
-                name: formData.get('name'),
-                category: formData.get('category'),
-                barcode: formData.get('barcode') || null,
-                costPrice: parseFloat(formData.get('costPrice')),
-                sellingPrice: parseFloat(formData.get('sellingPrice')),
-                stock: parseInt(formData.get('stock')) || 0
-              };
+  e.preventDefault();
+  
+  const formData = new FormData(e.target);
+  const productData = {
+    name: formData.get('name'),
+    category: formData.get('category'),
+    barcode: formData.get('barcode') || null,
+    costPrice: parseFloat(formData.get('costPrice')),
+    sellingPrice: parseFloat(formData.get('sellingPrice')),
+    stock: parseInt(formData.get('stock')) || 0
+  };
 
-              try {
-                // TODO: Appel API pour créer le produit
-                // Pour l'instant, ajout local
-                const newProduct = {
-                  id: Date.now(),
-                  ...productData,
-                  createdAt: new Date().toISOString()
-                };
-                
-                setProducts([...products, newProduct]);
-                setShowAddModal(false);
-                alert('Produit ajouté avec succès !');
-              } catch (error) {
-                alert('Erreur lors de l\'ajout du produit');
-              }
-            }}>
+  try {
+    // Envoyer à l'API
+    const response = await fetch('/api/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(productData)
+    });
+
+    if (response.ok) {
+      const newProduct = await response.json();
+      
+      // Ajouter au state local
+      setProducts([...products, newProduct]);
+      setShowAddModal(false);
+      
+      // Recharger les produits depuis l'API pour avoir les données à jour
+      loadProducts();
+      
+      alert('Produit ajouté avec succès !');
+    } else {
+      throw new Error('Erreur API');
+    }
+  } catch (error) {
+    console.error('Erreur:', error);
+    alert('Erreur lors de l\'ajout du produit');
+  }
+}}>
               
               <div style={{ marginBottom: '15px' }}>
                 <label style={{ display: 'block', marginBottom: '5px' }}>Nom du produit *</label>
