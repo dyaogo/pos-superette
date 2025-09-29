@@ -11,7 +11,7 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null);
   const [allowedStores, setAllowedStores] = useState([]);
   const [loading, setLoading] = useState(false);
-  const { setCurrentStoreId } = useApp();
+  //const { setCurrentStoreId } = useApp();
 
 /*  const login = async (email, password) => {
     await signInWithEmailAndPassword(auth, email, password);
