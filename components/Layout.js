@@ -7,6 +7,11 @@ import {
 
 export default function Layout({ children }) {
   const router = useRouter();
+
+   // Protection SSR - ne rien rendre côté serveur
+  if (typeof window === 'undefined') {
+    return <div>{children}</div>;
+  }
   
   const menuItems = [
     { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
