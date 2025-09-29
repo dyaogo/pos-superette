@@ -295,6 +295,191 @@ export default function Inventory() {
           </p>
         </div>
       </div>
+
+{/* Modal Ajout de Produit */}
+      {showAddModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '12px',
+            padding: '30px',
+            width: '500px',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }}>
+            <h2>Nouveau Produit</h2>
+            
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              
+              const formData = new FormData(e.target);
+              const productData = {
+                name: formData.get('name'),
+                category: formData.get('category'),
+                barcode: formData.get('barcode') || null,
+                costPrice: parseFloat(formData.get('costPrice')),
+                sellingPrice: parseFloat(formData.get('sellingPrice')),
+                stock: parseInt(formData.get('stock')) || 0
+              };
+
+              try {
+                // TODO: Appel API pour créer le produit
+                // Pour l'instant, ajout local
+                const newProduct = {
+                  id: Date.now(),
+                  ...productData,
+                  createdAt: new Date().toISOString()
+                };
+                
+                setProducts([...products, newProduct]);
+                setShowAddModal(false);
+                alert('Produit ajouté avec succès !');
+              } catch (error) {
+                alert('Erreur lors de l\'ajout du produit');
+              }
+            }}>
+              
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Nom du produit *</label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Catégorie *</label>
+                <input
+                  type="text"
+                  name="category"
+                  required
+                  placeholder="Ex: Boissons, Snacks..."
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Code-barres</label>
+                <input
+                  type="text"
+                  name="barcode"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Prix d'achat *</label>
+                  <input
+                    type="number"
+                    name="costPrice"
+                    required
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px' }}>Prix de vente *</label>
+                  <input
+                    type="number"
+                    name="sellingPrice"
+                    required
+                    min="0"
+                    step="0.01"
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px'
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Stock initial</label>
+                <input
+                  type="number"
+                  name="stock"
+                  defaultValue="0"
+                  min="0"
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  style={{
+                    padding: '10px 20px',
+                    background: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '10px 20px',
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Ajouter
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
