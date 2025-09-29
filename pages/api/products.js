@@ -1,27 +1,22 @@
-import prisma from '../../src/lib/prisma';
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
+  // Ajouter gestion d'erreur et retour vide par défaut
   if (req.method === 'GET') {
     try {
-      const { storeId } = req.query;
-      
       const products = await prisma.product.findMany({
-        where: storeId ? { storeId } : {},
-        orderBy: { name: 'asc' }
+        include: {
+          store: true
+        }
       });
       
-      res.status(200).json(products);
+      // IMPORTANT : Toujours retourner un tableau
+      res.status(200).json(products || []);
     } catch (error) {
-      res.status(500).json({ error: 'Erreur récupération produits' });
-    }
-  } else if (req.method === 'POST') {
-    try {
-      const product = await prisma.product.create({
-        data: req.body
-      });
-      res.status(201).json(product);
-    } catch (error) {
-      res.status(500).json({ error: 'Erreur création produit' });
+      console.error('Erreur API products:', error);
+      // Retourner un tableau vide en cas d'erreur
+      res.status(200).json([]);
     }
   } else {
     res.status(405).json({ error: 'Method not allowed' });

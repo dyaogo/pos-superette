@@ -64,7 +64,7 @@ useEffect(() => {
       // Charger produits
       const savedProducts = localStorage.getItem('pos_products_catalog');
       if (savedProducts) {
-        setProductsCatalog(JSON.parse(savedProducts));
+        setProductCatalog(JSON.parse(savedProducts));
       }
 
       // Charger ventes
@@ -623,7 +623,7 @@ export const useApp = () => {
       updateAppSettings: () => {}
     };
   }
-  
+
   if (!context) {
     throw new Error('useApp doit être utilisé dans un AppProvider');
   }
