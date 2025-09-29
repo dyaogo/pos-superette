@@ -606,6 +606,24 @@ useEffect(() => {
 
 export const useApp = () => {
   const context = useContext(AppContext);
+
+  // Protection SSR
+  if (typeof window === 'undefined') {
+    return {
+      productsCatalog: [],
+      salesHistory: [],
+      customers: [],
+      appSettings: { currency: 'FCFA', taxRate: 18 },
+      // ... toutes les fonctions vides
+      addProduct: () => {},
+      updateProduct: () => {},
+      deleteProduct: () => {},
+      recordSale: () => {},
+      addCustomer: () => {},
+      updateAppSettings: () => {}
+    };
+  }
+  
   if (!context) {
     throw new Error('useApp doit être utilisé dans un AppProvider');
   }

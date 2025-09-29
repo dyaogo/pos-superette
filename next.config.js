@@ -1,13 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  swcMinify: true,
+  // Désactiver le SSR pour éviter les erreurs de context
   experimental: {
-    esmExternals: false
-  },
-  // Configuration pour Vercel
-  trailingSlash: false,
-  generateBuildId: () => 'build'
+    appDir: false
+  }
 }
 
 module.exports = nextConfig
