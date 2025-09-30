@@ -296,17 +296,19 @@ export default function SalesPage() {
               </thead>
               <tbody>
                 {selectedSale.items?.map((item, index) => (
-                  <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                    <td style={{ padding: '10px' }}>{item.product?.name || 'Produit supprimé'}</td>
-                    <td style={{ padding: '10px', textAlign: 'center' }}>{item.quantity}</td>
-                    <td style={{ padding: '10px', textAlign: 'right' }}>
-                      {item.unitPrice.toLocaleString()} FCFA
-                    </td>
-                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold' }}>
-                      {(item.quantity * item.unitPrice).toLocaleString()} FCFA
-                    </td>
-                  </tr>
-                ))}
+  <tr key={index} style={{ borderBottom: '1px solid #e5e7eb' }}>
+    <td style={{ padding: '10px' }}>
+      {item.product?.name || item.productName || 'Produit inconnu'}
+    </td>
+    <td style={{ padding: '10px', textAlign: 'center' }}>{item.quantity}</td>
+    <td style={{ padding: '10px', textAlign: 'right' }}>
+      {item.unitPrice.toLocaleString()} FCFA
+    </td>
+    <td style={{ padding: '10px', textAlign: 'right', fontWeight: 'bold' }}>
+      {(item.quantity * item.unitPrice).toLocaleString()} FCFA
+    </td>
+  </tr>
+))}
               </tbody>
             </table>
 
