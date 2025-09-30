@@ -6,7 +6,7 @@ export default async function handler(req, res) {
     try {
       const sales = await prisma.sale.findMany({
         include: {
-          items: true
+          items: true  // ⚠️ Ceci ne charge que les SaleItem, pas les Product
         },
         orderBy: {
           createdAt: 'desc'
@@ -14,7 +14,31 @@ export default async function handler(req, res) {
         take: 100
       });
       
-      res.status(200).json(sales);
+      // Enrichir chaque vente avec les infos produits
+      const enrichedSales = await Promise.all(
+        sales.map(async (sale) => {
+          const enrichedItems = await Promise.all(
+            sale.items.map(async (item) => {
+              // Récupérer le produit pour avoir son nom actuel
+              const product = await prisma.product.findUnique({
+                where: { id: item.productId }
+              });
+              
+              return {
+                ...item,
+                product: product || { name: item.productName } // Utiliser le nom sauvegardé si produit supprimé
+              };
+            })
+          );
+          
+          return {
+            ...sale,
+            items: enrichedItems
+          };
+        })
+      );
+      
+      res.status(200).json(enrichedSales);
     } catch (error) {
       console.error('Erreur GET sales:', error);
       res.status(200).json([]);
@@ -24,7 +48,6 @@ export default async function handler(req, res) {
     try {
       const { customerId, total, paymentMethod, items } = req.body;
       
-      // Récupérer le magasin
       let store = await prisma.store.findFirst();
       
       if (!store) {
@@ -38,12 +61,10 @@ export default async function handler(req, res) {
         });
       }
       
-      // Calculer les totaux
       const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
       const tax = subtotal * 0.18;
       const totalAmount = subtotal + tax;
       
-      // Créer la vente
       const sale = await prisma.sale.create({
         data: {
           storeId: store.id,
@@ -56,7 +77,7 @@ export default async function handler(req, res) {
           items: {
             create: items.map(item => ({
               productId: item.productId,
-              productName: item.name,
+              productName: item.name, // Sauvegarder le nom du produit au moment de la vente
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               total: item.unitPrice * item.quantity
