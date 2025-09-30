@@ -2,17 +2,29 @@ const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
-  if (req.method === 'POST') {
+  if (req.method === 'GET') {
     try {
-      const { 
-        items, 
-        paymentMethod, 
-        cashReceived,
-        customerId,
-        discount = 0
-      } = req.body;
+      const sales = await prisma.sale.findMany({
+        include: {
+          items: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        },
+        take: 100
+      });
       
-      // Récupérer le premier magasin (ou créer si n'existe pas)
+      res.status(200).json(sales);
+    } catch (error) {
+      console.error('Erreur GET sales:', error);
+      res.status(200).json([]);
+    }
+    
+  } else if (req.method === 'POST') {
+    try {
+      const { customerId, total, paymentMethod, items } = req.body;
+      
+      // Récupérer le magasin
       let store = await prisma.store.findFirst();
       
       if (!store) {
@@ -28,28 +40,23 @@ export default async function handler(req, res) {
       
       // Calculer les totaux
       const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-      const tax = subtotal * 0.18; // 18% TVA
-      const total = subtotal + tax - discount;
-      const change = cashReceived ? cashReceived - total : 0;
+      const tax = subtotal * 0.18;
+      const totalAmount = subtotal + tax;
       
       // Créer la vente
       const sale = await prisma.sale.create({
         data: {
-          storeId: store.id,  // Utiliser l'ID du magasin
+          storeId: store.id,
           receiptNumber: `REC-${Date.now()}`,
-          subtotal,
-          tax,
-          discount,
-          total,
-          paymentMethod,
-          cashReceived,
-          change,
-          customerId,
-          cashier: 'Admin',
+          subtotal: subtotal,
+          tax: tax,
+          total: totalAmount,
+          paymentMethod: paymentMethod || 'cash',
+          customerId: customerId || null,
           items: {
             create: items.map(item => ({
               productId: item.productId,
-              productName: item.productName,
+              productName: item.name,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               total: item.unitPrice * item.quantity
@@ -61,7 +68,7 @@ export default async function handler(req, res) {
         }
       });
       
-      // Mettre à jour le stock
+      // Mettre à jour les stocks
       for (const item of items) {
         await prisma.product.update({
           where: { id: item.productId },
@@ -75,31 +82,14 @@ export default async function handler(req, res) {
       
       res.status(201).json(sale);
     } catch (error) {
-      console.error('Erreur création vente:', error);
+      console.error('Erreur POST sale:', error);
       res.status(500).json({ 
         error: 'Erreur lors de la création de la vente',
         details: error.message 
       });
     }
-  } else if (req.method === 'GET') {
-    try {
-      const sales = await prisma.sale.findMany({
-        include: {
-          items: true,
-          store: true
-        },
-        orderBy: {
-          createdAt: 'desc'
-        },
-        take: 50
-      });
-      
-      res.status(200).json(sales);
-    } catch (error) {
-      console.error('Erreur récupération ventes:', error);
-      res.status(500).json({ error: 'Erreur serveur' });
-    }
+    
   } else {
-    res.status(405).json({ error: 'Méthode non autorisée' });
+    res.status(405).json({ error: 'Method not allowed' });
   }
 }
