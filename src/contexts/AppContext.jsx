@@ -127,25 +127,37 @@ export function AppProvider({ children }) {
   };
 
   // === VENTES ===
-  const recordSale = async (saleData) => {
-    try {
-      const response = await fetch('/api/sales', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(saleData)
-      });
+const recordSale = async (saleData) => {
+  try {
+    // Enrichir les items avec le nom du produit
+    const enrichedItems = saleData.items.map(item => {
+      const product = productCatalog.find(p => p.id === item.productId);
+      return {
+        ...item,
+        name: product?.name || 'Produit inconnu'
+      };
+    });
 
-      if (response.ok) {
-        const newSale = await response.json();
-        setSalesHistory(prev => [newSale, ...prev]);
-        return { success: true, sale: newSale };
-      }
-      return { success: false };
-    } catch (error) {
-      console.error('Erreur enregistrement vente:', error);
-      return { success: false, error: error.message };
+    const response = await fetch('/api/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...saleData,
+        items: enrichedItems
+      })
+    });
+
+    if (response.ok) {
+      const newSale = await response.json();
+      setSalesHistory(prev => [newSale, ...prev]);
+      return { success: true, sale: newSale };
     }
-  };
+    return { success: false };
+  } catch (error) {
+    console.error('Erreur enregistrement vente:', error);
+    return { success: false, error: error.message };
+  }
+};
 
   // === CLIENTS ===
   const addCustomer = async (customerData) => {
