@@ -64,3 +64,11 @@ model SaleItem {
   
   sale        Sale     @relation(fields: [saleId], references: [id])
 }
+
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  phone     String?
+  email     String?
+  createdAt DateTime @default(now())
+}
