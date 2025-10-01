@@ -64,8 +64,6 @@ model SaleItem {
   
   sale        Sale     @relation(fields: [saleId], references: [id])
 }
-<<<<<<< HEAD
-
 model Customer {
   id        String   @id @default(cuid())
   name      String
@@ -73,5 +71,3 @@ model Customer {
   email     String?
   createdAt DateTime @default(now())
 }
-=======
->>>>>>> 207d9670656a121a285bd9fa6f0c98d531c79d66
