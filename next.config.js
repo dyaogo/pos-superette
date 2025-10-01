@@ -1,10 +1,10 @@
-cat > next.config.js << 'EOF'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   experimental: {
     appDir: false
   },
+  // Désactiver le cache pour le développement
   async headers() {
     return [
       {
@@ -21,4 +21,3 @@ const nextConfig = {
 }
 
 module.exports = nextConfig
-EOF
