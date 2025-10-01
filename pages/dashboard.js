@@ -1,258 +1,340 @@
 import { useState, useEffect } from 'react';
-import Link from 'next/link';
+import { useApp } from '../src/contexts/AppContext';
 import { 
-  ShoppingCart, Package, Users, TrendingUp, 
-  AlertTriangle, DollarSign, Box, UserCheck 
+  TrendingUp, DollarSign, ShoppingCart, Users, Package, 
+  AlertTriangle, Calendar, ArrowUpRight, ArrowDownRight 
 } from 'lucide-react';
 
-export default function Dashboard() {
-  const [stats, setStats] = useState({
-    todaySales: 0,
-    totalProducts: 0,
-    lowStockCount: 0,
-    totalCustomers: 0
-  });
-  
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+export default function DashboardPage() {
+  const { productCatalog, salesHistory, customers, loading } = useApp();
 
-  useEffect(() => {
-    // Charger les produits depuis l'API
-    fetch('/api/products')
-      .then(res => res.json())
-      .then(data => {
-        setProducts(data || []);
-        setStats({
-          todaySales: 15000, // Valeur de démo pour l'instant
-          totalProducts: data?.length || 0,
-          lowStockCount: data?.filter(p => p.stock < 10).length || 0,
-          totalCustomers: 3 // Valeur de démo
-        });
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error('Erreur chargement produits:', err);
-        setLoading(false);
-      });
-  }, []);
+  // Calculer les statistiques
+  const todaySales = salesHistory.filter(sale => {
+    const saleDate = new Date(sale.createdAt);
+    const today = new Date();
+    return saleDate.toDateString() === today.toDateString();
+  });
+
+  const yesterdaySales = salesHistory.filter(sale => {
+    const saleDate = new Date(sale.createdAt);
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    return saleDate.toDateString() === yesterday.toDateString();
+  });
+
+  const thisMonthSales = salesHistory.filter(sale => {
+    const saleDate = new Date(sale.createdAt);
+    const today = new Date();
+    return saleDate.getMonth() === today.getMonth() && 
+           saleDate.getFullYear() === today.getFullYear();
+  });
+
+  const todayRevenue = todaySales.reduce((sum, sale) => sum + sale.total, 0);
+  const yesterdayRevenue = yesterdaySales.reduce((sum, sale) => sum + sale.total, 0);
+  const monthRevenue = thisMonthSales.reduce((sum, sale) => sum + sale.total, 0);
+  
+  const revenueChange = yesterdayRevenue > 0 
+    ? ((todayRevenue - yesterdayRevenue) / yesterdayRevenue * 100).toFixed(1)
+    : 0;
+
+  const lowStockProducts = productCatalog.filter(p => p.stock < 10);
+  const outOfStockProducts = productCatalog.filter(p => p.stock === 0);
+  const totalInventoryValue = productCatalog.reduce((sum, p) => sum + (p.sellingPrice * p.stock), 0);
+
+  // Top produits vendus (par quantité)
+  const productSales = {};
+  salesHistory.forEach(sale => {
+    sale.items?.forEach(item => {
+      if (!productSales[item.productName]) {
+        productSales[item.productName] = 0;
+      }
+      productSales[item.productName] += item.quantity;
+    });
+  });
+
+  const topProducts = Object.entries(productSales)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5);
+
+  // Ventes récentes
+  const recentSales = salesHistory.slice(0, 5);
 
   if (loading) {
     return (
-      <div style={{ padding: '50px', textAlign: 'center' }}>
-        <h2>Chargement...</h2>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <p>Chargement...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ padding: '30px' }}>
-      <h1 style={{ marginBottom: '30px' }}>Tableau de Bord</h1>
-      
-      {/* Cartes de statistiques */}
-      <div style={{
-        display: 'grid',
+    <div style={{ padding: '30px', maxWidth: '1600px', margin: '0 auto' }}>
+      {/* En-tête */}
+      <div style={{ marginBottom: '30px' }}>
+        <h1 style={{ margin: '0 0 10px 0' }}>Tableau de Bord</h1>
+        <p style={{ margin: 0, color: '#6b7280' }}>
+          Vue d'ensemble de votre activité
+        </p>
+      </div>
+
+      {/* KPIs principaux */}
+      <div style={{ 
+        display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
         gap: '20px',
-        marginBottom: '40px'
+        marginBottom: '30px'
       }}>
         {/* Ventes du jour */}
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #10b981'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>Ventes du jour</p>
-              <h2 style={{ margin: '10px 0', color: '#10b981' }}>{stats.todaySales.toLocaleString()} FCFA</h2>
-            </div>
-            <DollarSign size={40} color="#10b981" style={{ opacity: 0.3 }} />
-          </div>
-        </div>
+        <StatCard
+          icon={<DollarSign size={24} />}
+          title="Ventes aujourd'hui"
+          value={`${todayRevenue.toLocaleString()} FCFA`}
+          subtitle={`${todaySales.length} transactions`}
+          trend={revenueChange}
+          color="#10b981"
+        />
 
-        {/* Total Produits */}
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #3b82f6'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>Total Produits</p>
-              <h2 style={{ margin: '10px 0', color: '#3b82f6' }}>{stats.totalProducts}</h2>
-            </div>
-            <Package size={40} color="#3b82f6" style={{ opacity: 0.3 }} />
-          </div>
-        </div>
+        {/* Ventes du mois */}
+        <StatCard
+          icon={<TrendingUp size={24} />}
+          title="Ventes du mois"
+          value={`${monthRevenue.toLocaleString()} FCFA`}
+          subtitle={`${thisMonthSales.length} transactions`}
+          color="#3b82f6"
+        />
 
-        {/* Stock Faible */}
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #f59e0b'
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>Stock Faible</p>
-              <h2 style={{ margin: '10px 0', color: '#f59e0b' }}>{stats.lowStockCount}</h2>
-            </div>
-            <AlertTriangle size={40} color="#f59e0b" style={{ opacity: 0.3 }} />
-          </div>
-        </div>
+        {/* Produits en stock */}
+        <StatCard
+          icon={<Package size={24} />}
+          title="Produits en stock"
+          value={productCatalog.length}
+          subtitle={`Valeur: ${totalInventoryValue.toLocaleString()} FCFA`}
+          color="#8b5cf6"
+        />
 
         {/* Clients */}
-        <div style={{
-          background: 'white',
-          padding: '20px',
+        <StatCard
+          icon={<Users size={24} />}
+          title="Clients"
+          value={customers.length}
+          subtitle="Clients enregistrés"
+          color="#f59e0b"
+        />
+      </div>
+
+      {/* Alertes et contenu principal */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '30px' }}>
+        {/* Ventes récentes */}
+        <div style={{ 
+          background: 'white', 
           borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #8b5cf6'
+          border: '1px solid #e5e7eb',
+          padding: '20px'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, color: '#666', fontSize: '14px' }}>Total Clients</p>
-              <h2 style={{ margin: '10px 0', color: '#8b5cf6' }}>{stats.totalCustomers}</h2>
-            </div>
-            <Users size={40} color="#8b5cf6" style={{ opacity: 0.3 }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Actions Rapides */}
-      <div style={{ marginBottom: '40px' }}>
-        <h2 style={{ marginBottom: '20px' }}>Actions Rapides</h2>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-          <Link href="/pos">
-            <button style={{
-              padding: '15px 30px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              transition: 'transform 0.2s',
-              boxShadow: '0 4px 15px rgba(102, 126, 234, 0.3)'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <ShoppingCart size={20} />
-              Nouvelle Vente
-            </button>
-          </Link>
+          <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ShoppingCart size={20} />
+            Ventes récentes
+          </h2>
           
-          <Link href="/inventory">
-            <button style={{
-              padding: '15px 30px',
-              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              transition: 'transform 0.2s',
-              boxShadow: '0 4px 15px rgba(240, 147, 251, 0.3)'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <Box size={20} />
-              Gérer Inventaire
-            </button>
-          </Link>
+          {recentSales.length === 0 ? (
+            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>
+              Aucune vente enregistrée
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {recentSales.map(sale => (
+                <div 
+                  key={sale.id}
+                  style={{
+                    padding: '15px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center'
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: '500' }}>
+                      {sale.items?.length || 0} article(s)
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                      {new Date(sale.createdAt).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                  </div>
+                  <div style={{ fontWeight: 'bold', fontSize: '18px', color: '#3b82f6' }}>
+                    {sale.total.toLocaleString()} FCFA
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
 
-          <Link href="/customers">
-            <button style={{
-              padding: '15px 30px',
-              background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              fontSize: '16px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              transition: 'transform 0.2s',
-              boxShadow: '0 4px 15px rgba(250, 112, 154, 0.3)'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              <UserCheck size={20} />
-              Ajouter Client
-            </button>
-          </Link>
+        {/* Alertes stock */}
+        <div style={{ 
+          background: 'white', 
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb',
+          padding: '20px'
+        }}>
+          <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <AlertTriangle size={20} />
+            Alertes Stock
+          </h2>
+
+          {outOfStockProducts.length > 0 && (
+            <div style={{ marginBottom: '15px' }}>
+              <div style={{ 
+                background: '#fef2f2', 
+                padding: '12px', 
+                borderRadius: '8px',
+                border: '1px solid #fecaca'
+              }}>
+                <div style={{ fontWeight: '500', color: '#991b1b', marginBottom: '8px' }}>
+                  Rupture de stock ({outOfStockProducts.length})
+                </div>
+                {outOfStockProducts.slice(0, 3).map(p => (
+                  <div key={p.id} style={{ fontSize: '14px', color: '#7f1d1d', marginBottom: '4px' }}>
+                    • {p.name}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {lowStockProducts.length > 0 && (
+            <div>
+              <div style={{ 
+                background: '#fef3c7', 
+                padding: '12px', 
+                borderRadius: '8px',
+                border: '1px solid #fde68a'
+              }}>
+                <div style={{ fontWeight: '500', color: '#92400e', marginBottom: '8px' }}>
+                  Stock faible ({lowStockProducts.length})
+                </div>
+                {lowStockProducts.slice(0, 5).map(p => (
+                  <div key={p.id} style={{ fontSize: '14px', color: '#78350f', marginBottom: '4px' }}>
+                    • {p.name} ({p.stock})
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {lowStockProducts.length === 0 && outOfStockProducts.length === 0 && (
+            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>
+              Aucune alerte
+            </p>
+          )}
         </div>
       </div>
 
-      {/* Tableau des produits en stock faible */}
-      <div style={{
-        background: 'white',
+      {/* Top produits */}
+      <div style={{ 
+        background: 'white', 
         borderRadius: '12px',
-        padding: '25px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        border: '1px solid #e5e7eb',
+        padding: '20px'
       }}>
-        <h2 style={{ marginBottom: '20px', color: '#f59e0b' }}>
-          ⚠️ Produits en Stock Faible
+        <h2 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
+          Top 5 Produits Vendus
         </h2>
-        
-        {products.filter(p => p.stock < 10).length === 0 ? (
-          <p style={{ color: '#10b981' }}>✅ Tous les produits ont un stock suffisant</p>
+
+        {topProducts.length === 0 ? (
+          <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>
+            Aucune donnée disponible
+          </p>
         ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <thead>
-              <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Produit</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Stock Actuel</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Catégorie</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Prix Vente</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products
-                .filter(p => p.stock < 10)
-                .sort((a, b) => a.stock - b.stock)
-                .map(product => (
-                  <tr key={product.id} style={{ 
-                    borderBottom: '1px solid #f3f4f6',
-                    transition: 'background 0.2s'
-                  }}
-                  onMouseOver={(e) => e.currentTarget.style.background = '#f9fafb'}
-                  onMouseOut={(e) => e.currentTarget.style.background = 'white'}
-                  >
-                    <td style={{ padding: '12px', fontWeight: '500' }}>{product.name}</td>
-                    <td style={{ 
-                      padding: '12px',
-                      color: product.stock < 5 ? '#ef4444' : '#f59e0b',
-                      fontWeight: 'bold',
-                      fontSize: '18px'
-                    }}>
-                      {product.stock}
-                    </td>
-                    <td style={{ padding: '12px', color: '#6b7280' }}>{product.category}</td>
-                    <td style={{ padding: '12px', color: '#6b7280' }}>
-                      {product.sellingPrice?.toLocaleString()} FCFA
-                    </td>
-                  </tr>
-                ))
-              }
-            </tbody>
-          </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {topProducts.map(([name, quantity], index) => (
+              <div 
+                key={name}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '15px',
+                  padding: '12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px'
+                }}
+              >
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontWeight: 'bold'
+                }}>
+                  {index + 1}
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: '500' }}>{name}</div>
+                  <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                    {quantity} unités vendues
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// Composant carte statistique
+function StatCard({ icon, title, value, subtitle, trend, color }) {
+  const isPositive = trend > 0;
+  const isNegative = trend < 0;
+
+  return (
+    <div style={{ 
+      background: 'white', 
+      borderRadius: '12px',
+      border: '1px solid #e5e7eb',
+      padding: '20px'
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+        <div style={{ color: color }}>
+          {icon}
+        </div>
+        {trend !== undefined && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '4px',
+            color: isPositive ? '#10b981' : isNegative ? '#ef4444' : '#6b7280',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}>
+            {isPositive && <ArrowUpRight size={16} />}
+            {isNegative && <ArrowDownRight size={16} />}
+            {Math.abs(trend)}%
+          </div>
+        )}
+      </div>
+      
+      <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>
+        {title}
+      </div>
+      
+      <div style={{ fontSize: '28px', fontWeight: 'bold', marginBottom: '8px' }}>
+        {value}
+      </div>
+      
+      <div style={{ fontSize: '14px', color: '#9ca3af' }}>
+        {subtitle}
       </div>
     </div>
   );
