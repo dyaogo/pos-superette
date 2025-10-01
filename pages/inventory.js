@@ -1,138 +1,106 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Package, Search, AlertCircle } from 'lucide-react';
+import { useApp } from '../src/contexts/AppContext';
+import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save } from 'lucide-react';
 
-export default function Inventory() {
-  const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
+export default function InventoryPage() {
+  const { productCatalog, addProduct, updateProduct, deleteProduct, loading } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [loading, setLoading] = useState(true);
+  const [categoryFilter, setCategoryFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  useEffect(() => {
-    loadProducts();
-  }, []);
+  // Extraire les catégories uniques
+  const categories = ['all', ...new Set(productCatalog.map(p => p.category))];
 
-  useEffect(() => {
-    filterProducts();
-  }, [searchTerm, selectedCategory, products]);
+  // Filtrer les produits
+  const filteredProducts = productCatalog.filter(product => {
+    const matchesSearch = 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.barcode && product.barcode.includes(searchTerm));
+    
+    const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
 
-  const loadProducts = async () => {
-    try {
-      const res = await fetch('/api/products');
-      const data = await res.json();
-      setProducts(data || []);
-      setFilteredProducts(data || []);
-      setLoading(false);
-    } catch (error) {
-      console.error('Erreur chargement produits:', error);
-      setLoading(false);
+    return matchesSearch && matchesCategory;
+  });
+
+  // Statistiques
+  const totalProducts = productCatalog.length;
+  const totalValue = productCatalog.reduce((sum, p) => sum + (p.sellingPrice * p.stock), 0);
+  const lowStockProducts = productCatalog.filter(p => p.stock < 10).length;
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    const productData = {
+      name: formData.get('name'),
+      category: formData.get('category'),
+      barcode: formData.get('barcode') || null,
+      costPrice: parseFloat(formData.get('costPrice')),
+      sellingPrice: parseFloat(formData.get('sellingPrice')),
+      stock: parseInt(formData.get('stock')) || 0
+    };
+
+    if (editingProduct) {
+      const result = await updateProduct(editingProduct.id, productData);
+      if (result.success) {
+        alert('Produit modifié avec succès');
+        setEditingProduct(null);
+      } else {
+        alert('Erreur lors de la modification');
+      }
+    } else {
+      const result = await addProduct(productData);
+      if (result.success) {
+        alert('Produit ajouté avec succès');
+        setShowAddModal(false);
+        e.target.reset();
+      } else {
+        alert('Erreur lors de l\'ajout');
+      }
     }
   };
 
-  const filterProducts = () => {
-    let filtered = [...products];
-    
-    if (searchTerm) {
-      filtered = filtered.filter(p => 
-        p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        p.barcode?.includes(searchTerm)
-      );
-    }
-    
-    if (selectedCategory !== 'all') {
-      filtered = filtered.filter(p => p.category === selectedCategory);
-    }
-    
-    setFilteredProducts(filtered);
-  };
+  const handleDelete = async (productId, productName) => {
+    if (!confirm(`Supprimer le produit "${productName}" ?`)) return;
 
-  const categories = ['all', ...new Set(products.map(p => p.category))];
-
-  const getStockColor = (stock) => {
-    if (stock === 0) return '#ef4444';
-    if (stock < 10) return '#f59e0b';
-    return '#10b981';
+    const result = await deleteProduct(productId);
+    if (result.success) {
+      alert('Produit supprimé');
+    } else {
+      alert('Erreur lors de la suppression');
+    }
   };
 
   if (loading) {
-    return <div style={{ padding: '50px', textAlign: 'center' }}>Chargement...</div>;
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <p>Chargement...</p>
+      </div>
+    );
   }
 
   return (
-    <div style={{ padding: '30px' }}>
-      <div style={{ marginBottom: '30px' }}>
-        <h1>Gestion de l'Inventaire</h1>
-        <p style={{ color: '#6b7280' }}>
-          {products.length} produits au total • 
-          {products.filter(p => p.stock < 10).length} en stock faible
-        </p>
-      </div>
-
-      {/* Barre de recherche et filtres */}
-      <div style={{
-        background: 'white',
-        padding: '20px',
-        borderRadius: '12px',
-        marginBottom: '20px',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-        display: 'flex',
-        gap: '15px',
-        flexWrap: 'wrap',
-        alignItems: 'center'
-      }}>
-        <div style={{ position: 'relative', flex: '1', minWidth: '250px' }}>
-          <Search size={20} style={{
-            position: 'absolute',
-            left: '12px',
-            top: '50%',
-            transform: 'translateY(-50%)',
-            color: '#9ca3af'
-          }} />
-          <input
-            type="text"
-            placeholder="Rechercher par nom ou code-barres..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 10px 10px 40px',
-              border: '1px solid #e5e7eb',
-              borderRadius: '8px',
-              fontSize: '14px'
-            }}
-          />
-        </div>
-
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          style={{
-            padding: '10px 15px',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px',
-            fontSize: '14px'
-          }}
-        >
-          <option value="all">Toutes les catégories</option>
-          {categories.filter(c => c !== 'all').map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
-
+    <div style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
+      {/* En-tête */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+        <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Package size={32} />
+          Gestion de l'Inventaire
+        </h1>
         <button
           onClick={() => setShowAddModal(true)}
           style={{
-            padding: '10px 20px',
-            background: '#3b82f6',
+            padding: '12px 24px',
+            background: '#10b981',
             color: 'white',
             border: 'none',
             borderRadius: '8px',
+            cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            cursor: 'pointer'
+            fontSize: '16px'
           }}
         >
           <Plus size={20} />
@@ -140,359 +108,397 @@ export default function Inventory() {
         </button>
       </div>
 
-      {/* Tableau des produits */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      {/* Statistiques */}
+      <div style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: '20px',
+        marginBottom: '30px'
       }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: '#f9fafb' }}>
-            <tr>
-              <th style={{ padding: '15px', textAlign: 'left', fontWeight: '600' }}>Produit</th>
-              <th style={{ padding: '15px', textAlign: 'left', fontWeight: '600' }}>Catégorie</th>
-              <th style={{ padding: '15px', textAlign: 'center', fontWeight: '600' }}>Stock</th>
-              <th style={{ padding: '15px', textAlign: 'right', fontWeight: '600' }}>Prix d'achat</th>
-              <th style={{ padding: '15px', textAlign: 'right', fontWeight: '600' }}>Prix de vente</th>
-              <th style={{ padding: '15px', textAlign: 'center', fontWeight: '600' }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filteredProducts.length === 0 ? (
-              <tr>
-                <td colSpan="6" style={{ 
-                  padding: '40px', 
-                  textAlign: 'center',
-                  color: '#9ca3af'
-                }}>
-                  <Package size={48} style={{ marginBottom: '10px', opacity: 0.3 }} />
-                  <p>Aucun produit trouvé</p>
-                </td>
+        <div style={{ 
+          background: 'white', 
+          padding: '20px', 
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px' }}>Total produits</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
+            {totalProducts}
+          </div>
+        </div>
+
+        <div style={{ 
+          background: 'white', 
+          padding: '20px', 
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px' }}>Valeur stock</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981' }}>
+            {totalValue.toLocaleString()} FCFA
+          </div>
+        </div>
+
+        <div style={{ 
+          background: 'white', 
+          padding: '20px', 
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb'
+        }}>
+          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <AlertTriangle size={16} />
+            Stock faible
+          </div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ef4444' }}>
+            {lowStockProducts}
+          </div>
+        </div>
+      </div>
+
+      {/* Filtres */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '15px', 
+        marginBottom: '20px',
+        flexWrap: 'wrap'
+      }}>
+        <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
+          <Search 
+            size={20} 
+            style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} 
+          />
+          <input
+            type="text"
+            placeholder="Rechercher un produit..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 45px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px'
+            }}
+          />
+        </div>
+
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          style={{
+            padding: '12px',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            minWidth: '150px'
+          }}
+        >
+          {categories.map(cat => (
+            <option key={cat} value={cat}>
+              {cat === 'all' ? 'Toutes catégories' : cat}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {/* Liste des produits */}
+      <div style={{ 
+        background: 'white', 
+        borderRadius: '12px',
+        border: '1px solid #e5e7eb',
+        overflow: 'hidden'
+      }}>
+        {filteredProducts.length === 0 ? (
+          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+            Aucun produit trouvé
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '15px', textAlign: 'left' }}>Produit</th>
+                <th style={{ padding: '15px', textAlign: 'left' }}>Catégorie</th>
+                <th style={{ padding: '15px', textAlign: 'right' }}>Prix achat</th>
+                <th style={{ padding: '15px', textAlign: 'right' }}>Prix vente</th>
+                <th style={{ padding: '15px', textAlign: 'center' }}>Stock</th>
+                <th style={{ padding: '15px', textAlign: 'center' }}>Actions</th>
               </tr>
-            ) : (
-              filteredProducts.map(product => (
-                <tr key={product.id} style={{
-                  borderBottom: '1px solid #f3f4f6',
-                  transition: 'background 0.2s'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.background = '#fafafa'}
-                onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+            </thead>
+            <tbody>
+              {filteredProducts.map((product) => (
+                <tr 
+                  key={product.id}
+                  style={{ 
+                    borderBottom: '1px solid #e5e7eb',
+                    background: product.stock < 10 ? '#fef2f2' : 'white'
+                  }}
                 >
                   <td style={{ padding: '15px' }}>
-                    <div>
-                      <div style={{ fontWeight: '500' }}>{product.name}</div>
-                      {product.barcode && (
-                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>
-                          Code: {product.barcode}
-                        </div>
-                      )}
-                    </div>
+                    <div style={{ fontWeight: '500' }}>{product.name}</div>
+                    {product.barcode && (
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>{product.barcode}</div>
+                    )}
                   </td>
-                  <td style={{ padding: '15px', color: '#6b7280' }}>
-                    {product.category}
+                  <td style={{ padding: '15px' }}>{product.category}</td>
+                  <td style={{ padding: '15px', textAlign: 'right' }}>
+                    {product.costPrice.toLocaleString()} FCFA
+                  </td>
+                  <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold' }}>
+                    {product.sellingPrice.toLocaleString()} FCFA
                   </td>
                   <td style={{ padding: '15px', textAlign: 'center' }}>
                     <span style={{
                       padding: '4px 12px',
-                      borderRadius: '20px',
+                      borderRadius: '12px',
                       fontSize: '14px',
-                      fontWeight: '600',
-                      color: getStockColor(product.stock),
-                      background: `${getStockColor(product.stock)}20`
+                      fontWeight: '500',
+                      background: product.stock < 10 ? '#fecaca' : '#dcfce7',
+                      color: product.stock < 10 ? '#991b1b' : '#166534'
                     }}>
                       {product.stock}
-                      {product.stock === 0 && ' (Rupture)'}
-                      {product.stock > 0 && product.stock < 10 && ' (Faible)'}
                     </span>
                   </td>
-                  <td style={{ padding: '15px', textAlign: 'right', color: '#6b7280' }}>
-                    {product.costPrice?.toLocaleString()} FCFA
-                  </td>
-                  <td style={{ padding: '15px', textAlign: 'right', fontWeight: '500' }}>
-                    {product.sellingPrice?.toLocaleString()} FCFA
-                  </td>
-                  <td style={{ padding: '15px' }}>
+                  <td style={{ padding: '15px', textAlign: 'center' }}>
                     <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
                       <button
                         onClick={() => setEditingProduct(product)}
                         style={{
-                          padding: '6px 10px',
+                          padding: '8px 12px',
                           background: '#3b82f6',
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
                           cursor: 'pointer',
                           display: 'flex',
-                          alignItems: 'center'
+                          alignItems: 'center',
+                          gap: '4px'
                         }}
                       >
                         <Edit size={16} />
+                        Modifier
                       </button>
                       <button
+                        onClick={() => handleDelete(product.id, product.name)}
                         style={{
-                          padding: '6px 10px',
+                          padding: '8px 12px',
                           background: '#ef4444',
                           color: 'white',
                           border: 'none',
                           borderRadius: '6px',
                           cursor: 'pointer',
                           display: 'flex',
-                          alignItems: 'center'
+                          alignItems: 'center',
+                          gap: '4px'
                         }}
                       >
                         <Trash2 size={16} />
+                        Supprimer
                       </button>
                     </div>
                   </td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Statistiques rapides */}
-      <div style={{
-        marginTop: '30px',
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '15px'
-      }}>
-        <div style={{
-          background: 'white',
-          padding: '15px',
-          borderRadius: '8px',
-          borderLeft: '4px solid #10b981'
-        }}>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Valeur totale stock</p>
-          <p style={{ margin: '5px 0 0 0', fontSize: '20px', fontWeight: '600' }}>
-            {products.reduce((sum, p) => sum + (p.sellingPrice * p.stock), 0).toLocaleString()} FCFA
-          </p>
-        </div>
-        
-        <div style={{
-          background: 'white',
-          padding: '15px',
-          borderRadius: '8px',
-          borderLeft: '4px solid #f59e0b'
-        }}>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Produits en rupture</p>
-          <p style={{ margin: '5px 0 0 0', fontSize: '20px', fontWeight: '600' }}>
-            {products.filter(p => p.stock === 0).length}
-          </p>
-        </div>
-        
-        <div style={{
-          background: 'white',
-          padding: '15px',
-          borderRadius: '8px',
-          borderLeft: '4px solid #3b82f6'
-        }}>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Catégories</p>
-          <p style={{ margin: '5px 0 0 0', fontSize: '20px', fontWeight: '600' }}>
-            {categories.length - 1}
-          </p>
-        </div>
-      </div>
-
-{/* Modal Ajout de Produit */}
+      {/* Modal Ajout */}
       {showAddModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '30px',
-            width: '500px',
-            maxHeight: '90vh',
-            overflow: 'auto'
-          }}>
-            <h2>Nouveau Produit</h2>
-            
-            <form onSubmit={async (e) => {
-  e.preventDefault();
-  
-  const formData = new FormData(e.target);
-  const productData = {
-    name: formData.get('name'),
-    category: formData.get('category'),
-    barcode: formData.get('barcode') || null,
-    costPrice: parseFloat(formData.get('costPrice')),
-    sellingPrice: parseFloat(formData.get('sellingPrice')),
-    stock: parseInt(formData.get('stock')) || 0
-  };
-
-  try {
-    // Envoyer à l'API
-    const response = await fetch('/api/products', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(productData)
-    });
-
-    if (response.ok) {
-      const newProduct = await response.json();
-      
-      // Ajouter au state local
-      setProducts([...products, newProduct]);
-      setShowAddModal(false);
-      
-      // Recharger les produits depuis l'API pour avoir les données à jour
-      loadProducts();
-      
-      alert('Produit ajouté avec succès !');
-    } else {
-      throw new Error('Erreur API');
-    }
-  } catch (error) {
-    console.error('Erreur:', error);
-    alert('Erreur lors de l\'ajout du produit');
-  }
-}}>
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px' }}>Nom du produit *</label>
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px' }}>Catégorie *</label>
-                <input
-                  type="text"
-                  name="category"
-                  required
-                  placeholder="Ex: Boissons, Snacks..."
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
-              </div>
-
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px' }}>Code-barres</label>
-                <input
-                  type="text"
-                  name="barcode"
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>Prix d'achat *</label>
-                  <input
-                    type="number"
-                    name="costPrice"
-                    required
-                    min="0"
-                    step="0.01"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px'
-                    }}
-                  />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', marginBottom: '5px' }}>Prix de vente *</label>
-                  <input
-                    type="number"
-                    name="sellingPrice"
-                    required
-                    min="0"
-                    step="0.01"
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid #e5e7eb',
-                      borderRadius: '8px'
-                    }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '5px' }}>Stock initial</label>
-                <input
-                  type="number"
-                  name="stock"
-                  defaultValue="0"
-                  min="0"
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid #e5e7eb',
-                    borderRadius: '8px'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  style={{
-                    padding: '10px 20px',
-                    background: '#6b7280',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Annuler
-                </button>
-                <button
-                  type="submit"
-                  style={{
-                    padding: '10px 20px',
-                    background: '#10b981',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  Ajouter
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <ProductModal
+          title="Nouveau Produit"
+          onClose={() => setShowAddModal(false)}
+          onSubmit={handleSubmit}
+        />
       )}
+
+      {/* Modal Modification */}
+      {editingProduct && (
+        <ProductModal
+          title="Modifier le Produit"
+          product={editingProduct}
+          onClose={() => setEditingProduct(null)}
+          onSubmit={handleSubmit}
+        />
+      )}
+    </div>
+  );
+}
+
+// Composant Modal
+function ProductModal({ title, product, onClose, onSubmit }) {
+  return (
+    <div 
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0,0,0,0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000
+      }}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: 'white',
+          borderRadius: '12px',
+          padding: '30px',
+          width: '600px',
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0 }}>{title}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={onSubmit}>
+          <div style={{ marginBottom: '15px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Nom du produit *</label>
+            <input
+              type="text"
+              name="name"
+              required
+              defaultValue={product?.name}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Catégorie *</label>
+              <input
+                type="text"
+                name="category"
+                required
+                defaultValue={product?.category}
+                placeholder="Ex: Boissons, Snacks..."
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Code-barres</label>
+              <input
+                type="text"
+                name="barcode"
+                defaultValue={product?.barcode || ''}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Prix d'achat *</label>
+              <input
+                type="number"
+                name="costPrice"
+                required
+                min="0"
+                step="0.01"
+                defaultValue={product?.costPrice}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Prix de vente *</label>
+              <input
+                type="number"
+                name="sellingPrice"
+                required
+                min="0"
+                step="0.01"
+                defaultValue={product?.sellingPrice}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px'
+                }}
+              />
+            </div>
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Stock</label>
+            <input
+              type="number"
+              name="stock"
+              min="0"
+              defaultValue={product?.stock || 0}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px'
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                padding: '12px 24px',
+                background: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer'
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: '12px 24px',
+                background: '#10b981',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Save size={20} />
+              {product ? 'Modifier' : 'Ajouter'}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
