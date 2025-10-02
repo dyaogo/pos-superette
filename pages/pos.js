@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../src/contexts/AppContext';
 import { ShoppingCart, Search, Trash2, Plus, Minus, DollarSign } from 'lucide-react';
+import ReceiptPrinter from '../components/ReceiptPrinter';
+
 
 export default function POSPage() {
   const { productCatalog, recordSale, customers, loading } = useApp();
@@ -9,6 +11,8 @@ export default function POSPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [lastSale, setLastSale] = useState(null);
 
   // Filtrer les produits selon la recherche
   const filteredProducts = productCatalog.filter(product =>
@@ -72,7 +76,20 @@ export default function POSPage() {
     const result = await recordSale(saleData);
 
     if (result.success) {
-      alert(`Vente enregistrée avec succès ! Total: ${total} FCFA`);
+      // Sauvegarder la vente pour l'impression
+      setLastSale(result.sale);
+      
+      // Afficher le message approprié
+      if (result.offline) {
+        alert(`Vente enregistrée en mode hors ligne ! Total: ${total} FCFA\n\nLa vente sera synchronisée dès le retour de la connexion.`);
+      } else {
+        alert(`Vente enregistrée avec succès ! Total: ${total} FCFA`);
+      }
+      
+      // Proposer l'impression
+      setShowReceipt(true);
+      
+      // Vider le panier
       setCart([]);
       setSearchTerm('');
       setSelectedCustomer(null);
@@ -340,6 +357,13 @@ export default function POSPage() {
           </button>
         </div>
       </div>
+      {/* Modal d'impression */}
+      {showReceipt && lastSale && (
+        <ReceiptPrinter 
+          sale={lastSale} 
+          onClose={() => setShowReceipt(false)} 
+        />
+      )}
     </div>
   );
 }
