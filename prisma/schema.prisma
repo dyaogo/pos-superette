@@ -81,3 +81,25 @@ model Credit {
   status          String   @default("pending") // pending, partial, paid
   createdAt       DateTime @default(now())
 }
+model Return {
+  id          String   @id @default(cuid())
+  saleId      String
+  reason      String
+  amount      Float
+  refundMethod String  // cash, card, credit
+  processedBy String   @default("Admin")
+  createdAt   DateTime @default(now())
+  items       ReturnItem[]
+}
+
+model ReturnItem {
+  id          String   @id @default(cuid())
+  returnId    String
+  productId   String
+  productName String
+  quantity    Int
+  unitPrice   Float
+  total       Float
+  
+  return      Return   @relation(fields: [returnId], references: [id])
+}
