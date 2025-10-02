@@ -3,13 +3,19 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
-  // États principaux - initialisés vides, chargés depuis l'API
+  // États existants
   const [productCatalog, setProductCatalog] = useState([]);
   const [salesHistory, setSalesHistory] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [credits, setCredits] = useState([]);
   const [returnsHistory, setReturnsHistory] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // NOUVEAUX ÉTATS OFFLINE
+  const [isOnline, setIsOnline] = useState(true);
+  const [offlineQueue, setOfflineQueue] = useState([]);
+  const [lastSync, setLastSync] = useState(null);
+  
   const [appSettings, setAppSettings] = useState({
     currency: 'FCFA',
     darkMode: false,
@@ -21,52 +27,236 @@ export function AppProvider({ children }) {
     printerEnabled: false
   });
 
-  // Charger toutes les données depuis l'API au démarrage
+  // Détecter le statut de connexion
   useEffect(() => {
-    const loadAllData = async () => {
-      if (typeof window === 'undefined') return;
-      
-      try {
-        setLoading(true);
-
-        // Charger produits
-        const productsRes = await fetch('/api/products');
-        if (productsRes.ok) {
-          const products = await productsRes.json();
-          setProductCatalog(products);
-        }
-
-        // Charger ventes
-        const salesRes = await fetch('/api/sales');
-        if (salesRes.ok) {
-          const sales = await salesRes.json();
-          setSalesHistory(sales);
-        }
-
-        // Charger clients
-        const customersRes = await fetch('/api/customers');
-        if (customersRes.ok) {
-          const customersList = await customersRes.json();
-          setCustomers(customersList);
-        }
-
-        // Charger paramètres depuis localStorage (temporaire)
-        const savedSettings = localStorage.getItem('pos_settings');
-        if (savedSettings) {
-          setAppSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
-        }
-
-      } catch (error) {
-        console.error('Erreur chargement données:', error);
-      } finally {
-        setLoading(false);
-      }
+    const handleOnline = () => {
+      setIsOnline(true);
+      syncOfflineQueue();
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
     };
 
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // État initial
+    setIsOnline(navigator.onLine);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Charger la queue offline depuis localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedQueue = localStorage.getItem('offline_queue');
+      if (savedQueue) {
+        setOfflineQueue(JSON.parse(savedQueue));
+      }
+      
+      const savedLastSync = localStorage.getItem('last_sync');
+      if (savedLastSync) {
+        setLastSync(new Date(savedLastSync));
+      }
+    }
+  }, []);
+
+  // Sauvegarder la queue offline
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('offline_queue', JSON.stringify(offlineQueue));
+    }
+  }, [offlineQueue]);
+
+  // Synchroniser la queue offline
+  const syncOfflineQueue = async () => {
+    if (offlineQueue.length === 0) return;
+
+    console.log(`Synchronisation de ${offlineQueue.length} opérations...`);
+
+    const successfulSyncs = [];
+    const failedSyncs = [];
+
+    for (const operation of offlineQueue) {
+      try {
+        if (operation.type === 'sale') {
+          const response = await fetch('/api/sales', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(operation.data)
+          });
+
+          if (response.ok) {
+            successfulSyncs.push(operation.id);
+          } else {
+            failedSyncs.push(operation);
+          }
+        }
+        // Ajouter d'autres types d'opérations ici
+      } catch (error) {
+        console.error('Erreur sync:', error);
+        failedSyncs.push(operation);
+      }
+    }
+
+    // Retirer les opérations réussies de la queue
+    setOfflineQueue(failedSyncs);
+    setLastSync(new Date());
+    
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('last_sync', new Date().toISOString());
+    }
+
+    if (successfulSyncs.length > 0) {
+      // Recharger les données après sync
+      loadAllData();
+    }
+  };
+
+  // Charger toutes les données depuis l'API
+  const loadAllData = async () => {
+    if (typeof window === 'undefined') return;
+    
+    try {
+      setLoading(true);
+
+      const [productsRes, salesRes, customersRes] = await Promise.all([
+        fetch('/api/products'),
+        fetch('/api/sales'),
+        fetch('/api/customers')
+      ]);
+
+      if (productsRes.ok) {
+        const products = await productsRes.json();
+        setProductCatalog(products);
+        // Cache local pour offline
+        localStorage.setItem('cached_products', JSON.stringify(products));
+      }
+
+      if (salesRes.ok) {
+        const sales = await salesRes.json();
+        setSalesHistory(sales);
+      }
+
+      if (customersRes.ok) {
+        const customersList = await customersRes.json();
+        setCustomers(customersList);
+        localStorage.setItem('cached_customers', JSON.stringify(customersList));
+      }
+
+      const savedSettings = localStorage.getItem('pos_settings');
+      if (savedSettings) {
+        setAppSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
+      }
+
+    } catch (error) {
+      console.error('Erreur chargement données:', error);
+      
+      // Charger depuis le cache si offline
+      if (!navigator.onLine) {
+        const cachedProducts = localStorage.getItem('cached_products');
+        const cachedCustomers = localStorage.getItem('cached_customers');
+        
+        if (cachedProducts) setProductCatalog(JSON.parse(cachedProducts));
+        if (cachedCustomers) setCustomers(JSON.parse(cachedCustomers));
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
     loadAllData();
   }, []);
 
-  // === PRODUITS ===
+  // VENTE AVEC SUPPORT OFFLINE
+  const recordSale = async (saleData) => {
+    try {
+      const enrichedItems = saleData.items.map(item => {
+        const product = productCatalog.find(p => p.id === item.productId);
+        return {
+          ...item,
+          name: product?.name || 'Produit inconnu'
+        };
+      });
+
+      const salePayload = {
+        ...saleData,
+        items: enrichedItems
+      };
+
+      if (isOnline) {
+        // Mode online - envoi direct
+        const response = await fetch('/api/sales', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(salePayload)
+        });
+
+        if (response.ok) {
+          const newSale = await response.json();
+          setSalesHistory(prev => [newSale, ...prev]);
+          return { success: true, sale: newSale, synced: true };
+        }
+        
+        // Si l'API échoue, ajouter à la queue
+        throw new Error('API failed');
+      } else {
+        // Mode offline - ajouter à la queue
+        const offlineSale = {
+          id: `offline_${Date.now()}`,
+          type: 'sale',
+          data: salePayload,
+          timestamp: new Date().toISOString(),
+          status: 'pending'
+        };
+
+        setOfflineQueue(prev => [...prev, offlineSale]);
+        
+        // Ajouter à l'historique local avec indicateur offline
+        const localSale = {
+          id: offlineSale.id,
+          ...salePayload,
+          createdAt: offlineSale.timestamp,
+          offline: true
+        };
+        
+        setSalesHistory(prev => [localSale, ...prev]);
+        
+        return { 
+          success: true, 
+          sale: localSale, 
+          synced: false,
+          offline: true 
+        };
+      }
+    } catch (error) {
+      // En cas d'erreur, sauvegarder offline
+      const offlineSale = {
+        id: `offline_${Date.now()}`,
+        type: 'sale',
+        data: salePayload,
+        timestamp: new Date().toISOString(),
+        status: 'pending'
+      };
+
+      setOfflineQueue(prev => [...prev, offlineSale]);
+      
+      return { 
+        success: true, 
+        sale: offlineSale, 
+        synced: false,
+        offline: true,
+        message: 'Vente sauvegardée en mode offline'
+      };
+    }
+  };
+
+  // Reste des fonctions existantes...
   const addProduct = async (productData) => {
     try {
       const response = await fetch('/api/products', {
@@ -126,40 +316,6 @@ export function AppProvider({ children }) {
     }
   };
 
-  // === VENTES ===
-const recordSale = async (saleData) => {
-  try {
-    // Enrichir les items avec le nom du produit
-    const enrichedItems = saleData.items.map(item => {
-      const product = productCatalog.find(p => p.id === item.productId);
-      return {
-        ...item,
-        name: product?.name || 'Produit inconnu'
-      };
-    });
-
-    const response = await fetch('/api/sales', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        ...saleData,
-        items: enrichedItems
-      })
-    });
-
-    if (response.ok) {
-      const newSale = await response.json();
-      setSalesHistory(prev => [newSale, ...prev]);
-      return { success: true, sale: newSale };
-    }
-    return { success: false };
-  } catch (error) {
-    console.error('Erreur enregistrement vente:', error);
-    return { success: false, error: error.message };
-  }
-};
-
-  // === CLIENTS ===
   const addCustomer = async (customerData) => {
     try {
       const response = await fetch('/api/customers', {
@@ -202,7 +358,6 @@ const recordSale = async (saleData) => {
     }
   };
 
-  // === PARAMÈTRES ===
   const updateAppSettings = (newSettings) => {
     const updated = { ...appSettings, ...newSettings };
     setAppSettings(updated);
@@ -220,6 +375,12 @@ const recordSale = async (saleData) => {
     returnsHistory,
     appSettings,
     loading,
+
+    // État offline
+    isOnline,
+    offlineQueue,
+    lastSync,
+    syncOfflineQueue,
 
     // Actions produits
     addProduct,
@@ -247,7 +408,6 @@ const recordSale = async (saleData) => {
 export const useApp = () => {
   const context = useContext(AppContext);
   
-  // Protection SSR
   if (typeof window === 'undefined') {
     return {
       productCatalog: [],
@@ -257,6 +417,10 @@ export const useApp = () => {
       returnsHistory: [],
       appSettings: { currency: 'FCFA', taxRate: 18 },
       loading: false,
+      isOnline: true,
+      offlineQueue: [],
+      lastSync: null,
+      syncOfflineQueue: () => {},
       addProduct: () => Promise.resolve({ success: false }),
       updateProduct: () => Promise.resolve({ success: false }),
       deleteProduct: () => Promise.resolve({ success: false }),
