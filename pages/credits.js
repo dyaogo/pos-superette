@@ -1,263 +1,347 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, Clock, CheckCircle, AlertCircle, Plus } from 'lucide-react';
+import { useApp } from '../src/contexts/AppContext';
+import { CreditCard, Plus, DollarSign, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 
-export default function Credits() {
-  const [credits, setCredits] = useState([
-    {
-      id: 1,
-      customerName: 'Jean Dupont',
-      amount: 15000,
-      paid: 5000,
-      remaining: 10000,
-      date: '2024-01-15',
-      dueDate: '2024-02-15',
-      status: 'partial'
-    },
-    {
-      id: 2,
-      customerName: 'Marie Martin',
-      amount: 8000,
-      paid: 8000,
-      remaining: 0,
-      date: '2024-01-10',
-      status: 'paid'
+export default function CreditsPage() {
+  const { customers, loading } = useApp();
+  const [credits, setCredits] = useState([]);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [filter, setFilter] = useState('all');
+
+  // Charger les crédits
+  useEffect(() => {
+    loadCredits();
+  }, []);
+
+  const loadCredits = async () => {
+    try {
+      const res = await fetch('/api/credits');
+      const data = await res.json();
+      setCredits(data);
+    } catch (error) {
+      console.error('Erreur chargement crédits:', error);
     }
-  ]);
+  };
 
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedCredit, setSelectedCredit] = useState(null);
-  const [paymentAmount, setPaymentAmount] = useState('');
+  // Filtrer les crédits
+  const filteredCredits = credits.filter(credit => {
+    if (filter === 'pending') return credit.status === 'pending';
+    if (filter === 'partial') return credit.status === 'partial';
+    if (filter === 'paid') return credit.status === 'paid';
+    if (filter === 'overdue') {
+      return credit.status !== 'paid' && new Date(credit.dueDate) < new Date();
+    }
+    return true;
+  });
 
-  const totalCredits = credits.reduce((sum, c) => sum + c.remaining, 0);
+  // Statistiques
+  const totalCredits = credits.reduce((sum, c) => sum + c.remainingAmount, 0);
   const overdueCredits = credits.filter(c => 
     c.status !== 'paid' && new Date(c.dueDate) < new Date()
-  ).length;
+  );
 
-  const handlePayment = () => {
-    if (selectedCredit && paymentAmount) {
-      const amount = parseFloat(paymentAmount);
-      setCredits(credits.map(credit => {
-        if (credit.id === selectedCredit.id) {
-          const newPaid = credit.paid + amount;
-          const newRemaining = credit.amount - newPaid;
-          return {
-            ...credit,
-            paid: newPaid,
-            remaining: newRemaining,
-            status: newRemaining === 0 ? 'paid' : 'partial'
-          };
-        }
-        return credit;
-      }));
-      setShowPaymentModal(false);
-      setPaymentAmount('');
-      setSelectedCredit(null);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    
+    const creditData = {
+      customerId: formData.get('customerId'),
+      amount: parseFloat(formData.get('amount')),
+      description: formData.get('description'),
+      dueDate: formData.get('dueDate')
+    };
+
+    try {
+      const res = await fetch('/api/credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(creditData)
+      });
+
+      if (res.ok) {
+        alert('Crédit enregistré');
+        setShowAddModal(false);
+        loadCredits();
+      }
+    } catch (error) {
+      alert('Erreur: ' + error.message);
     }
   };
 
-  const getStatusColor = (status) => {
-    switch(status) {
-      case 'paid': return '#10b981';
-      case 'partial': return '#f59e0b';
-      case 'overdue': return '#ef4444';
-      default: return '#6b7280';
-    }
-  };
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <p>Chargement...</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ padding: '30px' }}>
-      <h1>Gestion des Crédits</h1>
+    <div style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
+      {/* En-tête */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+        <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <CreditCard size={32} />
+          Gestion des Crédits
+        </h1>
+        <button
+          onClick={() => setShowAddModal(true)}
+          style={{
+            padding: '12px 24px',
+            background: '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+        >
+          <Plus size={20} />
+          Nouveau Crédit
+        </button>
+      </div>
 
       {/* Statistiques */}
-      <div style={{
-        display: 'grid',
+      <div style={{ 
+        display: 'grid', 
         gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
         gap: '20px',
         marginBottom: '30px'
       }}>
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #ef4444'
-        }}>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Total Crédits</p>
-          <h2 style={{ margin: '10px 0', color: '#ef4444' }}>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Total crédits en cours</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
             {totalCredits.toLocaleString()} FCFA
-          </h2>
+          </div>
         </div>
 
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #f59e0b'
-        }}>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>En retard</p>
-          <h2 style={{ margin: '10px 0' }}>{overdueCredits}</h2>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Crédits en retard</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ef4444' }}>
+            {overdueCredits.length}
+          </div>
         </div>
 
-        <div style={{
-          background: 'white',
-          padding: '20px',
-          borderRadius: '12px',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          borderLeft: '4px solid #10b981'
-        }}>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '14px' }}>Clients à crédit</p>
-          <h2 style={{ margin: '10px 0' }}>{credits.filter(c => c.status !== 'paid').length}</h2>
+        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
+          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Total crédits</div>
+          <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6' }}>
+            {credits.length}
+          </div>
         </div>
       </div>
 
-      {/* Tableau des crédits */}
-      <div style={{
-        background: 'white',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-      }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead style={{ background: '#f9fafb' }}>
-            <tr>
-              <th style={{ padding: '15px', textAlign: 'left' }}>Client</th>
-              <th style={{ padding: '15px', textAlign: 'right' }}>Montant Total</th>
-              <th style={{ padding: '15px', textAlign: 'right' }}>Payé</th>
-              <th style={{ padding: '15px', textAlign: 'right' }}>Reste</th>
-              <th style={{ padding: '15px', textAlign: 'center' }}>Échéance</th>
-              <th style={{ padding: '15px', textAlign: 'center' }}>Statut</th>
-              <th style={{ padding: '15px', textAlign: 'center' }}>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {credits.map(credit => (
-              <tr key={credit.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                <td style={{ padding: '15px', fontWeight: '500' }}>{credit.customerName}</td>
-                <td style={{ padding: '15px', textAlign: 'right' }}>
-                  {credit.amount.toLocaleString()} FCFA
-                </td>
-                <td style={{ padding: '15px', textAlign: 'right', color: '#10b981' }}>
-                  {credit.paid.toLocaleString()} FCFA
-                </td>
-                <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#ef4444' }}>
-                  {credit.remaining.toLocaleString()} FCFA
-                </td>
-                <td style={{ padding: '15px', textAlign: 'center', color: '#6b7280' }}>
-                  {credit.dueDate || '-'}
-                </td>
-                <td style={{ padding: '15px', textAlign: 'center' }}>
-                  <span style={{
-                    padding: '4px 12px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    color: 'white',
-                    background: getStatusColor(credit.status)
-                  }}>
-                    {credit.status === 'paid' ? 'Payé' : 
-                     credit.status === 'partial' ? 'Partiel' : 'En cours'}
-                  </span>
-                </td>
-                <td style={{ padding: '15px', textAlign: 'center' }}>
-                  {credit.status !== 'paid' && (
-                    <button
-                      onClick={() => {
-                        setSelectedCredit(credit);
-                        setShowPaymentModal(true);
-                      }}
-                      style={{
-                        padding: '6px 12px',
-                        background: '#10b981',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontSize: '14px'
-                      }}
-                    >
-                      Paiement
-                    </button>
-                  )}
-                </td>
+      {/* Filtres */}
+      <div style={{ marginBottom: '20px' }}>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          style={{
+            padding: '12px',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            minWidth: '200px'
+          }}
+        >
+          <option value="all">Tous les crédits</option>
+          <option value="pending">En attente</option>
+          <option value="partial">Partiellement payés</option>
+          <option value="paid">Payés</option>
+          <option value="overdue">En retard</option>
+        </select>
+      </div>
+
+      {/* Liste des crédits */}
+      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+        {filteredCredits.length === 0 ? (
+          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+            Aucun crédit trouvé
+          </div>
+        ) : (
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+                <th style={{ padding: '15px', textAlign: 'left' }}>Client</th>
+                <th style={{ padding: '15px', textAlign: 'right' }}>Montant</th>
+                <th style={{ padding: '15px', textAlign: 'right' }}>Restant</th>
+                <th style={{ padding: '15px', textAlign: 'left' }}>Échéance</th>
+                <th style={{ padding: '15px', textAlign: 'center' }}>Statut</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {filteredCredits.map((credit) => {
+                const customer = customers.find(c => c.id === credit.customerId);
+                const isOverdue = credit.status !== 'paid' && new Date(credit.dueDate) < new Date();
+                
+                return (
+                  <tr key={credit.id} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                    <td style={{ padding: '15px', fontWeight: '500' }}>
+                      {customer?.name || 'Client inconnu'}
+                    </td>
+                    <td style={{ padding: '15px', textAlign: 'right' }}>
+                      {credit.amount.toLocaleString()} FCFA
+                    </td>
+                    <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', color: '#ef4444' }}>
+                      {credit.remainingAmount.toLocaleString()} FCFA
+                    </td>
+                    <td style={{ padding: '15px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Clock size={16} color={isOverdue ? '#ef4444' : '#6b7280'} />
+                        {new Date(credit.dueDate).toLocaleDateString('fr-FR')}
+                      </div>
+                    </td>
+                    <td style={{ padding: '15px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        fontSize: '12px',
+                        background: 
+                          credit.status === 'paid' ? '#dcfce7' :
+                          credit.status === 'partial' ? '#fef3c7' :
+                          isOverdue ? '#fecaca' : '#dbeafe',
+                        color:
+                          credit.status === 'paid' ? '#166534' :
+                          credit.status === 'partial' ? '#92400e' :
+                          isOverdue ? '#991b1b' : '#1e40af'
+                      }}>
+                        {credit.status === 'paid' ? 'Payé' :
+                         credit.status === 'partial' ? 'Partiel' :
+                         isOverdue ? 'En retard' : 'En cours'}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
       </div>
 
-      {/* Modal de paiement */}
-      {showPaymentModal && selectedCredit && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '12px',
-            padding: '30px',
-            width: '400px'
-          }}>
-            <h2>Enregistrer un Paiement</h2>
-            <p>Client: <strong>{selectedCredit.customerName}</strong></p>
-            <p>Montant restant: <strong>{selectedCredit.remaining} FCFA</strong></p>
+      {/* Modal Ajout */}
+      {showAddModal && (
+        <div 
+          onClick={() => setShowAddModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000
+          }}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '30px',
+              width: '500px'
+            }}
+          >
+            <h2>Nouveau Crédit</h2>
             
-            <input
-              type="number"
-              placeholder="Montant du paiement"
-              value={paymentAmount}
-              onChange={(e) => setPaymentAmount(e.target.value)}
-              max={selectedCredit.remaining}
-              style={{
-                width: '100%',
-                padding: '10px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                marginTop: '15px',
-                marginBottom: '20px'
-              }}
-            />
-            
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button
-                onClick={handlePayment}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: '#10b981',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
-                }}
-              >
-                Confirmer
-              </button>
-              <button
-                onClick={() => {
-                  setShowPaymentModal(false);
-                  setPaymentAmount('');
-                }}
-                style={{
-                  flex: 1,
-                  padding: '10px',
-                  background: '#6b7280',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  cursor: 'pointer'
-                }}
-              >
-                Annuler
-              </button>
-            </div>
+            <form onSubmit={handleSubmit}>
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Client *</label>
+                <select
+                  name="customerId"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                >
+                  <option value="">Sélectionner un client</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Montant *</label>
+                <input
+                  type="number"
+                  name="amount"
+                  required
+                  min="0"
+                  step="0.01"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Date d'échéance *</label>
+                <input
+                  type="date"
+                  name="dueDate"
+                  required
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', marginBottom: '5px' }}>Description</label>
+                <textarea
+                  name="description"
+                  rows="3"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  style={{
+                    padding: '12px 24px',
+                    background: '#6b7280',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    padding: '12px 24px',
+                    background: '#10b981',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -71,3 +71,13 @@ model Customer {
   email     String?
   createdAt DateTime @default(now())
 }
+model Credit {
+  id              String   @id @default(cuid())
+  customerId      String
+  amount          Float
+  remainingAmount Float
+  description     String?
+  dueDate         DateTime
+  status          String   @default("pending") // pending, partial, paid
+  createdAt       DateTime @default(now())
+}
