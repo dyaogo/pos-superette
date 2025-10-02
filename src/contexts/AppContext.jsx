@@ -28,27 +28,41 @@ export function AppProvider({ children }) {
   });
 
   // Détecter le statut de connexion
-  useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
+  // Détecter le statut de connexion et synchroniser
+useEffect(() => {
+  const handleOnline = () => {
+    console.log('Connexion rétablie, synchronisation...');
+    setIsOnline(true);
+    // Petit délai pour s'assurer que la connexion est stable
+    setTimeout(() => {
       syncOfflineQueue();
-    };
-    
-    const handleOffline = () => {
-      setIsOnline(false);
-    };
+    }, 1000);
+  };
+  
+  const handleOffline = () => {
+    console.log('Mode hors ligne activé');
+    setIsOnline(false);
+  };
 
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
+  window.addEventListener('online', handleOnline);
+  window.addEventListener('offline', handleOffline);
 
-    // État initial
-    setIsOnline(navigator.onLine);
+  // État initial
+  setIsOnline(navigator.onLine);
 
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  return () => {
+    window.removeEventListener('online', handleOnline);
+    window.removeEventListener('offline', handleOffline);
+  };
+}, []); // Ne pas inclure syncOfflineQueue dans les dépendances
+
+// Synchroniser automatiquement quand la queue change et qu'on est online
+useEffect(() => {
+  if (isOnline && offlineQueue.length > 0) {
+    console.log(`Tentative de sync de ${offlineQueue.length} opérations...`);
+    syncOfflineQueue();
+  }
+}, [isOnline, offlineQueue.length]); // Se déclenche quand isOnline ou la taille de la queue change
 
   // Charger la queue offline depuis localStorage
   useEffect(() => {
@@ -73,49 +87,66 @@ export function AppProvider({ children }) {
   }, [offlineQueue]);
 
   // Synchroniser la queue offline
-  const syncOfflineQueue = async () => {
-    if (offlineQueue.length === 0) return;
+  // Synchroniser la queue offline
+const syncOfflineQueue = async () => {
+  if (offlineQueue.length === 0) {
+    console.log('Queue vide, rien à synchroniser');
+    return;
+  }
 
-    console.log(`Synchronisation de ${offlineQueue.length} opérations...`);
+  if (!isOnline) {
+    console.log('Hors ligne, synchronisation impossible');
+    return;
+  }
 
-    const successfulSyncs = [];
-    const failedSyncs = [];
+  console.log(`🔄 Début de synchronisation de ${offlineQueue.length} opérations...`);
 
-    for (const operation of offlineQueue) {
-      try {
-        if (operation.type === 'sale') {
-          const response = await fetch('/api/sales', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(operation.data)
-          });
+  const successfulSyncs = [];
+  const failedSyncs = [];
 
-          if (response.ok) {
-            successfulSyncs.push(operation.id);
-          } else {
-            failedSyncs.push(operation);
-          }
+  for (const operation of offlineQueue) {
+    try {
+      console.log(`Sync de l'opération ${operation.id}...`);
+      
+      if (operation.type === 'sale') {
+        const response = await fetch('/api/sales', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(operation.data)
+        });
+
+        if (response.ok) {
+          console.log(`✅ Opération ${operation.id} synchronisée`);
+          successfulSyncs.push(operation.id);
+        } else {
+          console.error(`❌ Erreur sync ${operation.id}:`, response.status);
+          failedSyncs.push(operation);
         }
-        // Ajouter d'autres types d'opérations ici
-      } catch (error) {
-        console.error('Erreur sync:', error);
-        failedSyncs.push(operation);
       }
+    } catch (error) {
+      console.error(`❌ Erreur sync ${operation.id}:`, error);
+      failedSyncs.push(operation);
     }
+  }
 
-    // Retirer les opérations réussies de la queue
-    setOfflineQueue(failedSyncs);
-    setLastSync(new Date());
-    
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('last_sync', new Date().toISOString());
-    }
+  console.log(`✅ ${successfulSyncs.length} réussies, ❌ ${failedSyncs.length} échouées`);
 
-    if (successfulSyncs.length > 0) {
-      // Recharger les données après sync
-      loadAllData();
-    }
-  };
+  // Retirer les opérations réussies de la queue
+  setOfflineQueue(failedSyncs);
+  
+  const now = new Date();
+  setLastSync(now);
+  
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('last_sync', now.toISOString());
+  }
+
+  if (successfulSyncs.length > 0) {
+    console.log('Rechargement des données après sync...');
+    // Recharger les données après sync
+    await loadAllData();
+  }
+};
 
   // Charger toutes les données depuis l'API
   const loadAllData = async () => {
