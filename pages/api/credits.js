@@ -1,4 +1,3 @@
-cat > pages/api/credits.js << 'EOF'
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
@@ -41,4 +40,3 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
-EOF
