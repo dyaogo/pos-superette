@@ -1,8 +1,13 @@
 import { useState } from 'react';
 import { useApp } from '../src/contexts/AppContext';
 import { BarChart, Calendar, Download, TrendingUp, DollarSign, Package, Users } from 'lucide-react';
+import { exportSalesToExcel } from '../utils/excelExport';
+
 
 export default function ReportsPage() {
+  const handleExport = () => {
+  exportSalesToExcel(filteredSales, customers, period);
+};
   const { salesHistory, productCatalog, customers, loading } = useApp();
   const [period, setPeriod] = useState('month');
   const [startDate, setStartDate] = useState('');
@@ -108,22 +113,22 @@ export default function ReportsPage() {
           Rapports et Statistiques
         </h1>
         <button
-          style={{
-            padding: '12px 24px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
-          }}
-          onClick={() => alert('Export Excel - À implémenter')}
-        >
-          <Download size={20} />
-          Exporter
-        </button>
+  style={{
+    padding: '12px 24px',
+    background: '#10b981',
+    color: 'white',
+    border: 'none',
+    borderRadius: '8px',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
+  }}
+  onClick={handleExport}
+>
+  <Download size={20} />
+  Exporter en Excel
+</button>
       </div>
 
       {/* Filtres de période */}

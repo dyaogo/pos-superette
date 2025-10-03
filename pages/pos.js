@@ -14,6 +14,90 @@ export default function POSPage() {
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState(null);
 
+  // État pour le scan
+  const [scanBuffer, setScanBuffer] = useState('');
+  const [lastKeyTime, setLastKeyTime] = useState(Date.now());
+
+  // Détecter le scan de code-barres
+useEffect(() => {
+  const handleKeyDown = (e) => {
+    const now = Date.now();
+    
+    // Si plus de 100ms entre les touches, nouveau scan
+    if (now - lastKeyTime > 100) {
+      setScanBuffer('');
+    }
+    
+    setLastKeyTime(now);
+    
+    // Si c'est Enter, traiter le code-barres
+    if (e.key === 'Enter' && scanBuffer.length > 0) {
+      e.preventDefault();
+      processBarcodeScan(scanBuffer);
+      setScanBuffer('');
+    }
+    // Accumuler les caractères (sauf les touches spéciales)
+    else if (e.key.length === 1) {
+      setScanBuffer(prev => prev + e.key);
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyDown);
+  return () => window.removeEventListener('keydown', handleKeyDown);
+}, [scanBuffer, lastKeyTime, productCatalog]);
+
+const processBarcodeScan = (barcode) => {
+  console.log('Code-barres scanné:', barcode);
+  
+  // Chercher le produit par code-barres
+  const product = productCatalog.find(p => p.barcode === barcode);
+  
+  if (product) {
+    addToCart(product);
+    // Feedback sonore (optionnel)
+    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVa3m7q5aFg1Ln+PyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVa3m7q5aFg==');
+    audio.play().catch(() => {}); // Ignorer les erreurs
+  } else {
+    alert(`Produit non trouvé: ${barcode}`);
+  }
+};
+
+
+  // Raccourcis clavier
+useEffect(() => {
+  const handleKeyPress = (e) => {
+    // F1 - Focus sur la recherche
+    if (e.key === 'F1') {
+      e.preventDefault();
+      document.getElementById('product-search')?.focus();
+    }
+    
+    // F2 - Vider le panier
+    if (e.key === 'F2') {
+      e.preventDefault();
+      if (cart.length > 0 && confirm('Vider le panier ?')) {
+        setCart([]);
+      }
+    }
+    
+    // F3 - Finaliser la vente
+    if (e.key === 'F3') {
+      e.preventDefault();
+      if (cart.length > 0) {
+        completeSale();
+      }
+    }
+    
+    // Échap - Fermer les modals
+    if (e.key === 'Escape') {
+      setShowReceipt(false);
+    }
+  };
+
+  window.addEventListener('keydown', handleKeyPress);
+  return () => window.removeEventListener('keydown', handleKeyPress);
+}, [cart, showReceipt]);
+
   // Filtrer les produits selon la recherche
   const filteredProducts = productCatalog.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -119,8 +203,9 @@ export default function POSPage() {
             style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} 
           />
           <input
+            id="product-search"
             type="text"
-            placeholder="Rechercher un produit (nom ou code-barres)..."
+            placeholder="Rechercher un produit (nom ou code-barres)... [F1]"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             style={{
