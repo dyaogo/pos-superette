@@ -68,7 +68,7 @@ export default function Layout({ children }) {
       
       {/* Indicateur de connexion */}
       <OfflineIndicator />
-      StockAlertNotification />
+      <StockAlertNotification />
       <DarkModeToggle />
 
     </>
