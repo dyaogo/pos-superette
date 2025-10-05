@@ -5,6 +5,8 @@ import {
   Settings, FileText, BarChart, CreditCard, RotateCcw 
 } from 'lucide-react';
 import OfflineIndicator from './OfflineIndicator';
+import DarkModeToggle from './DarkModeToggle';
+
 
 export default function Layout({ children }) {
   const router = useRouter();
@@ -66,6 +68,9 @@ export default function Layout({ children }) {
       
       {/* Indicateur de connexion */}
       <OfflineIndicator />
+      StockAlertNotification />
+      <DarkModeToggle />
+
     </>
   );
 }

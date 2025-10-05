@@ -68,6 +68,7 @@ export default function DashboardPage() {
   }
 
   return (
+    <div className="animate-fade-in" style={{ padding: '30px', maxWidth: '1600px', margin: '0 auto' }}>
     <div style={{ padding: '30px', maxWidth: '1600px', margin: '0 auto' }}>
       {/* En-tête */}
       <div style={{ marginBottom: '30px' }}>
@@ -299,7 +300,7 @@ function StatCard({ icon, title, value, subtitle, trend, color }) {
   const isNegative = trend < 0;
 
   return (
-    <div style={{ 
+    <div className="hover-lift" style={{ 
       background: 'white', 
       borderRadius: '12px',
       border: '1px solid #e5e7eb',
