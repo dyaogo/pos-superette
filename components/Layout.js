@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import OfflineIndicator from './OfflineIndicator';
 import DarkModeToggle from './DarkModeToggle';
+import StockAlertNotification from './StockAlertNotification';
+
 
 
 export default function Layout({ children }) {
