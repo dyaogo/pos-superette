@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../src/contexts/AppContext';
 import { BarChart, Calendar, Download, TrendingUp, DollarSign, Package, Users } from 'lucide-react';
 import { exportSalesToExcel } from '../utils/excelExport';
@@ -97,11 +98,8 @@ export default function ReportsPage() {
     .slice(0, 10);
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Chargement...</p>
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
+
   }
 
   return (
@@ -133,10 +131,10 @@ export default function ReportsPage() {
 
       {/* Filtres de période */}
       <div style={{ 
-        background: 'white',
+        background: 'var(--color-surface)',
         padding: '20px',
         borderRadius: '12px',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--color-border)',
         marginBottom: '30px'
       }}>
         <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -150,7 +148,7 @@ export default function ReportsPage() {
             onChange={(e) => setPeriod(e.target.value)}
             style={{
               padding: '10px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
               minWidth: '150px'
             }}
@@ -170,7 +168,7 @@ export default function ReportsPage() {
                 onChange={(e) => setStartDate(e.target.value)}
                 style={{
                   padding: '10px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px'
                 }}
               />
@@ -181,7 +179,7 @@ export default function ReportsPage() {
                 onChange={(e) => setEndDate(e.target.value)}
                 style={{
                   padding: '10px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px'
                 }}
               />
@@ -227,16 +225,16 @@ export default function ReportsPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
         {/* Ventes par catégorie */}
         <div style={{ 
-          background: 'white',
+          background: 'var(--color-surface)',
           padding: '20px',
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
             Ventes par Catégorie
           </h2>
           {Object.keys(salesByCategory).length === 0 ? (
-            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>
+            <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '40px 0' }}>
               Aucune donnée
             </p>
           ) : (
@@ -246,7 +244,7 @@ export default function ReportsPage() {
                 .map(([category, data]) => (
                   <div key={category} style={{ 
                     padding: '12px',
-                    background: '#f9fafb',
+                    background: 'var(--color-surface-hover)',
                     borderRadius: '8px'
                   }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -255,7 +253,7 @@ export default function ReportsPage() {
                         {data.revenue.toLocaleString()} FCFA
                       </span>
                     </div>
-                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                       {data.quantity} unités vendues
                     </div>
                   </div>
@@ -266,10 +264,10 @@ export default function ReportsPage() {
 
         {/* Méthodes de paiement */}
         <div style={{ 
-          background: 'white',
+          background: 'var(--color-surface)',
           padding: '20px',
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
             Méthodes de Paiement
@@ -283,7 +281,7 @@ export default function ReportsPage() {
               return (
                 <div key={method} style={{ 
                   padding: '12px',
-                  background: '#f9fafb',
+                  background: 'var(--color-surface-hover)',
                   borderRadius: '8px'
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -305,7 +303,7 @@ export default function ReportsPage() {
                       borderRadius: '4px'
                     }} />
                   </div>
-                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
                     {percentage}% du total
                   </div>
                 </div>
@@ -317,22 +315,22 @@ export default function ReportsPage() {
 
       {/* Top 10 produits */}
       <div style={{ 
-        background: 'white',
+        background: 'var(--color-surface)',
         padding: '20px',
         borderRadius: '12px',
-        border: '1px solid #e5e7eb'
+        border: '1px solid var(--color-border)'
       }}>
         <h2 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
           Top 10 Produits
         </h2>
         {topProducts.length === 0 ? (
-          <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>
+          <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '40px 0' }}>
             Aucune vente
           </p>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--color-surface-hover)', borderBottom: '2px solid #e5e7eb' }}>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Rang</th>
                 <th style={{ padding: '12px', textAlign: 'left' }}>Produit</th>
                 <th style={{ padding: '12px', textAlign: 'center' }}>Quantité</th>
@@ -375,15 +373,15 @@ export default function ReportsPage() {
 function KPICard({ icon, title, value, color }) {
   return (
     <div style={{ 
-      background: 'white',
+      background: 'var(--color-surface)',
       padding: '20px',
       borderRadius: '12px',
-      border: '1px solid #e5e7eb'
+      border: '1px solid var(--color-border)'
     }}>
       <div style={{ color: color, marginBottom: '12px' }}>
         {icon}
       </div>
-      <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>
+      <div style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '8px' }}>
         {title}
       </div>
       <div style={{ fontSize: '28px', fontWeight: 'bold' }}>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../src/contexts/AppContext';
 import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save } from 'lucide-react';
 
@@ -73,11 +74,8 @@ export default function InventoryPage() {
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Chargement...</p>
-      </div>
-    );
+      return <LoadingSpinner fullScreen />;
+
   }
 
   return (
@@ -116,36 +114,36 @@ export default function InventoryPage() {
         marginBottom: '30px'
       }}>
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           padding: '20px', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px' }}>Total produits</div>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px', fontSize: '14px' }}>Total produits</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
             {totalProducts}
           </div>
         </div>
 
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           padding: '20px', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px' }}>Valeur stock</div>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px', fontSize: '14px' }}>Valeur stock</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981' }}>
             {totalValue.toLocaleString()} FCFA
           </div>
         </div>
 
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           padding: '20px', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <AlertTriangle size={16} />
             Stock faible
           </div>
@@ -165,7 +163,7 @@ export default function InventoryPage() {
         <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
           <Search 
             size={20} 
-            style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} 
+            style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
           />
           <input
             type="text"
@@ -175,7 +173,7 @@ export default function InventoryPage() {
             style={{
               width: '100%',
               padding: '12px 12px 12px 45px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px'
             }}
           />
@@ -186,7 +184,7 @@ export default function InventoryPage() {
           onChange={(e) => setCategoryFilter(e.target.value)}
           style={{
             padding: '12px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             minWidth: '150px'
           }}
@@ -201,19 +199,19 @@ export default function InventoryPage() {
 
       {/* Liste des produits */}
       <div style={{ 
-        background: 'white', 
+        background: 'var(--color-surface)', 
         borderRadius: '12px',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--color-border)',
         overflow: 'hidden'
       }}>
         {filteredProducts.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
             Aucun produit trouvé
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--color-surface-hover)', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Produit</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Catégorie</th>
                 <th style={{ padding: '15px', textAlign: 'right' }}>Prix achat</th>
@@ -234,7 +232,7 @@ export default function InventoryPage() {
                   <td style={{ padding: '15px' }}>
                     <div style={{ fontWeight: '500' }}>{product.name}</div>
                     {product.barcode && (
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>{product.barcode}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{product.barcode}</div>
                     )}
                   </td>
                   <td style={{ padding: '15px' }}>{product.category}</td>
@@ -344,7 +342,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
       <div 
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '30px',
           width: '600px',
@@ -370,7 +368,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px'
               }}
             />
@@ -388,7 +386,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px'
                 }}
               />
@@ -403,7 +401,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px'
                 }}
               />
@@ -423,7 +421,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px'
                 }}
               />
@@ -441,7 +439,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px'
                 }}
               />
@@ -458,7 +456,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px'
               }}
             />

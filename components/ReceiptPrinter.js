@@ -60,7 +60,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
       zIndex: 2000
     }}>
       <div style={{
-        background: 'white',
+        background: 'var(--color-surface)',
         borderRadius: '12px',
         padding: '30px',
         width: '400px',
@@ -71,7 +71,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
 
         {/* Prévisualisation du reçu */}
         <div style={{
-          background: '#f9fafb',
+          background: 'var(--color-surface-hover)',
           padding: '20px',
           borderRadius: '8px',
           marginBottom: '20px',

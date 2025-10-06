@@ -38,7 +38,7 @@ export default function StockAlertNotification() {
       top: '20px',
       right: '20px',
       zIndex: 1000,
-      background: 'white',
+      background: 'var(--color-surface)',
       borderRadius: '12px',
       boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
       padding: '20px',
@@ -52,7 +52,7 @@ export default function StockAlertNotification() {
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
               Alertes Stock Faible
             </h3>
-            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#6b7280' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
               {lowStockProducts.length} produit(s) à réapprovisionner
             </p>
           </div>
@@ -64,7 +64,7 @@ export default function StockAlertNotification() {
             border: 'none',
             cursor: 'pointer',
             padding: '4px',
-            color: '#9ca3af'
+            color: 'var(--color-text-muted)'
           }}
         >
           <X size={20} />
@@ -94,7 +94,7 @@ export default function StockAlertNotification() {
             <button
               onClick={() => dismissAlert(product.id)}
               style={{
-                background: 'white',
+                background: 'var(--color-surface)',
                 border: '1px solid #f59e0b',
                 borderRadius: '6px',
                 padding: '4px 8px',
@@ -109,7 +109,7 @@ export default function StockAlertNotification() {
       </div>
 
       {lowStockProducts.length > 5 && (
-        <p style={{ fontSize: '12px', color: '#6b7280', margin: '10px 0 0 0', textAlign: 'center' }}>
+        <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '10px 0 0 0', textAlign: 'center' }}>
           + {lowStockProducts.length - 5} autre(s)
         </p>
       )}

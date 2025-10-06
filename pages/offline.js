@@ -13,10 +13,10 @@ export default function Offline() {
     }}>
       <WifiOff size={80} color="#9ca3af" />
       <h1 style={{ marginTop: '20px' }}>Mode Hors Ligne</h1>
-      <p style={{ color: '#6b7280', marginTop: '10px' }}>
+      <p style={{ color: 'var(--color-text-secondary)', marginTop: '10px' }}>
         L'application fonctionne en mode hors ligne.
       </p>
-      <p style={{ color: '#6b7280' }}>
+      <p style={{ color: 'var(--color-text-secondary)' }}>
         Vos données seront synchronisées automatiquement au retour de la connexion.
       </p>
     </div>

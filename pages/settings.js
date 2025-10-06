@@ -62,7 +62,7 @@ export default function SettingsPage() {
           <Settings size={32} />
           Paramètres de l'Application
         </h1>
-        <p style={{ margin: 0, color: '#6b7280' }}>
+        <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
           Configurez votre point de vente
         </p>
       </div>
@@ -85,7 +85,7 @@ export default function SettingsPage() {
       )}
 
       {/* Formulaire */}
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', padding: '30px' }}>
+      <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '30px' }}>
         
         {/* Informations du magasin */}
         <section style={{ marginBottom: '30px' }}>
@@ -104,7 +104,7 @@ export default function SettingsPage() {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '16px'
               }}
@@ -122,7 +122,7 @@ export default function SettingsPage() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px',
                   fontSize: '16px'
                 }}
@@ -148,7 +148,7 @@ export default function SettingsPage() {
                 style={{
                   width: '100%',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px',
                   fontSize: '16px'
                 }}
@@ -175,12 +175,12 @@ export default function SettingsPage() {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '16px'
               }}
             />
-            <p style={{ fontSize: '14px', color: '#6b7280', marginTop: '5px' }}>
+            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '5px' }}>
               Les produits en dessous de ce seuil seront marqués comme stock faible
             </p>
           </div>
@@ -203,7 +203,7 @@ export default function SettingsPage() {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '16px',
                 fontFamily: 'inherit'
@@ -217,7 +217,7 @@ export default function SettingsPage() {
             gap: '10px',
             cursor: 'pointer',
             padding: '12px',
-            background: '#f9fafb',
+            background: 'var(--color-surface-hover)',
             borderRadius: '8px'
           }}>
             <input
@@ -228,7 +228,7 @@ export default function SettingsPage() {
             />
             <div>
               <div style={{ fontWeight: '500' }}>Activer l'impression automatique</div>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                 Imprimer automatiquement les reçus après chaque vente
               </div>
             </div>
@@ -247,7 +247,7 @@ export default function SettingsPage() {
             gap: '10px',
             cursor: 'pointer',
             padding: '12px',
-            background: '#f9fafb',
+            background: 'var(--color-surface-hover)',
             borderRadius: '8px'
           }}>
             <input
@@ -258,7 +258,7 @@ export default function SettingsPage() {
             />
             <div>
               <div style={{ fontWeight: '500' }}>Sauvegarde automatique</div>
-              <div style={{ fontSize: '14px', color: '#6b7280' }}>
+              <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                 Sauvegarder automatiquement les données dans le cloud
               </div>
             </div>
@@ -271,9 +271,9 @@ export default function SettingsPage() {
             onClick={handleReset}
             style={{
               padding: '12px 24px',
-              background: 'white',
-              color: '#6b7280',
-              border: '1px solid #e5e7eb',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text-secondary)',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
               cursor: 'pointer',
               display: 'flex',

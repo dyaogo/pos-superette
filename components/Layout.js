@@ -63,7 +63,7 @@ export default function Layout({ children }) {
         </nav>
 
         {/* Main Content */}
-        <main style={{ flex: 1, overflow: 'auto', background: '#f5f5f5' }}>
+        <main style={{ flex: 1, overflow: 'auto', background: 'var(--color-bg)' }}>
           {children}
         </main>
       </div>

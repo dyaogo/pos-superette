@@ -110,22 +110,22 @@ export default function CreditsPage() {
         gap: '20px',
         marginBottom: '30px'
       }}>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Total crédits en cours</div>
+        <div style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Total crédits en cours</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
             {totalCredits.toLocaleString()} FCFA
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Crédits en retard</div>
+        <div style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Crédits en retard</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ef4444' }}>
             {overdueCredits.length}
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Total crédits</div>
+        <div style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Total crédits</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#8b5cf6' }}>
             {credits.length}
           </div>
@@ -139,7 +139,7 @@ export default function CreditsPage() {
           onChange={(e) => setFilter(e.target.value)}
           style={{
             padding: '12px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             minWidth: '200px'
           }}
@@ -153,15 +153,15 @@ export default function CreditsPage() {
       </div>
 
       {/* Liste des crédits */}
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
         {filteredCredits.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
             Aucun crédit trouvé
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--color-surface-hover)', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Client</th>
                 <th style={{ padding: '15px', textAlign: 'right' }}>Montant</th>
                 <th style={{ padding: '15px', textAlign: 'right' }}>Restant</th>
@@ -238,7 +238,7 @@ export default function CreditsPage() {
           <div 
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--color-surface)',
               borderRadius: '12px',
               padding: '30px',
               width: '500px'
@@ -255,7 +255,7 @@ export default function CreditsPage() {
                   style={{
                     width: '100%',
                     padding: '12px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px'
                   }}
                 >
@@ -277,7 +277,7 @@ export default function CreditsPage() {
                   style={{
                     width: '100%',
                     padding: '12px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px'
                   }}
                 />
@@ -292,7 +292,7 @@ export default function CreditsPage() {
                   style={{
                     width: '100%',
                     padding: '12px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px'
                   }}
                 />
@@ -306,7 +306,7 @@ export default function CreditsPage() {
                   style={{
                     width: '100%',
                     padding: '12px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px'
                   }}
                 />

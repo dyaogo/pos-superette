@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../src/contexts/AppContext';
 import { 
   TrendingUp, DollarSign, ShoppingCart, Users, Package, 
@@ -60,20 +61,16 @@ export default function DashboardPage() {
   const recentSales = salesHistory.slice(0, 5);
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Chargement...</p>
-      </div>
-    );
+        return <LoadingSpinner fullScreen />;
+
   }
 
   return (
     <div className="animate-fade-in" style={{ padding: '30px', maxWidth: '1600px', margin: '0 auto' }}>
-    <div style={{ padding: '30px', maxWidth: '1600px', margin: '0 auto' }}>
       {/* En-tête */}
       <div style={{ marginBottom: '30px' }}>
         <h1 style={{ margin: '0 0 10px 0' }}>Tableau de Bord</h1>
-        <p style={{ margin: 0, color: '#6b7280' }}>
+        <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
           Vue d'ensemble de votre activité
         </p>
       </div>
@@ -127,9 +124,9 @@ export default function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', marginBottom: '30px' }}>
         {/* Ventes récentes */}
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--color-border)',
           padding: '20px'
         }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -138,7 +135,7 @@ export default function DashboardPage() {
           </h2>
           
           {recentSales.length === 0 ? (
-            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>
+            <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '40px 0' }}>
               Aucune vente enregistrée
             </p>
           ) : (
@@ -148,7 +145,7 @@ export default function DashboardPage() {
                   key={sale.id}
                   style={{
                     padding: '15px',
-                    border: '1px solid #e5e7eb',
+                    border: '1px solid var(--color-border)',
                     borderRadius: '8px',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -159,7 +156,7 @@ export default function DashboardPage() {
                     <div style={{ fontWeight: '500' }}>
                       {sale.items?.length || 0} article(s)
                     </div>
-                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                    <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                       {new Date(sale.createdAt).toLocaleString('fr-FR', {
                         day: '2-digit',
                         month: '2-digit',
@@ -179,9 +176,9 @@ export default function DashboardPage() {
 
         {/* Alertes stock */}
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb',
+          border: '1px solid var(--color-border)',
           padding: '20px'
         }}>
           <h2 style={{ margin: '0 0 20px 0', fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -230,7 +227,7 @@ export default function DashboardPage() {
           )}
 
           {lowStockProducts.length === 0 && outOfStockProducts.length === 0 && (
-            <p style={{ color: '#9ca3af', textAlign: 'center', padding: '20px 0' }}>
+            <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '20px 0' }}>
               Aucune alerte
             </p>
           )}
@@ -239,9 +236,9 @@ export default function DashboardPage() {
 
       {/* Top produits */}
       <div style={{ 
-        background: 'white', 
+        background: 'var(--color-surface)', 
         borderRadius: '12px',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--color-border)',
         padding: '20px'
       }}>
         <h2 style={{ margin: '0 0 20px 0', fontSize: '18px' }}>
@@ -249,7 +246,7 @@ export default function DashboardPage() {
         </h2>
 
         {topProducts.length === 0 ? (
-          <p style={{ color: '#9ca3af', textAlign: 'center', padding: '40px 0' }}>
+          <p style={{ color: 'var(--color-text-muted)', textAlign: 'center', padding: '40px 0' }}>
             Aucune donnée disponible
           </p>
         ) : (
@@ -262,7 +259,7 @@ export default function DashboardPage() {
                   alignItems: 'center',
                   gap: '15px',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px'
                 }}
               >
@@ -281,7 +278,7 @@ export default function DashboardPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: '500' }}>{name}</div>
-                  <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                  <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                     {quantity} unités vendues
                   </div>
                 </div>
@@ -301,9 +298,9 @@ function StatCard({ icon, title, value, subtitle, trend, color }) {
 
   return (
     <div className="hover-lift" style={{ 
-      background: 'white', 
+      background: 'var(--color-surface)', 
       borderRadius: '12px',
-      border: '1px solid #e5e7eb',
+      border: '1px solid var(--color-border)',
       padding: '20px'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
@@ -326,7 +323,7 @@ function StatCard({ icon, title, value, subtitle, trend, color }) {
         )}
       </div>
       
-      <div style={{ color: '#6b7280', fontSize: '14px', marginBottom: '8px' }}>
+      <div style={{ color: 'var(--color-text-secondary)', fontSize: '14px', marginBottom: '8px' }}>
         {title}
       </div>
       
@@ -334,7 +331,7 @@ function StatCard({ icon, title, value, subtitle, trend, color }) {
         {value}
       </div>
       
-      <div style={{ fontSize: '14px', color: '#9ca3af' }}>
+      <div style={{ fontSize: '14px', color: 'var(--color-text-muted)' }}>
         {subtitle}
       </div>
     </div>

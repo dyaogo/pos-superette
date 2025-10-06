@@ -57,7 +57,7 @@ export default function Dashboard() {
       }}>
         {/* Ventes du jour */}
         <div style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           padding: '20px',
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -74,7 +74,7 @@ export default function Dashboard() {
 
         {/* Total Produits */}
         <div style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           padding: '20px',
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -91,7 +91,7 @@ export default function Dashboard() {
 
         {/* Stock Faible */}
         <div style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           padding: '20px',
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -108,7 +108,7 @@ export default function Dashboard() {
 
         {/* Clients */}
         <div style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           padding: '20px',
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
@@ -201,7 +201,7 @@ export default function Dashboard() {
 
       {/* Tableau des produits en stock faible */}
       <div style={{
-        background: 'white',
+        background: 'var(--color-surface)',
         borderRadius: '12px',
         padding: '25px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
@@ -216,10 +216,10 @@ export default function Dashboard() {
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '2px solid #e5e7eb' }}>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Produit</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Stock Actuel</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Catégorie</th>
-                <th style={{ padding: '12px', textAlign: 'left', color: '#6b7280' }}>Prix Vente</th>
+                <th style={{ padding: '12px', textAlign: 'left', color: 'var(--color-text-secondary)' }}>Produit</th>
+                <th style={{ padding: '12px', textAlign: 'left', color: 'var(--color-text-secondary)' }}>Stock Actuel</th>
+                <th style={{ padding: '12px', textAlign: 'left', color: 'var(--color-text-secondary)' }}>Catégorie</th>
+                <th style={{ padding: '12px', textAlign: 'left', color: 'var(--color-text-secondary)' }}>Prix Vente</th>
               </tr>
             </thead>
             <tbody>
@@ -243,8 +243,8 @@ export default function Dashboard() {
                     }}>
                       {product.stock}
                     </td>
-                    <td style={{ padding: '12px', color: '#6b7280' }}>{product.category}</td>
-                    <td style={{ padding: '12px', color: '#6b7280' }}>
+                    <td style={{ padding: '12px', color: 'var(--color-text-secondary)' }}>{product.category}</td>
+                    <td style={{ padding: '12px', color: 'var(--color-text-secondary)' }}>
                       {product.sellingPrice?.toLocaleString()} FCFA
                     </td>
                   </tr>

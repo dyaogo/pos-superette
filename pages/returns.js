@@ -65,15 +65,15 @@ export default function ReturnsPage() {
         gap: '20px',
         marginBottom: '30px'
       }}>
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Total retours</div>
+        <div style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Total retours</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
             {returns.length}
           </div>
         </div>
 
-        <div style={{ background: 'white', padding: '20px', borderRadius: '12px', border: '1px solid #e5e7eb' }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px' }}>Montant total remboursé</div>
+        <div style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Montant total remboursé</div>
           <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#ef4444' }}>
             {totalReturns.toLocaleString()} FCFA
           </div>
@@ -81,15 +81,15 @@ export default function ReturnsPage() {
       </div>
 
       {/* Liste des retours */}
-      <div style={{ background: 'white', borderRadius: '12px', border: '1px solid #e5e7eb', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
         {returns.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
             Aucun retour enregistré
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--color-surface-hover)', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Date</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Vente</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Raison</th>
@@ -213,7 +213,7 @@ function ReturnModal({ sales, onClose, onSuccess }) {
       <div 
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '30px',
           width: '600px',
@@ -233,7 +233,7 @@ function ReturnModal({ sales, onClose, onSuccess }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px'
               }}
             >
@@ -247,7 +247,7 @@ function ReturnModal({ sales, onClose, onSuccess }) {
           </div>
 
           {sale && (
-            <div style={{ marginBottom: '15px', padding: '12px', background: '#f9fafb', borderRadius: '8px' }}>
+            <div style={{ marginBottom: '15px', padding: '12px', background: 'var(--color-surface-hover)', borderRadius: '8px' }}>
               <div style={{ fontWeight: '500', marginBottom: '8px' }}>Articles de la vente :</div>
               {sale.items?.map(item => (
                 <label 
@@ -281,7 +281,7 @@ function ReturnModal({ sales, onClose, onSuccess }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px'
               }}
             />
@@ -295,7 +295,7 @@ function ReturnModal({ sales, onClose, onSuccess }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px'
               }}
             >

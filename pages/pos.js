@@ -200,7 +200,7 @@ useEffect(() => {
         <div style={{ position: 'relative', marginBottom: '20px' }}>
           <Search 
             size={20} 
-            style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} 
+            style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
           />
           <input
             id="product-search"
@@ -211,7 +211,7 @@ useEffect(() => {
             style={{
               width: '100%',
               padding: '12px 12px 12px 45px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
               fontSize: '16px'
             }}
@@ -225,7 +225,7 @@ useEffect(() => {
           gap: '15px'
         }}>
           {filteredProducts.length === 0 ? (
-            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: '#9ca3af' }}>
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--color-text-muted)' }}>
               Aucun produit trouvé
             </p>
           ) : (
@@ -234,12 +234,12 @@ useEffect(() => {
                 key={product.id}
                 onClick={() => addToCart(product)}
                 style={{
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '12px',
                   padding: '15px',
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  background: 'white'
+                  background: 'var(--color-surface)'
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
@@ -251,13 +251,13 @@ useEffect(() => {
                 }}
               >
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>{product.name}</h3>
-                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                   {product.category}
                 </p>
                 <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
                   {product.sellingPrice} FCFA
                 </p>
-                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
                   Stock: {product.stock || 0}
                 </p>
               </div>
@@ -269,7 +269,7 @@ useEffect(() => {
       {/* Colonne droite - Panier */}
       <div style={{ 
         width: '400px', 
-        background: 'white', 
+        background: 'var(--color-surface)', 
         borderLeft: '1px solid #e5e7eb',
         display: 'flex',
         flexDirection: 'column'
@@ -291,7 +291,7 @@ useEffect(() => {
             style={{
               width: '100%',
               padding: '10px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
               marginBottom: '10px'
             }}
@@ -311,7 +311,7 @@ useEffect(() => {
             style={{
               width: '100%',
               padding: '10px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px'
             }}
           >
@@ -324,7 +324,7 @@ useEffect(() => {
         {/* Articles du panier */}
         <div style={{ flex: 1, overflow: 'auto', padding: '15px' }}>
           {cart.length === 0 ? (
-            <p style={{ textAlign: 'center', color: '#9ca3af', marginTop: '40px' }}>
+            <p style={{ textAlign: 'center', color: 'var(--color-text-muted)', marginTop: '40px' }}>
               Panier vide
             </p>
           ) : (
@@ -336,14 +336,14 @@ useEffect(() => {
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '12px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '8px',
                   marginBottom: '10px'
                 }}
               >
                 <div style={{ flex: 1 }}>
                   <p style={{ margin: '0 0 5px 0', fontWeight: '500' }}>{item.name}</p>
-                  <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+                  <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                     {item.sellingPrice} FCFA × {item.quantity}
                   </p>
                 </div>
@@ -353,9 +353,9 @@ useEffect(() => {
                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                     style={{
                       padding: '5px',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--color-border)',
                       borderRadius: '4px',
-                      background: 'white',
+                      background: 'var(--color-surface)',
                       cursor: 'pointer'
                     }}
                   >
@@ -370,9 +370,9 @@ useEffect(() => {
                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
                     style={{
                       padding: '5px',
-                      border: '1px solid #e5e7eb',
+                      border: '1px solid var(--color-border)',
                       borderRadius: '4px',
-                      background: 'white',
+                      background: 'var(--color-surface)',
                       cursor: 'pointer'
                     }}
                   >
@@ -405,7 +405,7 @@ useEffect(() => {
         <div style={{ 
           padding: '20px', 
           borderTop: '2px solid #e5e7eb',
-          background: '#f9fafb'
+          background: 'var(--color-surface-hover)'
         }}>
           <div style={{ 
             display: 'flex', 

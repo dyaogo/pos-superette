@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../src/contexts/AppContext';
 import { FileText, Search, Eye, Download, Calendar, DollarSign, User } from 'lucide-react';
+import { usePagination } from '../hooks/usePagination';
+import Pagination from '../components/Pagination';
+import LoadingSpinner from '../components/LoadingSpinner';
+
 
 export default function SalesPage() {
   const { salesHistory, loading } = useApp();
@@ -22,6 +26,16 @@ export default function SalesPage() {
       (dateFilter === 'week' && (today - saleDate) / (1000 * 60 * 60 * 24) <= 7) ||
       (dateFilter === 'month' && saleDate.getMonth() === today.getMonth());
 
+    // Après la déclaration des états
+const { 
+  currentPage, 
+  totalPages, 
+  paginatedData, 
+  goToPage, 
+  hasNext, 
+  hasPrev 
+} = usePagination(filteredSales, 20);
+
     return matchesSearch && matchesDate;
   });
 
@@ -30,11 +44,8 @@ export default function SalesPage() {
   const averageSale = filteredSales.length > 0 ? totalRevenue / filteredSales.length : 0;
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Chargement...</p>
-      </div>
-    );
+      return <LoadingSpinner fullScreen />;
+
   }
 
   return (
@@ -54,36 +65,36 @@ export default function SalesPage() {
         marginBottom: '30px'
       }}>
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           padding: '20px', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px' }}>Total ventes</div>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px', fontSize: '14px' }}>Total ventes</div>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#3b82f6' }}>
             {filteredSales.length}
           </div>
         </div>
 
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           padding: '20px', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px' }}>Chiffre d'affaires</div>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px', fontSize: '14px' }}>Chiffre d'affaires</div>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#10b981' }}>
             {totalRevenue.toLocaleString()} FCFA
           </div>
         </div>
 
         <div style={{ 
-          background: 'white', 
+          background: 'var(--color-surface)', 
           padding: '20px', 
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
-          <div style={{ color: '#6b7280', marginBottom: '8px', fontSize: '14px' }}>Panier moyen</div>
+          <div style={{ color: 'var(--color-text-secondary)', marginBottom: '8px', fontSize: '14px' }}>Panier moyen</div>
           <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#f59e0b' }}>
             {Math.round(averageSale).toLocaleString()} FCFA
           </div>
@@ -100,7 +111,7 @@ export default function SalesPage() {
         <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
           <Search 
             size={20} 
-            style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} 
+            style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
           />
           <input
             type="text"
@@ -110,7 +121,7 @@ export default function SalesPage() {
             style={{
               width: '100%',
               padding: '12px 12px 12px 45px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px'
             }}
           />
@@ -121,7 +132,7 @@ export default function SalesPage() {
           onChange={(e) => setDateFilter(e.target.value)}
           style={{
             padding: '12px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             minWidth: '150px'
           }}
@@ -135,19 +146,19 @@ export default function SalesPage() {
 
       {/* Liste des ventes */}
       <div style={{ 
-        background: 'white', 
+        background: 'var(--color-surface)', 
         borderRadius: '12px',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--color-border)',
         overflow: 'hidden'
       }}>
         {filteredSales.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
             Aucune vente trouvée
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--color-surface-hover)', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Date</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Client</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Méthode</th>
@@ -157,7 +168,7 @@ export default function SalesPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredSales.map((sale) => (
+              {paginatedData.map((sale) => (
                 <tr 
                   key={sale.id}
                   style={{ 
@@ -230,6 +241,15 @@ export default function SalesPage() {
         )}
       </div>
 
+      <Pagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={goToPage}
+        hasNext={hasNext}
+        hasPrev={hasPrev}
+      />
+
+
       {/* Modal détails de vente */}
       {selectedSale && (
         <div 
@@ -250,7 +270,7 @@ export default function SalesPage() {
           <div 
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'white',
+              background: 'var(--color-surface)',
               borderRadius: '12px',
               padding: '30px',
               width: '600px',

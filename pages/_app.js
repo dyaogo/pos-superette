@@ -2,8 +2,11 @@ import '../src/index.css';
 import { AppProvider } from '../src/contexts/AppContext';
 import { AuthProvider } from '../src/contexts/AuthContext';
 import Layout from '../components/Layout';
+import ErrorBoundary from '../components/ErrorBoundary';
+
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
+
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
@@ -23,17 +26,20 @@ function MyApp({ Component, pageProps }) {
   const shouldUseLayout = !noLayout.includes(router.pathname);
 
   return (
-    <AuthProvider>
-      <AppProvider>
-        {shouldUseLayout ? (
-          <Layout>
+    <ErrorBoundary>
+      <AuthProvider>
+        <AppProvider>
+          {shouldUseLayout ? (
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          ) : (
             <Component {...pageProps} />
-          </Layout>
-        ) : (
-          <Component {...pageProps} />
-        )}
-      </AppProvider>
-    </AuthProvider>
+          )}
+        </AppProvider>
+      </AuthProvider>
+    </ErrorBoundary>
+
   );
 }
 

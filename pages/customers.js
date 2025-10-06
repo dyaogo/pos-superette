@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../src/contexts/AppContext';
 import { Users, Search, Plus, Edit, Trash2, X, Save, Phone, Mail } from 'lucide-react';
 
@@ -67,11 +68,8 @@ export default function CustomersPage() {
   };
 
   if (loading) {
-    return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-        <p>Chargement...</p>
-      </div>
-    );
+      return <LoadingSpinner fullScreen />;
+
   }
 
   return (
@@ -104,13 +102,13 @@ export default function CustomersPage() {
 
       {/* Statistiques */}
       <div style={{ 
-        background: 'white', 
+        background: 'var(--color-surface)', 
         padding: '20px', 
         borderRadius: '12px',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--color-border)',
         marginBottom: '20px'
       }}>
-        <div style={{ fontSize: '14px', color: '#6b7280' }}>Total clients</div>
+        <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Total clients</div>
         <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6' }}>
           {customers.length}
         </div>
@@ -120,7 +118,7 @@ export default function CustomersPage() {
       <div style={{ position: 'relative', marginBottom: '20px' }}>
         <Search 
           size={20} 
-          style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} 
+          style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
         />
         <input
           type="text"
@@ -130,7 +128,7 @@ export default function CustomersPage() {
           style={{
             width: '100%',
             padding: '12px 12px 12px 45px',
-            border: '1px solid #e5e7eb',
+            border: '1px solid var(--color-border)',
             borderRadius: '8px',
             fontSize: '16px'
           }}
@@ -139,19 +137,19 @@ export default function CustomersPage() {
 
       {/* Liste des clients */}
       <div style={{ 
-        background: 'white', 
+        background: 'var(--color-surface)', 
         borderRadius: '12px',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--color-border)',
         overflow: 'hidden'
       }}>
         {filteredCustomers.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
+          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
             Aucun client trouvé
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--color-surface-hover)', borderBottom: '1px solid #e5e7eb' }}>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Nom</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Téléphone</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Email</th>
@@ -167,22 +165,22 @@ export default function CustomersPage() {
                   <td style={{ padding: '15px', fontWeight: '500' }}>{customer.name}</td>
                   <td style={{ padding: '15px' }}>
                     {customer.phone ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-secondary)' }}>
                         <Phone size={16} />
                         {customer.phone}
                       </div>
                     ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
                     )}
                   </td>
                   <td style={{ padding: '15px' }}>
                     {customer.email ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#6b7280' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--color-text-secondary)' }}>
                         <Mail size={16} />
                         {customer.email}
                       </div>
                     ) : (
-                      <span style={{ color: '#9ca3af' }}>-</span>
+                      <span style={{ color: 'var(--color-text-muted)' }}>-</span>
                     )}
                   </td>
                   <td style={{ padding: '15px', textAlign: 'center' }}>
@@ -273,7 +271,7 @@ function CustomerModal({ title, customer, onClose, onSubmit }) {
       <div 
         onClick={(e) => e.stopPropagation()}
         style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '30px',
           width: '500px',
@@ -301,7 +299,7 @@ function CustomerModal({ title, customer, onClose, onSubmit }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '16px'
               }}
@@ -320,7 +318,7 @@ function CustomerModal({ title, customer, onClose, onSubmit }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '16px'
               }}
@@ -339,7 +337,7 @@ function CustomerModal({ title, customer, onClose, onSubmit }) {
               style={{
                 width: '100%',
                 padding: '12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '16px'
               }}
