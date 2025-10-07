@@ -4,7 +4,7 @@ import { useApp } from '../src/contexts/AppContext';
 import { 
   ClipboardList, Save, AlertTriangle, Check, Search, 
   Scan, BarChart3, History, Plus, Minus, Calculator,
-  Eye, EyeOff, Zap, RefreshCw, PlayCircle, StopCircle, Download
+  Eye, EyeOff, Zap, RefreshCw, PlayCircle, StopCircle, Download, X
 } from 'lucide-react';
 
 export default function PhysicalInventoryPage() {
@@ -278,13 +278,29 @@ const finalizeSession = async () => {
   }
 };
 
-// Consulter une session passée
+// Consulter une session passée - VERSION AMÉLIORÉE
 const viewSession = async (session) => {
   try {
     const res = await fetch(`/api/inventory/sessions/${session.id}`);
     const fullSession = await res.json();
     
-    // Afficher un modal avec les détails
+    // Calculer l'incidence financière
+    let totalFinancialImpact = 0;
+    const enrichedCounts = fullSession.counts.map(count => {
+      const product = productCatalog.find(p => p.id === count.productId);
+      const financialImpact = product ? count.difference * product.costPrice : 0;
+      totalFinancialImpact += financialImpact;
+      
+      return {
+        ...count,
+        product,
+        financialImpact
+      };
+    });
+    
+    fullSession.enrichedCounts = enrichedCounts;
+    fullSession.totalFinancialImpact = totalFinancialImpact;
+    
     setSelectedSessionForView(fullSession);
     setShowSessionModal(true);
   } catch (error) {
@@ -292,7 +308,7 @@ const viewSession = async (session) => {
   }
 };
 
-// Exporter une session en Excel
+// Exporter une session en Excel - VERSION AVEC INCIDENCE
 const exportSessionToExcel = async (session) => {
   try {
     const XLSX = await import('xlsx');
@@ -301,16 +317,24 @@ const exportSessionToExcel = async (session) => {
     const res = await fetch(`/api/inventory/sessions/${session.id}`);
     const fullSession = await res.json();
     
+    // Calculer l'incidence financière
+    let totalFinancialImpact = 0;
+    
     // Préparer les données
     const data = fullSession.counts.map(count => {
       const product = productCatalog.find(p => p.id === count.productId);
+      const financialImpact = product ? count.difference * product.costPrice : 0;
+      totalFinancialImpact += financialImpact;
+      
       return {
         'Produit': product?.name || 'Inconnu',
         'Catégorie': product?.category || '-',
         'Code-barres': product?.barcode || '-',
+        'Prix Achat': product?.costPrice || 0,
         'Stock Attendu': count.expectedQty,
         'Stock Compté': count.countedQty,
         'Écart': count.difference,
+        'Impact Financier (FCFA)': financialImpact,
         'Notes': count.notes || '-',
         'Compté par': count.countedBy || '-',
         'Date': new Date(count.countedAt).toLocaleString('fr-FR')
@@ -326,9 +350,11 @@ const exportSessionToExcel = async (session) => {
       { wch: 30 }, // Produit
       { wch: 15 }, // Catégorie
       { wch: 15 }, // Code-barres
+      { wch: 12 }, // Prix Achat
       { wch: 12 }, // Attendu
       { wch: 12 }, // Compté
       { wch: 10 }, // Écart
+      { wch: 18 }, // Impact Financier
       { wch: 30 }, // Notes
       { wch: 15 }, // Compté par
       { wch: 20 }  // Date
@@ -336,28 +362,56 @@ const exportSessionToExcel = async (session) => {
 
     XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventaire');
 
-    // Ajouter une feuille de résumé
+    // Ajouter une feuille de résumé améliorée
+    const ecartsPositifs = fullSession.counts.filter(c => c.difference > 0);
+    const ecartsNegatifs = fullSession.counts.filter(c => c.difference < 0);
+    
+    const impactPositif = ecartsPositifs.reduce((sum, c) => {
+      const product = productCatalog.find(p => p.id === c.productId);
+      return sum + (product ? c.difference * product.costPrice : 0);
+    }, 0);
+    
+    const impactNegatif = ecartsNegatifs.reduce((sum, c) => {
+      const product = productCatalog.find(p => p.id === c.productId);
+      return sum + (product ? c.difference * product.costPrice : 0);
+    }, 0);
+
     const summary = [
+      ['RAPPORT D\'INVENTAIRE PHYSIQUE', ''],
+      [''],
       ['Session', session.name],
       ['Type', session.type],
       ['Démarrée le', new Date(session.startedAt).toLocaleString('fr-FR')],
       ['Terminée le', session.completedAt ? new Date(session.completedAt).toLocaleString('fr-FR') : '-'],
       ['Statut', session.status],
       [''],
-      ['Statistiques', ''],
+      ['STATISTIQUES', ''],
       ['Total produits comptés', fullSession.counts.length],
       ['Écarts détectés', fullSession.counts.filter(c => c.difference !== 0).length],
-      ['Ajustements appliqués', fullSession.adjustments?.length || 0]
+      ['  - Écarts positifs (surplus)', ecartsPositifs.length],
+      ['  - Écarts négatifs (manquants)', ecartsNegatifs.length],
+      ['Ajustements appliqués', fullSession.adjustments?.length || 0],
+      [''],
+      ['INCIDENCE FINANCIÈRE (sur coûts d\'achat)', ''],
+      ['Gains (surplus)', `${impactPositif.toLocaleString()} FCFA`],
+      ['Pertes (manquants)', `${impactNegatif.toLocaleString()} FCFA`],
+      ['TOTAL NET', `${totalFinancialImpact.toLocaleString()} FCFA`],
+      [''],
+      ['Impact en %', totalFinancialImpact >= 0 ? 'GAIN' : 'PERTE']
     ];
 
     const summarySheet = XLSX.utils.aoa_to_sheet(summary);
+    
+    // Formater le résumé
+    summarySheet['!cols'] = [{ wch: 35 }, { wch: 25 }];
+    
     XLSX.utils.book_append_sheet(workbook, summarySheet, 'Résumé');
 
     // Télécharger
     const fileName = `inventaire_${session.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
 
-    alert('Export Excel réussi !');
+    alert('Export Excel réussi avec incidence financière !');
   } catch (error) {
     alert('Erreur export : ' + error.message);
   }
@@ -828,46 +882,79 @@ const exportSessionToExcel = async (session) => {
         </button>
       </div>
 
-      {/* Statistiques */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-        gap: '15px',
-        marginBottom: '20px'
-      }}>
-        <div style={{ 
-          background: 'var(--color-bg)', 
-          padding: '15px', 
-          borderRadius: '8px' 
-        }}>
-          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Produits comptés</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-primary)' }}>
-            {selectedSessionForView.counts?.length || 0}
-          </div>
-        </div>
+      {/* Statistiques - VERSION AVEC INCIDENCE FINANCIÈRE */}
+<div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+  gap: '15px',
+  marginBottom: '20px'
+}}>
+  <div style={{ 
+    background: 'var(--color-bg)', 
+    padding: '15px', 
+    borderRadius: '8px' 
+  }}>
+    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Produits comptés</div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-primary)' }}>
+      {selectedSessionForView.counts?.length || 0}
+    </div>
+  </div>
 
-        <div style={{ 
-          background: 'var(--color-bg)', 
-          padding: '15px', 
-          borderRadius: '8px' 
-        }}>
-          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Écarts détectés</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-danger)' }}>
-            {selectedSessionForView.counts?.filter(c => c.difference !== 0).length || 0}
-          </div>
-        </div>
+  <div style={{ 
+    background: 'var(--color-bg)', 
+    padding: '15px', 
+    borderRadius: '8px' 
+  }}>
+    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Écarts détectés</div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-danger)' }}>
+      {selectedSessionForView.counts?.filter(c => c.difference !== 0).length || 0}
+    </div>
+  </div>
 
-        <div style={{ 
-          background: 'var(--color-bg)', 
-          padding: '15px', 
-          borderRadius: '8px' 
-        }}>
-          <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Ajustements</div>
-          <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-success)' }}>
-            {selectedSessionForView.adjustments?.length || 0}
-          </div>
-        </div>
-      </div>
+  <div style={{ 
+    background: 'var(--color-bg)', 
+    padding: '15px', 
+    borderRadius: '8px' 
+  }}>
+    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>Ajustements</div>
+    <div style={{ fontSize: '24px', fontWeight: 'bold', color: 'var(--color-success)' }}>
+      {selectedSessionForView.adjustments?.length || 0}
+    </div>
+  </div>
+
+  {/* NOUVELLE CARTE - INCIDENCE FINANCIÈRE */}
+  <div style={{ 
+    background: selectedSessionForView.totalFinancialImpact >= 0 ? 
+      'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', 
+    padding: '15px', 
+    borderRadius: '8px',
+    border: `2px solid ${selectedSessionForView.totalFinancialImpact >= 0 ? 
+      'var(--color-success)' : 'var(--color-danger)'}`
+  }}>
+    <div style={{ 
+      fontSize: '12px', 
+      color: 'var(--color-text-muted)',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px'
+    }}>
+      💰 Incidence financière
+    </div>
+    <div style={{ 
+      fontSize: '24px', 
+      fontWeight: 'bold', 
+      color: selectedSessionForView.totalFinancialImpact >= 0 ? 
+        'var(--color-success)' : 'var(--color-danger)'
+    }}>
+      {selectedSessionForView.totalFinancialImpact >= 0 ? '+' : ''}
+      {selectedSessionForView.totalFinancialImpact?.toLocaleString() || 0} FCFA
+    </div>
+    <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '4px' }}>
+      {selectedSessionForView.totalFinancialImpact >= 0 ? 
+        'Gain sur coûts d\'achat' : 'Perte sur coûts d\'achat'}
+    </div>
+  </div>
+</div>
 
       {/* Liste des comptages */}
       <h3 style={{ marginTop: '30px', marginBottom: '15px' }}>Détails des comptages</h3>
@@ -879,53 +966,72 @@ const exportSessionToExcel = async (session) => {
       }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead style={{ position: 'sticky', top: 0, background: 'var(--color-surface)', zIndex: 1 }}>
-            <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
-              <th style={{ padding: '12px', textAlign: 'left' }}>Produit</th>
-              <th style={{ padding: '12px', textAlign: 'center' }}>Attendu</th>
-              <th style={{ padding: '12px', textAlign: 'center' }}>Compté</th>
-              <th style={{ padding: '12px', textAlign: 'center' }}>Écart</th>
-              <th style={{ padding: '12px', textAlign: 'left' }}>Notes</th>
-            </tr>
-          </thead>
+  <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
+    <th style={{ padding: '12px', textAlign: 'left' }}>Produit</th>
+    <th style={{ padding: '12px', textAlign: 'center' }}>Attendu</th>
+    <th style={{ padding: '12px', textAlign: 'center' }}>Compté</th>
+    <th style={{ padding: '12px', textAlign: 'center' }}>
+      <div>Écart</div>
+      <div style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--color-text-muted)' }}>
+        (Impact financier)
+      </div>
+    </th>
+    <th style={{ padding: '12px', textAlign: 'left' }}>Notes</th>
+  </tr>
+</thead>
           <tbody>
-            {selectedSessionForView.counts?.map(count => {
-              const product = productCatalog.find(p => p.id === count.productId);
-              return (
-                <tr 
-                  key={count.id}
-                  style={{ 
-                    borderBottom: '1px solid var(--color-border)',
-                    background: count.difference !== 0 ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
-                  }}
-                >
-                  <td style={{ padding: '12px' }}>
-                    <div style={{ fontWeight: '500' }}>{product?.name || 'Produit inconnu'}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                      {product?.barcode}
-                    </div>
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center' }}>
-                    {count.expectedQty}
-                  </td>
-                  <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>
-                    {count.countedQty}
-                  </td>
-                  <td style={{ 
-                    padding: '12px', 
-                    textAlign: 'center',
-                    fontWeight: 'bold',
-                    color: count.difference > 0 ? 'var(--color-success)' : 
-                           count.difference < 0 ? 'var(--color-danger)' : 'var(--color-text-secondary)'
-                  }}>
-                    {count.difference > 0 ? '+' : ''}{count.difference}
-                  </td>
-                  <td style={{ padding: '12px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                    {count.notes || '-'}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
+  {selectedSessionForView.enrichedCounts?.map(count => (
+    <tr 
+      key={count.id}
+      style={{ 
+        borderBottom: '1px solid var(--color-border)',
+        background: count.difference !== 0 ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
+      }}
+    >
+      <td style={{ padding: '12px' }}>
+        <div style={{ fontWeight: '500' }}>{count.product?.name || 'Produit inconnu'}</div>
+        <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+          {count.product?.barcode}
+        </div>
+        <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginTop: '2px' }}>
+          Prix d'achat: {count.product?.costPrice?.toLocaleString() || 0} FCFA
+        </div>
+      </td>
+      <td style={{ padding: '12px', textAlign: 'center' }}>
+        {count.expectedQty}
+      </td>
+      <td style={{ padding: '12px', textAlign: 'center', fontWeight: 'bold' }}>
+        {count.countedQty}
+      </td>
+      <td style={{ 
+        padding: '12px', 
+        textAlign: 'center'
+      }}>
+        <div style={{
+          fontWeight: 'bold',
+          color: count.difference > 0 ? 'var(--color-success)' : 
+                 count.difference < 0 ? 'var(--color-danger)' : 'var(--color-text-secondary)'
+        }}>
+          {count.difference > 0 ? '+' : ''}{count.difference}
+        </div>
+        {count.difference !== 0 && (
+          <div style={{
+            fontSize: '11px',
+            marginTop: '4px',
+            color: count.financialImpact >= 0 ? 'var(--color-success)' : 'var(--color-danger)',
+            fontWeight: '600'
+          }}>
+            {count.financialImpact >= 0 ? '+' : ''}
+            {count.financialImpact?.toLocaleString()} FCFA
+          </div>
+        )}
+      </td>
+      <td style={{ padding: '12px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+        {count.notes || '-'}
+      </td>
+    </tr>
+  ))}
+</tbody>
         </table>
       </div>
 
