@@ -26,7 +26,10 @@ export default function SalesPage() {
       (dateFilter === 'week' && (today - saleDate) / (1000 * 60 * 60 * 24) <= 7) ||
       (dateFilter === 'month' && saleDate.getMonth() === today.getMonth());
 
-    // Après la déclaration des états
+    return matchesSearch && matchesDate;
+  });
+    
+      // Après la déclaration des états
 const { 
   currentPage, 
   totalPages, 
@@ -36,8 +39,7 @@ const {
   hasPrev 
 } = usePagination(filteredSales, 20);
 
-    return matchesSearch && matchesDate;
-  });
+    
 
   // Statistiques
   const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);

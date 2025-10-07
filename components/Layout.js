@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { 
-  Home, ShoppingCart, Package, Users, 
+  Home, ShoppingCart, Package, Users, ClipboardList,
   Settings, FileText, BarChart, CreditCard, RotateCcw 
 } from 'lucide-react';
 import OfflineIndicator from './OfflineIndicator';
@@ -21,6 +21,7 @@ export default function Layout({ children }) {
     { path: '/dashboard', icon: Home, label: 'Tableau de bord' },
     { path: '/pos', icon: ShoppingCart, label: 'Caisse' },
     { path: '/inventory', icon: Package, label: 'Inventaire' },
+    { path: '/physical-inventory', icon: ClipboardList, label: 'Inventaire Physique' }, // NOUVEAU
     { path: '/sales', icon: FileText, label: 'Ventes' },
     { path: '/customers', icon: Users, label: 'Clients' },
     { path: '/credits', icon: CreditCard, label: 'Crédits' },
