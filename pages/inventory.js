@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../src/contexts/AppContext';
 import ProductImportModal from '../components/ProductImportModal';
-import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save, Upload } from 'lucide-react';
+import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save, Upload, showImportModal, productCatalog } from 'lucide-react';
 
 export default function InventoryPage() {
   const { productCatalog, addProduct, updateProduct, deleteProduct, loading } = useApp();
@@ -515,17 +515,17 @@ function ProductModal({ title, product, onClose, onSubmit }) {
         </form>
       </div>
 {/* Modal d'import Excel */}
-<ProductImportModal
-  isOpen={showImportModal}
-  onClose={() => setShowImportModal(false)}
-  onImportSuccess={() => {
-    // Recharger la page pour voir les nouveaux produits
-    window.location.reload();
-  }}
-  productCatalog={productCatalog}
-  addProduct={addProduct}
-/>
-
+      {showImportModal && (
+        <ProductImportModal
+          isOpen={true}
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={() => {
+            window.location.reload();
+          }}
+          productCatalog={productCatalog}
+          addProduct={addProduct}
+        />
+      )}
     </div>
   );
 }
