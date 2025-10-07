@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { useApp } from '../src/contexts/AppContext';
-import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save } from 'lucide-react';
+import ProductImportModal from '../components/ProductImportModal';
+import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save, Upload } from 'lucide-react';
 
 export default function InventoryPage() {
   const { productCatalog, addProduct, updateProduct, deleteProduct, loading } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
   // Extraire les catégories uniques
@@ -81,30 +83,45 @@ export default function InventoryPage() {
   return (
     <div style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* En-tête */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
-        <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Package size={32} />
-          Gestion de l'Inventaire
-        </h1>
-        <button
-          onClick={() => setShowAddModal(true)}
-          style={{
-            padding: '12px 24px',
-            background: '#10b981',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            fontSize: '16px'
-          }}
-        >
-          <Plus size={20} />
-          Nouveau Produit
-        </button>
-      </div>
+      <div style={{ display: 'flex', gap: '10px' }}>
+  <button
+    onClick={() => setShowImportModal(true)}
+    style={{
+      padding: '12px 24px',
+      background: 'var(--color-success)',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '16px'
+    }}
+  >
+    <Upload size={20} />
+    Importer Excel
+  </button>
+
+  <button
+    onClick={() => setShowAddModal(true)}
+    style={{
+      padding: '12px 24px',
+      background: 'var(--color-primary)',
+      color: 'white',
+      border: 'none',
+      borderRadius: '8px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '8px',
+      fontSize: '16px'
+    }}
+  >
+    <Plus size={20} />
+    Ajouter Produit
+  </button>
+</div>
 
       {/* Statistiques */}
       <div style={{ 
@@ -497,6 +514,18 @@ function ProductModal({ title, product, onClose, onSubmit }) {
           </div>
         </form>
       </div>
+{/* Modal d'import Excel */}
+<ProductImportModal
+  isOpen={showImportModal}
+  onClose={() => setShowImportModal(false)}
+  onImportSuccess={() => {
+    // Recharger la page pour voir les nouveaux produits
+    window.location.reload();
+  }}
+  productCatalog={productCatalog}
+  addProduct={addProduct}
+/>
+
     </div>
   );
 }
