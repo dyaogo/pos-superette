@@ -2,7 +2,11 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/stores": "pages/stores.js",
   "/dashboard": "pages/dashboard.js",
-  "/reports": "pages/reports.js"
+  "/stores": "pages/stores.js",
+  "/reports": "pages/reports.js",
+  "/api/stores": "pages/api/stores.js",
+  "/api/sales": "pages/api/sales.js",
+  "/api/customers": "pages/api/customers.js",
+  "/api/products": "pages/api/products.js"
 }
