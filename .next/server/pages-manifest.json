@@ -3,9 +3,8 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/physical-inventory": "pages/physical-inventory.js",
-  "/inventory": "pages/inventory.js",
   "/dashboard": "pages/dashboard.js",
-  "/api/products": "pages/api/products.js",
-  "/api/customers": "pages/api/customers.js",
+  "/pos": "pages/pos.js",
+  "/sales": "pages/sales.js",
   "/api/sales": "pages/api/sales.js"
 }
