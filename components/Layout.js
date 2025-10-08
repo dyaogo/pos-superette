@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { 
   Home, ShoppingCart, Package, Users, ClipboardList,
-  Settings, FileText, BarChart, CreditCard, RotateCcw 
+  Settings, FileText, BarChart, CreditCard, RotateCcw, Store as StoreIcon
 } from 'lucide-react';
 import OfflineIndicator from './OfflineIndicator';
 import DarkModeToggle from './DarkModeToggle';
@@ -22,6 +22,7 @@ export default function Layout({ children }) {
     { path: '/pos', icon: ShoppingCart, label: 'Caisse' },
     { path: '/inventory', icon: Package, label: 'Inventaire' },
     { path: '/physical-inventory', icon: ClipboardList, label: 'Inventaire Physique' }, // NOUVEAU
+    { path: '/stores', icon: StoreIcon, label: 'Magasins' }, // NOUVEAU
     { path: '/sales', icon: FileText, label: 'Ventes' },
     { path: '/customers', icon: Users, label: 'Clients' },
     { path: '/credits', icon: CreditCard, label: 'Crédits' },

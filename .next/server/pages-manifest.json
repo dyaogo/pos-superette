@@ -2,9 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/physical-inventory": "pages/physical-inventory.js",
   "/dashboard": "pages/dashboard.js",
-  "/pos": "pages/pos.js",
-  "/sales": "pages/sales.js",
-  "/api/sales": "pages/api/sales.js"
+  "/reports": "pages/reports.js",
+  "/pos": "pages/pos.js"
 }

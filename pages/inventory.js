@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useState } from 'react';
 import { useApp } from '../src/contexts/AppContext';
 import ProductImportModal from '../components/ProductImportModal';
+import LoadingSpinner from '../components/LoadingSpinner';
 import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save, Upload } from 'lucide-react';
+
 export default function InventoryPage() {
   const { productCatalog, addProduct, updateProduct, deleteProduct, loading } = useApp();
   const [searchTerm, setSearchTerm] = useState('');
@@ -75,52 +76,58 @@ export default function InventoryPage() {
   };
 
   if (loading) {
-      return <LoadingSpinner fullScreen />;
-
+    return <LoadingSpinner fullScreen />;
   }
 
   return (
     <div style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* En-tête */}
-      <div style={{ display: 'flex', gap: '10px' }}>
-  <button
-    onClick={() => setShowImportModal(true)}
-    style={{
-      padding: '12px 24px',
-      background: 'var(--color-success)',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      fontSize: '16px'
-    }}
-  >
-    <Upload size={20} />
-    Importer Excel
-  </button>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px' }}>
+        <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Package size={32} />
+          Gestion de l'Inventaire
+        </h1>
+        
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button
+            onClick={() => setShowImportModal(true)}
+            style={{
+              padding: '12px 24px',
+              background: 'var(--color-success)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '16px'
+            }}
+          >
+            <Upload size={20} />
+            Importer Excel
+          </button>
 
-  <button
-    onClick={() => setShowAddModal(true)}
-    style={{
-      padding: '12px 24px',
-      background: 'var(--color-primary)',
-      color: 'white',
-      border: 'none',
-      borderRadius: '8px',
-      cursor: 'pointer',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '8px',
-      fontSize: '16px'
-    }}
-  >
-    <Plus size={20} />
-    Ajouter Produit
-  </button>
-</div>
+          <button
+            onClick={() => setShowAddModal(true)}
+            style={{
+              padding: '12px 24px',
+              background: 'var(--color-primary)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '16px'
+            }}
+          >
+            <Plus size={20} />
+            Ajouter Produit
+          </button>
+        </div>
+      </div>
 
       {/* Statistiques */}
       <div style={{ 
@@ -179,7 +186,7 @@ export default function InventoryPage() {
         <div style={{ position: 'relative', flex: 1, minWidth: '250px' }}>
           <Search 
             size={20} 
-            style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
+            style={{ position: 'absolute', left: '12px', top: '12px', color: '#9ca3af' }} 
           />
           <input
             type="text"
@@ -190,7 +197,9 @@ export default function InventoryPage() {
               width: '100%',
               padding: '12px 12px 12px 45px',
               border: '1px solid var(--color-border)',
-              borderRadius: '8px'
+              borderRadius: '8px',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text-primary)'
             }}
           />
         </div>
@@ -202,7 +211,9 @@ export default function InventoryPage() {
             padding: '12px',
             border: '1px solid var(--color-border)',
             borderRadius: '8px',
-            minWidth: '150px'
+            minWidth: '150px',
+            background: 'var(--color-surface)',
+            color: 'var(--color-text-primary)'
           }}
         >
           {categories.map(cat => (
@@ -221,13 +232,13 @@ export default function InventoryPage() {
         overflow: 'hidden'
       }}>
         {filteredProducts.length === 0 ? (
-          <div style={{ padding: '60px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+          <div style={{ padding: '60px', textAlign: 'center', color: '#9ca3af' }}>
             Aucun produit trouvé
           </div>
         ) : (
           <table style={{ width: '100%', borderCollapse: 'collapse' }}>
             <thead>
-              <tr style={{ background: 'var(--color-surface-hover)', borderBottom: '1px solid #e5e7eb' }}>
+              <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Produit</th>
                 <th style={{ padding: '15px', textAlign: 'left' }}>Catégorie</th>
                 <th style={{ padding: '15px', textAlign: 'right' }}>Prix achat</th>
@@ -241,14 +252,14 @@ export default function InventoryPage() {
                 <tr 
                   key={product.id}
                   style={{ 
-                    borderBottom: '1px solid #e5e7eb',
-                    background: product.stock < 10 ? '#fef2f2' : 'white'
+                    borderBottom: '1px solid var(--color-border)',
+                    background: product.stock < 10 ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
                   }}
                 >
                   <td style={{ padding: '15px' }}>
                     <div style={{ fontWeight: '500' }}>{product.name}</div>
                     {product.barcode && (
-                      <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{product.barcode}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{product.barcode}</div>
                     )}
                   </td>
                   <td style={{ padding: '15px' }}>{product.category}</td>
@@ -333,6 +344,19 @@ export default function InventoryPage() {
           onSubmit={handleSubmit}
         />
       )}
+
+      {/* Modal d'import Excel */}
+      {showImportModal && (
+        <ProductImportModal
+          isOpen={true}
+          onClose={() => setShowImportModal(false)}
+          onImportSuccess={() => {
+            window.location.reload();
+          }}
+          productCatalog={productCatalog}
+          addProduct={addProduct}
+        />
+      )}
     </div>
   );
 }
@@ -385,7 +409,9 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 width: '100%',
                 padding: '12px',
                 border: '1px solid var(--color-border)',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-primary)'
               }}
             />
           </div>
@@ -403,7 +429,9 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                   width: '100%',
                   padding: '12px',
                   border: '1px solid var(--color-border)',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)'
                 }}
               />
             </div>
@@ -418,7 +446,9 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                   width: '100%',
                   padding: '12px',
                   border: '1px solid var(--color-border)',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)'
                 }}
               />
             </div>
@@ -438,7 +468,9 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                   width: '100%',
                   padding: '12px',
                   border: '1px solid var(--color-border)',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)'
                 }}
               />
             </div>
@@ -456,7 +488,9 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                   width: '100%',
                   padding: '12px',
                   border: '1px solid var(--color-border)',
-                  borderRadius: '8px'
+                  borderRadius: '8px',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)'
                 }}
               />
             </div>
@@ -473,7 +507,9 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 width: '100%',
                 padding: '12px',
                 border: '1px solid var(--color-border)',
-                borderRadius: '8px'
+                borderRadius: '8px',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-primary)'
               }}
             />
           </div>
@@ -513,18 +549,6 @@ function ProductModal({ title, product, onClose, onSubmit }) {
           </div>
         </form>
       </div>
-{/* Modal d'import Excel */}
-      {showImportModal && (
-        <ProductImportModal
-          isOpen={true}
-          onClose={() => setShowImportModal(false)}
-          onImportSuccess={() => {
-            window.location.reload();
-          }}
-          productCatalog={productCatalog}
-          addProduct={addProduct}
-        />
-      )}
     </div>
   );
 }
