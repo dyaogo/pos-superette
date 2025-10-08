@@ -23,12 +23,12 @@ export default async function handler(req, res) {
       
       const store = await prisma.store.create({
         data: {
-          code,
-          name,
-          address: address || null,
-          phone: phone || null,
-          currency: currency || 'FCFA',
-          taxRate: parseFloat(taxRate) || 18
+    code,
+    name,
+    address: address && address.trim() !== '' ? address : null,  // Gérer le vide
+    phone: phone && phone.trim() !== '' ? phone : null,          // Gérer le vide
+    currency: currency || 'FCFA',
+    taxRate: parseFloat(taxRate) || 18
         }
       });
       

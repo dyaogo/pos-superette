@@ -12,6 +12,7 @@ model Store {
   id        String   @id @default(cuid())
   code      String   @unique
   name      String
+  address   String?
   currency  String   @default("FCFA")
   taxRate   Float    @default(18)
   createdAt DateTime @default(now())
