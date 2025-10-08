@@ -24,60 +24,63 @@ export default function StoresPage() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    
-    // CORRECTION : Construire storeData correctement
-    const storeData = {
-      name: formData.get('name'),
-      address: formData.get('address') && formData.get('address').trim() !== '' ? formData.get('address') : null,
-      phone: formData.get('phone') && formData.get('phone').trim() !== '' ? formData.get('phone') : null,
-      currency: formData.get('currency') || 'FCFA',
-      taxRate: parseFloat(formData.get('taxRate')) || 18
-    };
-
-    // Ajouter le code seulement pour la création
-    if (!editingStore) {
-      storeData.code = formData.get('code');
-    }
-
-    try {
-      if (editingStore) {
-        const res = await fetch(`/api/stores/${editingStore.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(storeData)
-        });
-
-        if (res.ok) {
-          alert('Magasin modifié avec succès');
-          setEditingStore(null);
-          loadStores();
-        } else {
-          const error = await res.json();
-          alert('Erreur: ' + error.error);
-        }
-      } else {
-        const res = await fetch('/api/stores', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(storeData)
-        });
-
-        if (res.ok) {
-          alert('Magasin créé avec succès');
-          setShowAddModal(false);
-          loadStores();
-        } else {
-          const error = await res.json();
-          alert('Erreur: ' + error.error);
-        }
-      }
-    } catch (error) {
-      alert('Erreur: ' + error.message);
-    }
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  
+  // CORRECTION : Bien gérer taxRate pour accepter 0
+  const taxRateValue = formData.get('taxRate');
+  const taxRate = taxRateValue !== null && taxRateValue !== '' ? parseFloat(taxRateValue) : 18;
+  
+  const storeData = {
+    name: formData.get('name'),
+    address: formData.get('address') && formData.get('address').trim() !== '' ? formData.get('address') : null,
+    phone: formData.get('phone') && formData.get('phone').trim() !== '' ? formData.get('phone') : null,
+    currency: formData.get('currency') || 'FCFA',
+    taxRate: taxRate
   };
+
+  // Ajouter le code seulement pour la création
+  if (!editingStore) {
+    storeData.code = formData.get('code');
+  }
+
+  try {
+    if (editingStore) {
+      const res = await fetch(`/api/stores/${editingStore.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(storeData)
+      });
+
+      if (res.ok) {
+        alert('Magasin modifié avec succès');
+        setEditingStore(null);
+        loadStores();
+      } else {
+        const error = await res.json();
+        alert('Erreur: ' + error.error);
+      }
+    } else {
+      const res = await fetch('/api/stores', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(storeData)
+      });
+
+      if (res.ok) {
+        alert('Magasin créé avec succès');
+        setShowAddModal(false);
+        loadStores();
+      } else {
+        const error = await res.json();
+        alert('Erreur: ' + error.error);
+      }
+    }
+  } catch (error) {
+    alert('Erreur: ' + error.message);
+  }
+};
 
   const handleDelete = async (storeId, storeName) => {
     if (!confirm(`Supprimer le magasin "${storeName}" ?\n\nCette action est irréversible.`)) return;
