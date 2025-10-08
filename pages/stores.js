@@ -37,6 +37,11 @@ export default function StoresPage() {
       taxRate: parseFloat(formData.get('taxRate')) || 18
     };
 
+    // N'ajouter le code que pour la création
+  if (!editingStore) {
+    storeData.code = formData.get('code');
+  }
+
     try {
       if (editingStore) {
         const res = await fetch(`/api/stores/${editingStore.id}`, {
