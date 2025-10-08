@@ -28,19 +28,19 @@ export default function StoresPage() {
     e.preventDefault();
     const formData = new FormData(e.target);
     
+    // CORRECTION : Construire storeData correctement
     const storeData = {
-      code: formData.get('code'),
       name: formData.get('name'),
-      address: formData.get('address') || null,
-      phone: formData.get('phone') || null,
+      address: formData.get('address') && formData.get('address').trim() !== '' ? formData.get('address') : null,
+      phone: formData.get('phone') && formData.get('phone').trim() !== '' ? formData.get('phone') : null,
       currency: formData.get('currency') || 'FCFA',
       taxRate: parseFloat(formData.get('taxRate')) || 18
     };
 
-    // N'ajouter le code que pour la création
-  if (!editingStore) {
-    storeData.code = formData.get('code');
-  }
+    // Ajouter le code seulement pour la création
+    if (!editingStore) {
+      storeData.code = formData.get('code');
+    }
 
     try {
       if (editingStore) {
@@ -54,6 +54,9 @@ export default function StoresPage() {
           alert('Magasin modifié avec succès');
           setEditingStore(null);
           loadStores();
+        } else {
+          const error = await res.json();
+          alert('Erreur: ' + error.error);
         }
       } else {
         const res = await fetch('/api/stores', {
@@ -430,7 +433,7 @@ function StoreModal({ title, store, onClose, onSubmit }) {
               <input
                 type="text"
                 name="code"
-                required
+                required={!store}
                 defaultValue={store?.code}
                 placeholder="Ex: MAG001"
                 disabled={!!store}
