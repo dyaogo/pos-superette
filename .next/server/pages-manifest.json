@@ -2,11 +2,10 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/dashboard": "pages/dashboard.js",
-  "/stores": "pages/stores.js",
-  "/reports": "pages/reports.js",
   "/api/stores": "pages/api/stores.js",
+  "/api/products": "pages/api/products.js",
+  "/stores": "pages/stores.js",
   "/api/sales": "pages/api/sales.js",
-  "/api/customers": "pages/api/customers.js",
-  "/api/products": "pages/api/products.js"
+  "/api/stores/[id]": "pages/api/stores/[id].js",
+  "/api/customers": "pages/api/customers.js"
 }
