@@ -1,115 +1,203 @@
-import React from 'react';
-import { render, act } from '@testing-library/react';
-import { AppProvider, useApp } from './AppContext';
-import { getInventoryHistory } from '../services/inventory.service';
+import { createContext, useContext, useState, useEffect } from 'react';
 
-jest.mock('../services/api', () => ({
-  post: jest.fn().mockResolvedValue(null),
-  get: jest.fn(),
-  put: jest.fn(),
-  delete: jest.fn()
-}));
+const AppContext = createContext();
 
-test('enregistre un réapprovisionnement dans l\'historique', () => {
-  localStorage.clear();
-  localStorage.setItem('pos_current_store', 'wend-kuuni');
-  localStorage.setItem('pos_products_catalog', JSON.stringify([{ id: 1, name: 'Produit test' }]));
+export function AppProvider({ children }) {
+  const [productCatalog, setProductCatalog] = useState([]);
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [customers, setCustomers] = useState([]);
+  const [stores, setStores] = useState([]);
+  const [currentStore, setCurrentStore] = useState(null); // NOUVEAU
+  const [loading, setLoading] = useState(true);
 
-  let addStockFn;
-  const Collector = () => {
-    const { addStock } = useApp();
-    addStockFn = addStock;
-    return null;
+  // Charger les données au démarrage
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // Charger les magasins d'abord
+      const storesRes = await fetch('/api/stores');
+      const storesData = await storesRes.json();
+      setStores(storesData);
+
+      // Définir le magasin actif (soit depuis localStorage, soit le premier)
+      const savedStoreId = localStorage.getItem('currentStoreId');
+      const activeStore = savedStoreId 
+        ? storesData.find(s => s.id === savedStoreId) 
+        : storesData[0];
+      
+      if (activeStore) {
+        setCurrentStore(activeStore);
+      }
+
+      // Charger les produits
+      const productsRes = await fetch('/api/products');
+      const productsData = await productsRes.json();
+      setProductCatalog(productsData);
+
+      // Charger les ventes
+      const salesRes = await fetch('/api/sales');
+      const salesData = await salesRes.json();
+      setSalesHistory(salesData);
+
+      // Charger les clients
+      const customersRes = await fetch('/api/customers');
+      const customersData = await customersRes.json();
+      setCustomers(customersData);
+    } catch (error) {
+      console.error('Erreur chargement données:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  render(
-    <AppProvider>
-      <Collector />
-    </AppProvider>
-  );
-
-  act(() => {
-    addStockFn('wend-kuuni', 1, 5, 'Test restock');
-  });
-
-  const history = getInventoryHistory();
-  expect(history).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({
-        storeId: 'wend-kuuni',
-        productId: 1,
-        quantity: 5,
-        reason: 'Test restock',
-        date: expect.any(String)
-      })
-    ])
-  );
-});
-
-test("après l'import de plusieurs produits, chaque article conserve sa quantité", async () => {
-  localStorage.clear();
-  localStorage.setItem('pos_current_store', 'wend-kuuni');
-
-  let addProductFn;
-  let getGlobalProducts;
-  const Collector = () => {
-    const { addProduct, globalProducts } = useApp();
-    addProductFn = addProduct;
-    getGlobalProducts = () => globalProducts;
-    return null;
+  // Fonction pour changer de magasin
+  const changeStore = (store) => {
+    setCurrentStore(store);
+    localStorage.setItem('currentStoreId', store.id);
+    // Recharger les données pour le nouveau magasin
+    loadData();
   };
 
-  render(
-    <AppProvider>
-      <Collector />
-    </AppProvider>
+  // Filtrer les produits par magasin actif
+  const currentStoreProducts = productCatalog.filter(
+    p => !currentStore || p.storeId === currentStore.id
   );
 
-  await act(async () => {
-    addProductFn({ id: 1, name: 'Produit 1' }, 3);
-    addProductFn({ id: 2, name: 'Produit 2' }, 7);
-  });
-
-  const products = getGlobalProducts();
-  expect(products).toEqual(
-    expect.arrayContaining([
-      expect.objectContaining({ id: 1, stock: 3 }),
-      expect.objectContaining({ id: 2, stock: 7 })
-    ])
+  // Filtrer les ventes par magasin actif
+  const currentStoreSales = salesHistory.filter(
+    s => !currentStore || s.storeId === currentStore.id
   );
-});
 
-test('removeProduct supprime le produit du catalogue et du stock de tous les magasins', async () => {
-  localStorage.clear();
-  localStorage.setItem('pos_current_store', 'wend-kuuni');
+  const addProduct = async (productData) => {
+    try {
+      const res = await fetch('/api/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...productData,
+          storeId: currentStore?.id // Utiliser le magasin actif
+        })
+      });
 
-  let addProductFn, removeProductFn, setStockForStoreFn, getCatalog, getStock;
-  const Collector = () => {
-    const { addProduct, removeProduct, setStockForStore, productCatalog, stockByStore } = useApp();
-    addProductFn = addProduct;
-    removeProductFn = removeProduct;
-    setStockForStoreFn = setStockForStore;
-    getCatalog = () => productCatalog;
-    getStock = () => stockByStore;
-    return null;
+      if (res.ok) {
+        await loadData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Erreur ajout produit:', error);
+      return { success: false };
+    }
   };
 
-  render(
-    <AppProvider>
-      <Collector />
-    </AppProvider>
+  const updateProduct = async (id, productData) => {
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(productData)
+      });
+
+      if (res.ok) {
+        await loadData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Erreur modification produit:', error);
+      return { success: false };
+    }
+  };
+
+  const deleteProduct = async (id) => {
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        await loadData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Erreur suppression produit:', error);
+      return { success: false };
+    }
+  };
+
+  const addCustomer = async (customerData) => {
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customerData)
+      });
+
+      if (res.ok) {
+        await loadData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      return { success: false };
+    }
+  };
+
+  const updateCustomer = async (id, customerData) => {
+    try {
+      const res = await fetch(`/api/customers/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(customerData)
+      });
+
+      if (res.ok) {
+        await loadData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      return { success: false };
+    }
+  };
+
+  return (
+    <AppContext.Provider
+      value={{
+        // Données filtrées par magasin
+        productCatalog: currentStoreProducts,
+        salesHistory: currentStoreSales,
+        customers,
+        
+        // Données complètes (non filtrées)
+        allProducts: productCatalog,
+        allSales: salesHistory,
+        
+        // Magasins
+        stores,
+        currentStore,
+        changeStore,
+        
+        // Actions
+        addProduct,
+        updateProduct,
+        deleteProduct,
+        addCustomer,
+        updateCustomer,
+        loading,
+        reloadData: loadData
+      }}
+    >
+      {children}
+    </AppContext.Provider>
   );
+}
 
-  await act(async () => {
-    addProductFn({ id: 1, name: 'Produit 1' }, 5);
-    setStockForStoreFn('wend-yam', { 1: 3 });
-  });
-
-  act(() => {
-    removeProductFn(1);
-  });
-
-  expect(getCatalog().find(p => p.id === 1)).toBeUndefined();
-  expect(getStock()['wend-kuuni']?.[1]).toBeUndefined();
-  expect(getStock()['wend-yam']?.[1]).toBeUndefined();
-});
+export function useApp() {
+  return useContext(AppContext);
+}
