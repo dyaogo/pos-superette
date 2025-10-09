@@ -2,7 +2,7 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/inventory": "pages/inventory.js",
-  "/dashboard": "pages/dashboard.js",
-  "/pos": "pages/pos.js"
+  "/returns": "pages/returns.js",
+  "/settings": "pages/settings.js",
+  "/dashboard": "pages/dashboard.js"
 }

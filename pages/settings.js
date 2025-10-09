@@ -1,69 +1,66 @@
 import { useState, useEffect } from 'react';
-import { Settings, Save, RefreshCw } from 'lucide-react';
+import { Settings as SettingsIcon, Save, Store, DollarSign, Percent, AlertTriangle } from 'lucide-react';
+import { useApp } from '../src/contexts/AppContext';
+import LoadingSpinner from '../components/LoadingSpinner';
 
 export default function SettingsPage() {
-  const [settings, setSettings] = useState({
-    storeName: 'Mon Superette',
+  const { currentStore, updateCurrentStore, loading } = useApp();
+  const [formData, setFormData] = useState({
+    name: '',
+    address: '',
+    phone: '',
     currency: 'FCFA',
-    taxRate: 18,
-    lowStockThreshold: 10,
-    receiptFooter: 'Merci de votre visite !',
-    printerEnabled: false,
-    autoBackup: true
+    taxRate: 18
   });
-  
+  const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Charger les paramètres depuis localStorage
+  // Charger les données du magasin actif
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedSettings = localStorage.getItem('pos_settings');
-      if (savedSettings) {
-        setSettings(prev => ({ ...prev, ...JSON.parse(savedSettings) }));
-      }
+    if (currentStore) {
+      setFormData({
+        name: currentStore.name || '',
+        address: currentStore.address || '',
+        phone: currentStore.phone || '',
+        currency: currentStore.currency || 'FCFA',
+        taxRate: currentStore.taxRate || 18
+      });
     }
-  }, []);
+  }, [currentStore]);
 
   const handleChange = (field, value) => {
-    setSettings(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('pos_settings', JSON.stringify(settings));
+  const handleSave = async () => {
+    setSaving(true);
+    
+    const result = await updateCurrentStore(formData);
+    
+    if (result.success) {
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } else {
+      alert('Erreur lors de la sauvegarde');
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 3000);
+    
+    setSaving(false);
   };
 
-  const handleReset = () => {
-    if (confirm('Réinitialiser tous les paramètres ?')) {
-      const defaultSettings = {
-        storeName: 'Mon Superette',
-        currency: 'FCFA',
-        taxRate: 18,
-        lowStockThreshold: 10,
-        receiptFooter: 'Merci de votre visite !',
-        printerEnabled: false,
-        autoBackup: true
-      };
-      setSettings(defaultSettings);
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('pos_settings', JSON.stringify(defaultSettings));
-      }
-    }
-  };
+  if (loading || !currentStore) {
+    return <LoadingSpinner fullScreen />;
+  }
 
   return (
     <div style={{ padding: '30px', maxWidth: '900px', margin: '0 auto' }}>
       {/* En-tête */}
       <div style={{ marginBottom: '30px' }}>
         <h1 style={{ margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Settings size={32} />
-          Paramètres de l'Application
+          <SettingsIcon size={32} />
+          Paramètres
         </h1>
         <p style={{ margin: 0, color: 'var(--color-text-secondary)' }}>
-          Configurez votre point de vente
+          Configuration du magasin : <strong>{currentStore.name}</strong>
         </p>
       </div>
 
@@ -71,8 +68,9 @@ export default function SettingsPage() {
       {saved && (
         <div style={{
           padding: '15px',
-          background: '#dcfce7',
-          color: '#166534',
+          background: 'rgba(16, 185, 129, 0.1)',
+          color: 'var(--color-success)',
+          border: '1px solid var(--color-success)',
           borderRadius: '8px',
           marginBottom: '20px',
           display: 'flex',
@@ -85,31 +83,107 @@ export default function SettingsPage() {
       )}
 
       {/* Formulaire */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: '12px', border: '1px solid var(--color-border)', padding: '30px' }}>
+      <div style={{ 
+        background: 'var(--color-surface)', 
+        borderRadius: '12px', 
+        border: '1px solid var(--color-border)', 
+        padding: '30px' 
+      }}>
         
         {/* Informations du magasin */}
         <section style={{ marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
+          <h2 style={{ 
+            fontSize: '18px', 
+            fontWeight: '600', 
+            marginBottom: '20px', 
+            paddingBottom: '10px', 
+            borderBottom: '2px solid var(--color-border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <Store size={20} />
             Informations du Magasin
           </h2>
 
           <div style={{ marginBottom: '20px' }}>
             <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              Nom du magasin
+              Nom du magasin *
             </label>
             <input
               type="text"
-              value={settings.storeName}
-              onChange={(e) => handleChange('storeName', e.target.value)}
+              value={formData.name}
+              onChange={(e) => handleChange('name', e.target.value)}
               style={{
                 width: '100%',
                 padding: '12px',
                 border: '1px solid var(--color-border)',
                 borderRadius: '8px',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-primary)',
                 fontSize: '16px'
               }}
             />
           </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Adresse
+            </label>
+            <input
+              type="text"
+              value={formData.address}
+              onChange={(e) => handleChange('address', e.target.value)}
+              placeholder="Adresse complète du magasin"
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-primary)',
+                fontSize: '16px'
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+              Téléphone
+            </label>
+            <input
+              type="tel"
+              value={formData.phone}
+              onChange={(e) => handleChange('phone', e.target.value)}
+              placeholder="+226 XX XX XX XX"
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid var(--color-border)',
+                borderRadius: '8px',
+                background: 'var(--color-surface)',
+                color: 'var(--color-text-primary)',
+                fontSize: '16px'
+              }}
+            />
+          </div>
+        </section>
+
+        {/* Configuration financière */}
+        <section style={{ marginBottom: '30px' }}>
+          <h2 style={{ 
+            fontSize: '18px', 
+            fontWeight: '600', 
+            marginBottom: '20px', 
+            paddingBottom: '10px', 
+            borderBottom: '2px solid var(--color-border)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <DollarSign size={20} />
+            Configuration Financière
+          </h2>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
             <div>
@@ -117,13 +191,15 @@ export default function SettingsPage() {
                 Devise
               </label>
               <select
-                value={settings.currency}
+                value={formData.currency}
                 onChange={(e) => handleChange('currency', e.target.value)}
                 style={{
                   width: '100%',
                   padding: '12px',
                   border: '1px solid var(--color-border)',
                   borderRadius: '8px',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)',
                   fontSize: '16px'
                 }}
               >
@@ -136,20 +212,23 @@ export default function SettingsPage() {
 
             <div>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                <Percent size={16} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
                 Taux de TVA (%)
               </label>
               <input
                 type="number"
-                value={settings.taxRate}
-                onChange={(e) => handleChange('taxRate', parseFloat(e.target.value))}
+                value={formData.taxRate}
+                onChange={(e) => handleChange('taxRate', parseFloat(e.target.value) || 0)}
                 min="0"
                 max="100"
-                step="0.1"
+                step="0.01"
                 style={{
                   width: '100%',
                   padding: '12px',
                   border: '1px solid var(--color-border)',
                   borderRadius: '8px',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)',
                   fontSize: '16px'
                 }}
               />
@@ -157,156 +236,59 @@ export default function SettingsPage() {
           </div>
         </section>
 
-        {/* Gestion de l'inventaire */}
-        <section style={{ marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
-            Gestion de l'Inventaire
-          </h2>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              Seuil de stock faible (unités)
-            </label>
-            <input
-              type="number"
-              value={settings.lowStockThreshold}
-              onChange={(e) => handleChange('lowStockThreshold', parseInt(e.target.value))}
-              min="0"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                fontSize: '16px'
-              }}
-            />
-            <p style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginTop: '5px' }}>
-              Les produits en dessous de ce seuil seront marqués comme stock faible
-            </p>
+        {/* Info box */}
+        <div style={{
+          padding: '15px',
+          background: 'rgba(59, 130, 246, 0.1)',
+          border: '1px solid var(--color-primary)',
+          borderRadius: '8px',
+          marginBottom: '20px',
+          display: 'flex',
+          gap: '10px'
+        }}>
+          <AlertTriangle size={20} color="var(--color-primary)" style={{ flexShrink: 0 }} />
+          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+            <strong>Note :</strong> Ces paramètres s'appliquent uniquement au magasin actuel (<strong>{currentStore.name}</strong>). 
+            Pour modifier un autre magasin, sélectionnez-le dans le menu en haut à droite puis revenez ici.
           </div>
-        </section>
-
-        {/* Reçus et impression */}
-        <section style={{ marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
-            Reçus et Impression
-          </h2>
-
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
-              Pied de page des reçus
-            </label>
-            <textarea
-              value={settings.receiptFooter}
-              onChange={(e) => handleChange('receiptFooter', e.target.value)}
-              rows="3"
-              style={{
-                width: '100%',
-                padding: '12px',
-                border: '1px solid var(--color-border)',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontFamily: 'inherit'
-              }}
-            />
-          </div>
-
-          <label style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '10px',
-            cursor: 'pointer',
-            padding: '12px',
-            background: 'var(--color-surface-hover)',
-            borderRadius: '8px'
-          }}>
-            <input
-              type="checkbox"
-              checked={settings.printerEnabled}
-              onChange={(e) => handleChange('printerEnabled', e.target.checked)}
-              style={{ width: '18px', height: '18px' }}
-            />
-            <div>
-              <div style={{ fontWeight: '500' }}>Activer l'impression automatique</div>
-              <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                Imprimer automatiquement les reçus après chaque vente
-              </div>
-            </div>
-          </label>
-        </section>
-
-        {/* Système */}
-        <section style={{ marginBottom: '30px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px', paddingBottom: '10px', borderBottom: '2px solid #e5e7eb' }}>
-            Système
-          </h2>
-
-          <label style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '10px',
-            cursor: 'pointer',
-            padding: '12px',
-            background: 'var(--color-surface-hover)',
-            borderRadius: '8px'
-          }}>
-            <input
-              type="checkbox"
-              checked={settings.autoBackup}
-              onChange={(e) => handleChange('autoBackup', e.target.checked)}
-              style={{ width: '18px', height: '18px' }}
-            />
-            <div>
-              <div style={{ fontWeight: '500' }}>Sauvegarde automatique</div>
-              <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                Sauvegarder automatiquement les données dans le cloud
-              </div>
-            </div>
-          </label>
-        </section>
+        </div>
 
         {/* Boutons d'action */}
-        <div style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end', paddingTop: '20px', borderTop: '2px solid #e5e7eb' }}>
-          <button
-            onClick={handleReset}
-            style={{
-              padding: '12px 24px',
-              background: 'var(--color-surface)',
-              color: 'var(--color-text-secondary)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              fontSize: '16px',
-              fontWeight: '500'
-            }}
-          >
-            <RefreshCw size={20} />
-            Réinitialiser
-          </button>
-
+        <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
           <button
             onClick={handleSave}
+            disabled={saving}
             style={{
               padding: '12px 24px',
-              background: '#3b82f6',
+              background: saving ? 'var(--color-border)' : 'var(--color-success)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
-              cursor: 'pointer',
+              cursor: saving ? 'not-allowed' : 'pointer',
+              fontSize: '16px',
+              fontWeight: '600',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
-              fontSize: '16px',
-              fontWeight: '500'
+              gap: '8px'
             }}
           >
             <Save size={20} />
-            Enregistrer les paramètres
+            {saving ? 'Enregistrement...' : 'Enregistrer'}
           </button>
         </div>
+      </div>
+
+      {/* Info code magasin */}
+      <div style={{
+        marginTop: '20px',
+        padding: '15px',
+        background: 'var(--color-surface)',
+        border: '1px solid var(--color-border)',
+        borderRadius: '8px',
+        fontSize: '14px',
+        color: 'var(--color-text-secondary)'
+      }}>
+        <strong>Code du magasin:</strong> {currentStore.code} (non modifiable)
       </div>
     </div>
   );
