@@ -218,7 +218,10 @@ export default function SettingsPage() {
               <input
                 type="number"
                 value={formData.taxRate}
-                onChange={(e) => handleChange('taxRate', parseFloat(e.target.value) || 0)}
+                onChange={(e) => {
+                  const value = e.target.value;
+                  handleChange('taxRate', value !== '' ? parseFloat(value) : 0);
+                }}
                 min="0"
                 max="100"
                 step="0.01"
