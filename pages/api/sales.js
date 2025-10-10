@@ -94,14 +94,14 @@ export default async function handler(req, res) {
         customerId: customerId || null,
         cashier: 'Admin', // À remplacer par l'utilisateur connecté
         items: {
-          create: items.map(item => ({
-            productId: item.productId,
-            productName: item.name,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            total: item.unitPrice * item.quantity
-          }))
-        }
+  create: items.map(item => ({
+    productId: item.productId,
+    productName: item.name || item.productName || 'Produit',  // Accepter les deux formats
+    quantity: item.quantity,
+    unitPrice: item.unitPrice,
+    total: item.unitPrice * item.quantity
+  }))
+}
       },
       include: {
         items: true
