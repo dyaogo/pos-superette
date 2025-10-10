@@ -45,9 +45,13 @@ export default async function handler(req, res) {
     }
     
   } else if (req.method === 'POST') {
-    try {
-      const { customerId, total, paymentMethod, items } = req.body;
-      
+  try {
+    const { storeId, customerId, total, paymentMethod, items, cashReceived, change } = req.body;
+    
+    // CORRECTION : Utiliser le storeId fourni, sinon chercher/créer un magasin
+    let finalStoreId = storeId;
+    
+    if (!finalStoreId) {
       let store = await prisma.store.findFirst();
       
       if (!store) {
@@ -61,36 +65,52 @@ export default async function handler(req, res) {
         });
       }
       
-      const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-      const tax = subtotal * 0.18;
-      const totalAmount = subtotal + tax;
-      
-      const sale = await prisma.sale.create({
-        data: {
-          storeId: store.id,
-          receiptNumber: `REC-${Date.now()}`,
-          subtotal: subtotal,
-          tax: tax,
-          total: totalAmount,
-          paymentMethod: paymentMethod || 'cash',
-          customerId: customerId || null,
-          items: {
-            create: items.map(item => ({
-              productId: item.productId,
-              productName: item.name, // Sauvegarder le nom du produit au moment de la vente
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              total: item.unitPrice * item.quantity
-            }))
-          }
-        },
-        include: {
-          items: true
+      finalStoreId = store.id;
+    }
+    
+    // Vérifier que les items sont valides
+    if (!items || items.length === 0) {
+      return res.status(400).json({ error: 'Aucun article dans la vente' });
+    }
+    
+    // Calculer les montants
+    const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+    const taxRate = 0.18; // À récupérer du magasin si nécessaire
+    const tax = subtotal * taxRate;
+    const totalAmount = subtotal + tax;
+    
+    // Créer la vente
+    const sale = await prisma.sale.create({
+      data: {
+        storeId: finalStoreId,
+        receiptNumber: `REC-${Date.now()}`,
+        subtotal: subtotal,
+        tax: tax,
+        total: totalAmount,
+        discount: 0,
+        paymentMethod: paymentMethod || 'cash',
+        cashReceived: cashReceived || null,
+        change: change || null,
+        customerId: customerId || null,
+        cashier: 'Admin', // À remplacer par l'utilisateur connecté
+        items: {
+          create: items.map(item => ({
+            productId: item.productId,
+            productName: item.name,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            total: item.unitPrice * item.quantity
+          }))
         }
-      });
-      
-      // Mettre à jour les stocks
-      for (const item of items) {
+      },
+      include: {
+        items: true
+      }
+    });
+    
+    // Mettre à jour les stocks
+    for (const item of items) {
+      try {
         await prisma.product.update({
           where: { id: item.productId },
           data: {
@@ -99,16 +119,19 @@ export default async function handler(req, res) {
             }
           }
         });
+      } catch (error) {
+        console.warn(`Erreur mise à jour stock produit ${item.productId}:`, error);
       }
-      
-      res.status(201).json(sale);
-    } catch (error) {
-      console.error('Erreur POST sale:', error);
-      res.status(500).json({ 
-        error: 'Erreur lors de la création de la vente',
-        details: error.message 
-      });
     }
+    
+    res.status(201).json(sale);
+  } catch (error) {
+    console.error('Erreur POST sale:', error);
+    res.status(500).json({ 
+      error: 'Erreur lors de la création de la vente',
+      details: error.message 
+    });
+  }
     
   } else {
     res.status(405).json({ error: 'Method not allowed' });
