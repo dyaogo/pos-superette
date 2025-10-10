@@ -5,8 +5,7 @@ import ReceiptPrinter from '../components/ReceiptPrinter';
 
 
 export default function POSPage() {
-  const { productCatalog, recordSale, customers, loading } = useApp();
-  
+  const { productCatalog, recordSale, customers, loading, currentStore, salesHistory: currentStoreSales } = useApp();  
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -297,77 +296,7 @@ const calculateChange = () => {
       <div style={{ flex: 2, padding: '20px', overflow: 'auto' }}>
         <h1 style={{ marginBottom: '20px' }}>Point de Vente</h1>
 
-        {/* Recherche */}
-        <div style={{ position: 'relative', marginBottom: '20px' }}>
-          <Search 
-            size={20} 
-            style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
-          />
-          <input
-            id="product-search"
-            type="text"
-            placeholder="Rechercher un produit (nom ou code-barres)... [F1]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 12px 12px 45px',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              fontSize: '16px'
-            }}
-          />
-        </div>
-
-        {/* Grille de produits */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: '15px'
-        }}>
-          {filteredProducts.length === 0 ? (
-            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              Aucun produit trouvé
-            </p>
-          ) : (
-            filteredProducts.map(product => (
-              <div
-                key={product.id}
-                onClick={() => addToCart(product)}
-                style={{
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  padding: '15px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  background: 'var(--color-surface)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>{product.name}</h3>
-                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                  {product.category}
-                </p>
-                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
-                  {product.sellingPrice} FCFA
-                </p>
-                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  Stock: {product.stock || 0}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Indicateur de session */}
+            {/* Indicateur de session */}
 {!cashSession ? (
   <div style={{
     padding: '15px 20px',
@@ -441,6 +370,77 @@ const calculateChange = () => {
     </button>
   </div>
 )}
+
+        {/* Recherche */}
+        <div style={{ position: 'relative', marginBottom: '20px' }}>
+          <Search 
+            size={20} 
+            style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
+          />
+          <input
+            id="product-search"
+            type="text"
+            placeholder="Rechercher un produit (nom ou code-barres)... [F1]"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px 12px 12px 45px',
+              border: '1px solid var(--color-border)',
+              borderRadius: '8px',
+              fontSize: '16px'
+            }}
+          />
+        </div>
+
+        {/* Grille de produits */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
+          gap: '15px'
+        }}>
+          {filteredProducts.length === 0 ? (
+            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--color-text-muted)' }}>
+              Aucun produit trouvé
+            </p>
+          ) : (
+            filteredProducts.map(product => (
+              <div
+                key={product.id}
+                onClick={() => addToCart(product)}
+                style={{
+                  border: '1px solid var(--color-border)',
+                  borderRadius: '12px',
+                  padding: '15px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: 'var(--color-surface)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+                  e.currentTarget.style.transform = 'translateY(-2px)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.boxShadow = 'none';
+                  e.currentTarget.style.transform = 'translateY(0)';
+                }}
+              >
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>{product.name}</h3>
+                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+                  {product.category}
+                </p>
+                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
+                  {product.sellingPrice} FCFA
+                </p>
+                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                  Stock: {product.stock || 0}
+                </p>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
 
       {/* Colonne droite - Panier */}
       <div style={{ 
