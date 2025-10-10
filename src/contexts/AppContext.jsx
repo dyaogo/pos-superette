@@ -8,6 +8,7 @@ export function AppProvider({ children }) {
   const [productCatalog, setProductCatalog] = useState([]);
   const [salesHistory, setSalesHistory] = useState([]);
   const [customers, setCustomers] = useState([]);
+  const [credits, setCredits] = useState([]); // NOUVEAU
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false); // NOUVEAU
 
@@ -53,26 +54,31 @@ export function AppProvider({ children }) {
     }
   };
 
-  const loadData = async () => {
-    try {
-      // Charger produits
-      const productsRes = await fetch('/api/products');
-      const productsData = await productsRes.json();
-      setProductCatalog(productsData);
+ const loadData = async () => {
+  try {
+    // Charger produits
+    const productsRes = await fetch('/api/products');
+    const productsData = await productsRes.json();
+    setProductCatalog(productsData);
 
-      // Charger ventes
-      const salesRes = await fetch('/api/sales');
-      const salesData = await salesRes.json();
-      setSalesHistory(salesData);
+    // Charger ventes
+    const salesRes = await fetch('/api/sales');
+    const salesData = await salesRes.json();
+    setSalesHistory(salesData);
 
-      // Charger clients
-      const customersRes = await fetch('/api/customers');
-      const customersData = await customersRes.json();
-      setCustomers(customersData);
-    } catch (error) {
-      console.error('Erreur chargement données:', error);
-    }
-  };
+    // Charger clients
+    const customersRes = await fetch('/api/customers');
+    const customersData = await customersRes.json();
+    setCustomers(customersData);
+
+    // Charger crédits - NOUVEAU
+    const creditsRes = await fetch('/api/credits');
+    const creditsData = await creditsRes.json();
+    setCredits(creditsData);
+  } catch (error) {
+    console.error('Erreur chargement données:', error);
+  }
+};
 
   // Changer de magasin - OPTIMISÉ
 const changeStore = async (store) => {
@@ -185,7 +191,7 @@ const changeStore = async (store) => {
     }
   };
 
-  // NOUVEAU : Enregistrer une vente
+// NOUVEAU : Enregistrer une vente
 const recordSale = async (saleData) => {
   try {
     const res = await fetch('/api/sales', {
@@ -198,8 +204,9 @@ const recordSale = async (saleData) => {
     });
 
     if (res.ok) {
+      const sale = await res.json(); // RÉCUPÉRER LA VENTE CRÉÉE
       await loadData();
-      return { success: true };
+      return { success: true, sale }; // RETOURNER LA VENTE
     }
     return { success: false };
   } catch (error) {
@@ -249,6 +256,8 @@ const recordSale = async (saleData) => {
         productCatalog: currentStoreProducts,
         salesHistory: currentStoreSales,
         customers,
+        credits, // NOUVEAU
+
 
         // Données complètes (pour admin)
         allProducts: productCatalog,

@@ -3,6 +3,7 @@ import { useApp } from '../src/contexts/AppContext';
 import { ShoppingCart, Plus, Minus, Trash2, Search, User, DollarSign, Printer, X, AlertTriangle, CheckCircle } from 'lucide-react';
 import ReceiptPrinter from '../components/ReceiptPrinter';
 import Toast from '../components/Toast';
+import NumericKeypad from '../components/NumericKeypad';
 
 export default function POSPage() {
   const { productCatalog, recordSale, customers, loading, currentStore, salesHistory: currentStoreSales } = useApp();  
@@ -20,6 +21,8 @@ export default function POSPage() {
   const [cashReceived, setCashReceived] = useState(''); // NOUVEAU pour le calcul de rendu
   const [toast, setToast] = useState(null);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
+  const [showKeypad, setShowKeypad] = useState(false);
+  const [creditDueDate, setCreditDueDate] = useState('');
 
   // État pour le scan
   const [scanBuffer, setScanBuffer] = useState('');
@@ -150,11 +153,23 @@ useEffect(() => {
   const total = cart.reduce((sum, item) => sum + (item.sellingPrice * item.quantity), 0);
   const itemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Finaliser la vente - VERSION AMÉLIORÉE
+// Finaliser la vente - VERSION AVEC CRÉDIT
 const completeSale = async () => {
   if (cart.length === 0) {
     showToast('Le panier est vide', 'error');
     return;
+  }
+
+  // Validation crédit
+  if (paymentMethod === 'credit') {
+    if (!selectedCustomer || selectedCustomer.id === '') {
+      showToast('Sélectionnez un client pour vente à crédit', 'error');
+      return;
+    }
+    if (!creditDueDate) {
+      showToast('Date d\'échéance requise pour vente à crédit', 'error');
+      return;
+    }
   }
 
   // Vérifier si paiement espèces avec montant insuffisant
@@ -166,7 +181,7 @@ const completeSale = async () => {
     }
   }
 
-  setIsProcessingSale(true); // Désactiver le bouton
+  setIsProcessingSale(true);
 
   const saleData = {
     customerId: selectedCustomer?.id || null,
@@ -184,13 +199,32 @@ const completeSale = async () => {
 
   const result = await recordSale(saleData);
 
-  setIsProcessingSale(false); // Réactiver le bouton
+  // Si vente à crédit, créer l'enregistrement de crédit
+  if (result.success && paymentMethod === 'credit') {
+    try {
+      await fetch('/api/credits', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: selectedCustomer.id,
+          amount: total,
+          description: `Vente ${result.sale.receiptNumber}`,
+          dueDate: creditDueDate
+        })
+      });
+    } catch (error) {
+      console.error('Erreur création crédit:', error);
+    }
+  }
+
+  setIsProcessingSale(false);
 
   if (result.success) {
     setLastSale(result.sale);
     
-    // Toast au lieu d'alert
-    if (result.offline) {
+    if (paymentMethod === 'credit') {
+      showToast(`Vente à crédit enregistrée ! Échéance: ${new Date(creditDueDate).toLocaleDateString('fr-FR')}`, 'success');
+    } else if (result.offline) {
       showToast('Vente enregistrée hors ligne ! Synchronisation en attente.', 'info');
     } else {
       showToast(`Vente enregistrée ! Total: ${total.toLocaleString()} FCFA`, 'success');
@@ -203,6 +237,7 @@ const completeSale = async () => {
     setSearchTerm('');
     setSelectedCustomer(null);
     setCashReceived('');
+    setCreditDueDate('');
   } else {
     showToast('Erreur lors de l\'enregistrement de la vente', 'error');
   }
@@ -502,102 +537,156 @@ const calculateChange = () => {
             ))}
           </select>
 
-          {/* Mode de paiement avec calcul de rendu */}
+{/* Mode de paiement avec calcul de rendu */}
 <div style={{ marginBottom: '15px' }}>
   <label style={{ display: 'block', marginBottom: '10px', fontWeight: 'bold' }}>
     Mode de paiement
   </label>
   
- <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-  {['cash', 'mobile'].map(method => (
-    <button
-      key={method}
-      onClick={() => setPaymentMethod(method)}
+  <div style={{ 
+    display: 'grid', 
+    gridTemplateColumns: selectedCustomer && selectedCustomer.id !== '' ? '1fr 1fr 1fr' : '1fr 1fr', 
+    gap: '8px' 
+  }}>
+    {['cash', 'mobile', ...(selectedCustomer && selectedCustomer.id !== '' ? ['credit'] : [])].map(method => (
+      <button
+        key={method}
+        onClick={() => setPaymentMethod(method)}
+        style={{
+          padding: '12px',
+          background: paymentMethod === method ? 'var(--color-primary)' : 'var(--color-surface)',
+          color: paymentMethod === method ? 'white' : 'var(--color-text-primary)',
+          border: `2px solid ${paymentMethod === method ? 'var(--color-primary)' : 'var(--color-border)'}`,
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          transition: 'all 0.2s'
+        }}
+      >
+        {method === 'cash' ? '💵 Espèces' : method === 'mobile' ? '📱 Mobile' : '📝 Crédit'}
+      </button>
+    ))}
+  </div>
+</div>
+
+{/* Date d'échéance pour crédit */}
+{paymentMethod === 'credit' && (
+  <div style={{ marginBottom: '15px' }}>
+    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
+      Date d'échéance
+    </label>
+    <input
+      type="date"
+      value={creditDueDate}
+      onChange={(e) => setCreditDueDate(e.target.value)}
+      min={new Date().toISOString().split('T')[0]}
       style={{
-        padding: '12px',
-        background: paymentMethod === method ? 'var(--color-primary)' : 'var(--color-surface)',
-        color: paymentMethod === method ? 'white' : 'var(--color-text-primary)',
-        border: `2px solid ${paymentMethod === method ? 'var(--color-primary)' : 'var(--color-border)'}`,
+        width: '100%',
+        padding: '10px',
+        border: '2px solid var(--color-border)',
         borderRadius: '8px',
-        cursor: 'pointer',
-        fontWeight: '600',
         fontSize: '14px',
-        transition: 'all 0.2s'
+        background: 'var(--color-surface)',
+        color: 'var(--color-text-primary)'
       }}
-    >
-      {method === 'cash' ? '💵 Espèces' : '📱 Mobile Money'}
-    </button>
-  ))}
-</div>
-</div>
+    />
+  </div>
+)}
 
 {/* Calcul de rendu pour paiement espèces */}
 {paymentMethod === 'cash' && (
   <div style={{ marginBottom: '15px' }}>
     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
       Montant reçu (FCFA)
-      {/* Montants suggérés */}
-<div style={{ marginTop: '10px' }}>
-  <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
-    Montants suggérés:
-  </label>
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
-    {[
-      Math.ceil(total / 500) * 500,
-      Math.ceil(total / 1000) * 1000,
-      Math.ceil(total / 2000) * 2000,
-      Math.ceil(total / 5000) * 5000,
-      Math.ceil(total / 10000) * 10000
-    ]
-      .filter((v, i, arr) => arr.indexOf(v) === i) // Retirer doublons
-      .slice(0, 6) // Max 6 suggestions
-      .map(amount => (
-        <button
-          key={amount}
-          onClick={() => setCashReceived(amount.toString())}
-          style={{
-            padding: '8px',
-            background: 'var(--color-surface)',
-            border: '1px solid var(--color-border)',
-            borderRadius: '6px',
-            cursor: 'pointer',
-            fontSize: '13px',
-            fontWeight: '600',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'var(--color-primary)';
-            e.currentTarget.style.color = 'white';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'var(--color-surface)';
-            e.currentTarget.style.color = 'var(--color-text-primary)';
-          }}
-        >
-          {amount.toLocaleString()}
-        </button>
-      ))
-    }
-  </div>
-</div>
     </label>
-    <input
-      type="number"
-      value={cashReceived}
-      onChange={(e) => setCashReceived(e.target.value)}
-      placeholder="Montant donné par le client"
-      style={{
-        width: '100%',
-        padding: '10px',
-        border: '2px solid var(--color-border)',
-        borderRadius: '8px',
-        fontSize: '16px',
-        fontWeight: 'bold',
-        textAlign: 'right',
-        background: 'var(--color-surface)',
-        color: 'var(--color-text-primary)'
-      }}
-    />
+    
+    <div style={{ position: 'relative' }}>
+      <input
+        type="number"
+        value={cashReceived}
+        onChange={(e) => setCashReceived(e.target.value)}
+        placeholder="Montant donné par le client"
+        style={{
+          width: '100%',
+          padding: '10px',
+          paddingRight: '45px',
+          border: '2px solid var(--color-border)',
+          borderRadius: '8px',
+          fontSize: '16px',
+          fontWeight: 'bold',
+          textAlign: 'right',
+          background: 'var(--color-surface)',
+          color: 'var(--color-text-primary)'
+        }}
+      />
+      
+      {/* Bouton clavier numérique */}
+      <button
+        onClick={() => setShowKeypad(true)}
+        style={{
+          position: 'absolute',
+          right: '5px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          padding: '8px',
+          background: 'var(--color-primary)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '6px',
+          cursor: 'pointer',
+          fontSize: '18px',
+          fontWeight: 'bold'
+        }}
+      >
+        🔢
+      </button>
+    </div>
+    
+    {/* Montants suggérés */}
+    <div style={{ marginTop: '10px' }}>
+      <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+        Montants suggérés:
+      </label>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+        {[
+          Math.ceil(total / 500) * 500,
+          Math.ceil(total / 1000) * 1000,
+          Math.ceil(total / 2000) * 2000,
+          Math.ceil(total / 5000) * 5000,
+          Math.ceil(total / 10000) * 10000
+        ]
+          .filter((v, i, arr) => arr.indexOf(v) === i)
+          .slice(0, 6)
+          .map(amount => (
+            <button
+              key={amount}
+              onClick={() => setCashReceived(amount.toString())}
+              style={{
+                padding: '8px',
+                background: 'var(--color-surface)',
+                border: '1px solid var(--color-border)',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '600',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'var(--color-primary)';
+                e.currentTarget.style.color = 'white';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'var(--color-surface)';
+                e.currentTarget.style.color = 'var(--color-text-primary)';
+              }}
+            >
+              {amount.toLocaleString()}
+            </button>
+          ))
+        }
+      </div>
+    </div>
     
     {/* Affichage du rendu si montant suffisant */}
     {cashReceived && parseFloat(cashReceived) >= total && (
@@ -1032,6 +1121,14 @@ const calculateChange = () => {
   />
 )}
 
+{/* Clavier numérique */}
+{showKeypad && (
+  <NumericKeypad
+    value={cashReceived}
+    onChange={setCashReceived}
+    onClose={() => setShowKeypad(false)}
+  />
+)}
     </div>
   );
 }
