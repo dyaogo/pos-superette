@@ -148,3 +148,35 @@ model StockAdjustment {
   
   session     InventorySession? @relation(fields: [sessionId], references: [id])
 }
+
+model CashSession {
+  id              String   @id @default(cuid())
+  storeId         String
+  sessionNumber   String   @unique
+  openedAt        DateTime @default(now())
+  closedAt        DateTime?
+  openedBy        String
+  closedBy        String?
+  openingAmount   Float
+  closingAmount   Float?
+  expectedAmount  Float?
+  difference      Float?
+  status          String   @default("open") // open, closed
+  notes           String?
+  
+  operations      CashOperation[]
+  createdAt       DateTime @default(now())
+}
+
+model CashOperation {
+  id          String   @id @default(cuid())
+  sessionId   String
+  type        String   // in, out
+  amount      Float
+  reason      String
+  description String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+  
+  session     CashSession @relation(fields: [sessionId], references: [id])
+}

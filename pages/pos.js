@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useApp } from '../src/contexts/AppContext';
 import { ShoppingCart, Plus, Minus, Trash2, Search, User, DollarSign, Printer, X, AlertTriangle, CheckCircle } from 'lucide-react';
 import ReceiptPrinter from '../components/ReceiptPrinter';
-
+import Toast from '../components/Toast';
 
 export default function POSPage() {
   const { productCatalog, recordSale, customers, loading, currentStore, salesHistory: currentStoreSales } = useApp();  
@@ -18,6 +18,8 @@ export default function POSPage() {
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closingAmount, setClosingAmount] = useState('');
   const [cashReceived, setCashReceived] = useState(''); // NOUVEAU pour le calcul de rendu
+  const [toast, setToast] = useState(null);
+  const [isProcessingSale, setIsProcessingSale] = useState(false);
 
   // État pour le scan
   const [scanBuffer, setScanBuffer] = useState('');
@@ -50,6 +52,10 @@ useEffect(() => {
   window.addEventListener('keydown', handleKeyDown);
   return () => window.removeEventListener('keydown', handleKeyDown);
 }, [scanBuffer, lastKeyTime, productCatalog]);
+
+const showToast = (message, type = 'success') => {
+  setToast({ message, type });
+};
 
 const processBarcodeScan = (barcode) => {
   console.log('Code-barres scanné:', barcode);
@@ -144,48 +150,63 @@ useEffect(() => {
   const total = cart.reduce((sum, item) => sum + (item.sellingPrice * item.quantity), 0);
   const itemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Finaliser la vente
-  const completeSale = async () => {
-    if (cart.length === 0) {
-      alert('Le panier est vide');
+  // Finaliser la vente - VERSION AMÉLIORÉE
+const completeSale = async () => {
+  if (cart.length === 0) {
+    showToast('Le panier est vide', 'error');
+    return;
+  }
+
+  // Vérifier si paiement espèces avec montant insuffisant
+  if (paymentMethod === 'cash' && cashReceived) {
+    const received = parseFloat(cashReceived);
+    if (received < total) {
+      showToast(`Montant insuffisant. Manque ${(total - received).toLocaleString()} FCFA`, 'error');
       return;
     }
+  }
 
-    const saleData = {
-      customerId: selectedCustomer?.id || null,
-      total,
-      paymentMethod,
-      items: cart.map(item => ({
-        productId: item.id,
-        quantity: item.quantity,
-        unitPrice: item.sellingPrice
-      }))
-    };
+  setIsProcessingSale(true); // Désactiver le bouton
 
-    const result = await recordSale(saleData);
-
-    if (result.success) {
-      // Sauvegarder la vente pour l'impression
-      setLastSale(result.sale);
-      
-      // Afficher le message approprié
-      if (result.offline) {
-        alert(`Vente enregistrée en mode hors ligne ! Total: ${total} FCFA\n\nLa vente sera synchronisée dès le retour de la connexion.`);
-      } else {
-        alert(`Vente enregistrée avec succès ! Total: ${total} FCFA`);
-      }
-      
-      // Proposer l'impression
-      setShowReceipt(true);
-      
-      // Vider le panier
-      setCart([]);
-      setSearchTerm('');
-      setSelectedCustomer(null);
-    } else {
-      alert('Erreur lors de l\'enregistrement de la vente');
-    }
+  const saleData = {
+    customerId: selectedCustomer?.id || null,
+    total,
+    paymentMethod,
+    cashReceived: paymentMethod === 'cash' ? parseFloat(cashReceived) || total : null,
+    change: paymentMethod === 'cash' ? calculateChange() : null,
+    items: cart.map(item => ({
+      productId: item.id,
+      name: item.name,
+      quantity: item.quantity,
+      unitPrice: item.sellingPrice
+    }))
   };
+
+  const result = await recordSale(saleData);
+
+  setIsProcessingSale(false); // Réactiver le bouton
+
+  if (result.success) {
+    setLastSale(result.sale);
+    
+    // Toast au lieu d'alert
+    if (result.offline) {
+      showToast('Vente enregistrée hors ligne ! Synchronisation en attente.', 'info');
+    } else {
+      showToast(`Vente enregistrée ! Total: ${total.toLocaleString()} FCFA`, 'success');
+    }
+    
+    setShowReceipt(true);
+    
+    // Réinitialiser
+    setCart([]);
+    setSearchTerm('');
+    setSelectedCustomer(null);
+    setCashReceived('');
+  } else {
+    showToast('Erreur lors de l\'enregistrement de la vente', 'error');
+  }
+};
 
   // Charger la session active
 useEffect(() => {
@@ -209,7 +230,7 @@ const loadActiveSession = async () => {
 // Ouvrir une session
 const openCashSession = async () => {
   if (!currentStore) {
-    alert('Aucun magasin sélectionné');
+    showToast('Aucun magasin sélectionné', 'error');
     return;
   }
   
@@ -228,20 +249,20 @@ const openCashSession = async () => {
       const session = await res.json();
       setCashSession(session);
       setShowSessionModal(false);
-      alert('Session de caisse ouverte !');
+      showToast('Session de caisse ouverte !', 'success');
     } else {
       const error = await res.json();
-      alert('Erreur: ' + error.error);
+      showToast(error.error, 'error');
     }
   } catch (error) {
-    alert('Erreur: ' + error.message);
+    showToast('Erreur: ' + error.message, 'error');
   }
 };
 
 // Fermer une session
 const closeCashSession = async () => {
   if (!cashSession || !closingAmount) {
-    alert('Montant de fermeture requis');
+    showToast('Montant de fermeture requis', 'error');
     return;
   }
   
@@ -259,20 +280,21 @@ const closeCashSession = async () => {
       const closedSession = await res.json();
       const diff = closedSession.difference;
       
-      alert(
-        `Session fermée !\n\n` +
+      // Message détaillé
+      const message = `Session fermée !\n` +
         `Attendu: ${closedSession.expectedAmount.toLocaleString()} FCFA\n` +
         `Réel: ${closedSession.closingAmount.toLocaleString()} FCFA\n` +
-        `Écart: ${diff > 0 ? '+' : ''}${diff.toLocaleString()} FCFA\n\n` +
-        (diff === 0 ? '✅ Parfait !' : diff > 0 ? '💰 Surplus' : '⚠️ Manque')
-      );
+        `Écart: ${diff > 0 ? '+' : ''}${diff.toLocaleString()} FCFA\n` +
+        (diff === 0 ? '✅ Parfait !' : diff > 0 ? '💰 Surplus' : '⚠️ Manque');
+      
+      showToast(message, diff === 0 ? 'success' : 'info');
       
       setCashSession(null);
       setShowCloseModal(false);
       setClosingAmount('');
     }
   } catch (error) {
-    alert('Erreur: ' + error.message);
+    showToast('Erreur: ' + error.message, 'error');
   }
 };
 
@@ -486,27 +508,27 @@ const calculateChange = () => {
     Mode de paiement
   </label>
   
-  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
-    {['cash', 'card', 'mobile'].map(method => (
-      <button
-        key={method}
-        onClick={() => setPaymentMethod(method)}
-        style={{
-          padding: '10px',
-          background: paymentMethod === method ? 'var(--color-primary)' : 'var(--color-surface)',
-          color: paymentMethod === method ? 'white' : 'var(--color-text-primary)',
-          border: `2px solid ${paymentMethod === method ? 'var(--color-primary)' : 'var(--color-border)'}`,
-          borderRadius: '8px',
-          cursor: 'pointer',
-          fontWeight: '600',
-          fontSize: '13px',
-          transition: 'all 0.2s'
-        }}
-      >
-        {method === 'cash' ? '💵 Espèces' : method === 'card' ? '💳 Carte' : '📱 Mobile'}
-      </button>
-    ))}
-  </div>
+ <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+  {['cash', 'mobile'].map(method => (
+    <button
+      key={method}
+      onClick={() => setPaymentMethod(method)}
+      style={{
+        padding: '12px',
+        background: paymentMethod === method ? 'var(--color-primary)' : 'var(--color-surface)',
+        color: paymentMethod === method ? 'white' : 'var(--color-text-primary)',
+        border: `2px solid ${paymentMethod === method ? 'var(--color-primary)' : 'var(--color-border)'}`,
+        borderRadius: '8px',
+        cursor: 'pointer',
+        fontWeight: '600',
+        fontSize: '14px',
+        transition: 'all 0.2s'
+      }}
+    >
+      {method === 'cash' ? '💵 Espèces' : '📱 Mobile Money'}
+    </button>
+  ))}
+</div>
 </div>
 
 {/* Calcul de rendu pour paiement espèces */}
@@ -514,6 +536,50 @@ const calculateChange = () => {
   <div style={{ marginBottom: '15px' }}>
     <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
       Montant reçu (FCFA)
+      {/* Montants suggérés */}
+<div style={{ marginTop: '10px' }}>
+  <label style={{ display: 'block', marginBottom: '8px', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+    Montants suggérés:
+  </label>
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
+    {[
+      Math.ceil(total / 500) * 500,
+      Math.ceil(total / 1000) * 1000,
+      Math.ceil(total / 2000) * 2000,
+      Math.ceil(total / 5000) * 5000,
+      Math.ceil(total / 10000) * 10000
+    ]
+      .filter((v, i, arr) => arr.indexOf(v) === i) // Retirer doublons
+      .slice(0, 6) // Max 6 suggestions
+      .map(amount => (
+        <button
+          key={amount}
+          onClick={() => setCashReceived(amount.toString())}
+          style={{
+            padding: '8px',
+            background: 'var(--color-surface)',
+            border: '1px solid var(--color-border)',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '13px',
+            fontWeight: '600',
+            transition: 'all 0.2s'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'var(--color-primary)';
+            e.currentTarget.style.color = 'white';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'var(--color-surface)';
+            e.currentTarget.style.color = 'var(--color-text-primary)';
+          }}
+        >
+          {amount.toLocaleString()}
+        </button>
+      ))
+    }
+  </div>
+</div>
     </label>
     <input
       type="number"
@@ -681,25 +747,46 @@ const calculateChange = () => {
 
           <button
   onClick={completeSale}
-  disabled={cart.length === 0 || !cashSession}
+  disabled={cart.length === 0 || !cashSession || isProcessingSale}
   style={{
     width: '100%',
     padding: '18px',
-    background: cart.length === 0 || !cashSession ? 'var(--color-border)' : 'var(--color-success)',
+    background: cart.length === 0 || !cashSession || isProcessingSale 
+      ? 'var(--color-border)' 
+      : 'var(--color-success)',
     color: 'white',
     border: 'none',
     borderRadius: '8px',
-    cursor: cart.length === 0 || !cashSession ? 'not-allowed' : 'pointer',
+    cursor: cart.length === 0 || !cashSession || isProcessingSale 
+      ? 'not-allowed' 
+      : 'pointer',
     fontSize: '18px',
     fontWeight: 'bold',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: '10px'
+    gap: '10px',
+    opacity: isProcessingSale ? 0.7 : 1
   }}
 >
-  <ShoppingCart size={24} />
-  Finaliser la vente (F3)
+  {isProcessingSale ? (
+    <>
+      <div className="spinner" style={{
+        width: '20px',
+        height: '20px',
+        border: '3px solid rgba(255,255,255,0.3)',
+        borderTop: '3px solid white',
+        borderRadius: '50%',
+        animation: 'spin 1s linear infinite'
+      }} />
+      Traitement...
+    </>
+  ) : (
+    <>
+      <ShoppingCart size={24} />
+      Finaliser la vente (F3)
+    </>
+  )}
 </button>
         </div>
       </div>
@@ -928,6 +1015,21 @@ const calculateChange = () => {
       </div>
     </div>
   </div>
+)}
+
+<style jsx>{`
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+`}</style>
+
+{/* Toast Notifications */}
+{toast && (
+  <Toast
+    message={toast.message}
+    type={toast.type}
+    onClose={() => setToast(null)}
+  />
 )}
 
     </div>
