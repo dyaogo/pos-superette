@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{}"
+self.__REACT_LOADABLE_MANIFEST="{\"components/ProductImportModal.js -> xlsx\":{\"id\":\"components/ProductImportModal.js -> xlsx\",\"files\":[\"static/chunks/_pages-dir-browser_node_modules_xlsx_xlsx_mjs.js\"]}}"

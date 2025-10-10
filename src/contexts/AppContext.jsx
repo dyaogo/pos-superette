@@ -260,6 +260,8 @@ const recordSale = async (saleData) => {
         deleteProduct,
         addCustomer,
         updateCustomer,
+        recordSale,  // AJOUTEZ CETTE LIGNE
+
 
         // État
         loading,
