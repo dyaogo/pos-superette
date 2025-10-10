@@ -2,11 +2,19 @@ import { Printer, Download, Share2 } from 'lucide-react';
 import { useApp } from '../src/contexts/AppContext';
 
 export default function ReceiptPrinter({ sale, onClose }) {
-  const { appSettings } = useApp();
+  const { currentStore } = useApp();
+
+  // Créer un objet settings depuis currentStore
+  const settings = {
+    companyName: currentStore?.name || 'SUPERETTE',
+    currency: currentStore?.currency || 'FCFA',
+    taxRate: currentStore?.taxRate || 18,
+    receiptFooter: 'Merci de votre visite !'
+  };
 
   const printReceipt = () => {
     const printWindow = window.open('', '', 'width=300,height=600');
-    printWindow.document.write(generateReceiptHTML(sale, appSettings));
+    printWindow.document.write(generateReceiptHTML(sale, settings));
     printWindow.document.close();
     printWindow.focus();
     
@@ -17,18 +25,18 @@ export default function ReceiptPrinter({ sale, onClose }) {
   };
 
   const downloadReceipt = () => {
-    const receiptHTML = generateReceiptHTML(sale, appSettings);
+    const receiptHTML = generateReceiptHTML(sale, settings);
     const blob = new Blob([receiptHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `recu_${sale.id}.html`;
+    a.download = `recu_${sale.receiptNumber || sale.id}.html`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
   const shareReceipt = async () => {
-    const text = generateReceiptText(sale, appSettings);
+    const text = generateReceiptText(sale, settings);
     
     if (navigator.share) {
       try {
