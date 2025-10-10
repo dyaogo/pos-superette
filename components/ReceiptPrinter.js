@@ -48,7 +48,6 @@ export default function ReceiptPrinter({ sale, onClose }) {
         console.log('Partage annulé');
       }
     } else {
-      // Fallback : copier dans le presse-papier
       navigator.clipboard.writeText(text);
       alert('Reçu copié dans le presse-papier');
     }
@@ -88,7 +87,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
           maxHeight: '300px',
           overflow: 'auto'
         }}>
-          <div dangerouslySetInnerHTML={{ __html: generateReceiptPreview(sale, appSettings) }} />
+          <div dangerouslySetInnerHTML={{ __html: generateReceiptPreview(sale, settings) }} />
         </div>
 
         {/* Boutons d'action */}
