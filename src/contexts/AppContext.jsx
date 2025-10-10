@@ -185,6 +185,29 @@ const changeStore = async (store) => {
     }
   };
 
+  // NOUVEAU : Enregistrer une vente
+const recordSale = async (saleData) => {
+  try {
+    const res = await fetch('/api/sales', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...saleData,
+        storeId: currentStore?.id
+      })
+    });
+
+    if (res.ok) {
+      await loadData();
+      return { success: true };
+    }
+    return { success: false };
+  } catch (error) {
+    console.error('Erreur enregistrement vente:', error);
+    return { success: false };
+  }
+};
+
   // Mettre à jour le magasin actif
   const updateCurrentStore = async (storeData) => {
     if (!currentStore) return { success: false };
