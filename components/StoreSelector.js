@@ -9,10 +9,7 @@ export default function StoreSelector() {
   const dropdownRef = useRef(null);
   const router = useRouter();
 
-  // DEBUG - À RETIRER APRÈS
-  console.log('🔍 StoreSelector - stores:', stores);
-  console.log('🔍 StoreSelector - currentStore:', currentStore);
-
+  
   // Fermer le dropdown en cliquant dehors
   useEffect(() => {
     const handleClickOutside = (event) => {

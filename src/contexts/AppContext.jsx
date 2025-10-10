@@ -9,11 +9,16 @@ export function AppProvider({ children }) {
   const [salesHistory, setSalesHistory] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [initialized, setInitialized] = useState(false); // NOUVEAU
 
-  // Initialisation au démarrage
+
+  // Initialisation au démarrage - AVEC PROTECTION
   useEffect(() => {
-    initializeApp();
-  }, []);
+    if (!initialized) {
+      initializeApp();
+      setInitialized(true);
+    }
+  }, [initialized]); // MODIFIÉ
 
   const initializeApp = async () => {
     setLoading(true);
@@ -69,14 +74,16 @@ export function AppProvider({ children }) {
     }
   };
 
-  // Changer de magasin
-  const changeStore = async (store) => {
-    setCurrentStore(store);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('currentStoreId', store.id);
-    }
-    await loadData();
-  };
+  // Changer de magasin - OPTIMISÉ
+const changeStore = async (store) => {
+  if (currentStore?.id === store.id) return; // NOUVEAU - Ne rien faire si c'est le même
+  
+  setCurrentStore(store);
+  if (typeof window !== 'undefined') {
+    localStorage.setItem('currentStoreId', store.id);
+  }
+  await loadData();
+};
 
   // Filtrer par magasin actif
   const currentStoreProducts = productCatalog.filter(
