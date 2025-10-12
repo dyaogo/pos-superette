@@ -3,6 +3,7 @@ import { useApp } from '../src/contexts/AppContext';
 import ProductImportModal from '../components/ProductImportModal';
 import LoadingSpinner from '../components/LoadingSpinner';
 import { Package, Search, Plus, Edit, Trash2, AlertTriangle, TrendingDown, X, Save, Upload } from 'lucide-react';
+import ImageUpload from '../components/ImageUpload';
 
 export default function InventoryPage() {
   const { productCatalog, addProduct, updateProduct, deleteProduct, loading } = useApp();
@@ -41,7 +42,9 @@ export default function InventoryPage() {
       barcode: formData.get('barcode') || null,
       costPrice: parseFloat(formData.get('costPrice')),
       sellingPrice: parseFloat(formData.get('sellingPrice')),
-      stock: parseInt(formData.get('stock')) || 0
+      stock: parseInt(formData.get('stock')) || 0,
+      image: formData.get('image') || null  // NOUVEAU
+
     };
 
     if (editingProduct) {
@@ -363,6 +366,8 @@ export default function InventoryPage() {
 
 // Composant Modal
 function ProductModal({ title, product, onClose, onSubmit }) {
+  const [imageData, setImageData] = useState(product?.image || '');
+  
   return (
     <div 
       onClick={onClose}
@@ -397,7 +402,12 @@ function ProductModal({ title, product, onClose, onSubmit }) {
           </button>
         </div>
 
-        <form onSubmit={onSubmit}>
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          const formData = new FormData(e.target);
+          formData.set('image', imageData); // Ajouter l'image
+          onSubmit(e);
+        }}>
           <div style={{ marginBottom: '15px' }}>
             <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Nom du produit *</label>
             <input
@@ -424,7 +434,6 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 name="category"
                 required
                 defaultValue={product?.category}
-                placeholder="Ex: Boissons, Snacks..."
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -441,7 +450,7 @@ function ProductModal({ title, product, onClose, onSubmit }) {
               <input
                 type="text"
                 name="barcode"
-                defaultValue={product?.barcode || ''}
+                defaultValue={product?.barcode}
                 style={{
                   width: '100%',
                   padding: '12px',
@@ -454,14 +463,19 @@ function ProductModal({ title, product, onClose, onSubmit }) {
             </div>
           </div>
 
+          {/* NOUVEAU - Composant d'upload d'image */}
+          <ImageUpload
+            value={imageData}
+            onChange={setImageData}
+          />
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
             <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Prix d'achat *</label>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Prix d'achat (FCFA) *</label>
               <input
                 type="number"
                 name="costPrice"
                 required
-                min="0"
                 step="0.01"
                 defaultValue={product?.costPrice}
                 style={{
@@ -476,12 +490,11 @@ function ProductModal({ title, product, onClose, onSubmit }) {
             </div>
 
             <div>
-              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Prix de vente *</label>
+              <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Prix de vente (FCFA) *</label>
               <input
                 type="number"
                 name="sellingPrice"
                 required
-                min="0"
                 step="0.01"
                 defaultValue={product?.sellingPrice}
                 style={{
@@ -497,12 +510,12 @@ function ProductModal({ title, product, onClose, onSubmit }) {
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Stock</label>
+            <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>Stock initial *</label>
             <input
               type="number"
               name="stock"
-              min="0"
-              defaultValue={product?.stock || 0}
+              required
+              defaultValue={product?.stock}
               style={{
                 width: '100%',
                 padding: '12px',
@@ -514,17 +527,21 @@ function ProductModal({ title, product, onClose, onSubmit }) {
             />
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+          {/* Input caché pour l'image */}
+          <input type="hidden" name="image" value={imageData} />
+
+          <div style={{ display: 'flex', gap: '10px' }}>
             <button
               type="button"
               onClick={onClose}
               style={{
-                padding: '12px 24px',
-                background: '#6b7280',
-                color: 'white',
+                flex: 1,
+                padding: '12px',
+                background: 'var(--color-border)',
                 border: 'none',
                 borderRadius: '8px',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                fontWeight: '600'
               }}
             >
               Annuler
@@ -532,18 +549,16 @@ function ProductModal({ title, product, onClose, onSubmit }) {
             <button
               type="submit"
               style={{
-                padding: '12px 24px',
-                background: '#10b981',
+                flex: 1,
+                padding: '12px',
+                background: '#3b82f6',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
+                fontWeight: '600'
               }}
             >
-              <Save size={20} />
               {product ? 'Modifier' : 'Ajouter'}
             </button>
           </div>

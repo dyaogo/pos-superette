@@ -15,11 +15,11 @@ export default async function handler(req, res) {
       res.status(200).json([]);
     }
     
-  } else if (req.method === 'POST') {
+} else if (req.method === 'POST') {
   try {
     console.log('Données reçues:', req.body);
     
-    const { name, category, barcode, costPrice, sellingPrice, stock } = req.body;
+    const { name, category, barcode, costPrice, sellingPrice, stock, image } = req.body;
     
     // Validation
     if (!name || !category || !costPrice || !sellingPrice) {
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       });
     }
     
-    // Créer le produit (avec le champ stock direct s'il existe dans le schema)
+    // Créer le produit avec l'image
     const product = await prisma.product.create({
       data: {
         storeId: store.id,
@@ -50,7 +50,8 @@ export default async function handler(req, res) {
         barcode: barcode || null,
         costPrice: parseFloat(costPrice),
         sellingPrice: parseFloat(sellingPrice),
-        stock: parseInt(stock) || 0  // Utiliser le champ stock directement
+        stock: parseInt(stock) || 0,
+        image: image || null  // NOUVEAU
       }
     });
     

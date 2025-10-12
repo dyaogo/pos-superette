@@ -3,5 +3,15 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/credits": "pages/credits.js",
-  "/api/credits": "pages/api/credits.js"
+  "/api/credits": "pages/api/credits.js",
+  "/api/sales": "pages/api/sales.js",
+  "/api/customers": "pages/api/customers.js",
+  "/api/returns": "pages/api/returns.js",
+  "/returns": "pages/returns.js",
+  "/sales": "pages/sales.js",
+  "/api/stores": "pages/api/stores.js",
+  "/api/inventory/sessions": "pages/api/inventory/sessions.js",
+  "/customers": "pages/customers.js",
+  "/physical-inventory": "pages/physical-inventory.js",
+  "/stores": "pages/stores.js"
 }

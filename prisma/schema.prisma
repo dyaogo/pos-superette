@@ -31,6 +31,7 @@ model Product {
   costPrice    Float
   sellingPrice Float
   stock        Int      @default(0)
+  image        String?  // NOUVEAU - URL ou base64 de l'image
   createdAt    DateTime @default(now())
   
   store        Store    @relation(fields: [storeId], references: [id])
