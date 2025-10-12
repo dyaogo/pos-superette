@@ -28,6 +28,36 @@ export default function POSPage() {
   const [scanBuffer, setScanBuffer] = useState('');
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
 
+  // Calculer les produits les plus vendus avec statistiques
+const getTopProducts = () => {
+  const productSales = {};
+  
+  currentStoreSales.forEach(sale => {
+    sale.items?.forEach(item => {
+      const productId = item.productId;
+      if (productSales[productId]) {
+        productSales[productId] += item.quantity;
+      } else {
+        productSales[productId] = item.quantity;
+      }
+    });
+  });
+  
+  // Trier et ajouter les stats
+  const sortedProducts = Object.entries(productSales)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 8)
+    .map(([productId, salesCount]) => {
+      const product = productCatalog.find(p => p.id === productId);
+      return product ? { ...product, salesCount } : null;
+    })
+    .filter(p => p !== null);
+  
+  return sortedProducts;
+};
+
+const topProducts = getTopProducts();
+
   // Détecter le scan de code-barres
 useEffect(() => {
   const handleKeyDown = (e) => {
@@ -120,20 +150,23 @@ useEffect(() => {
     .sort((a, b) => a.name.localeCompare(b.name)); // TRI ALPHABÉTIQUE AJOUTÉ
 
 
-  // Ajouter un produit au panier
-  const addToCart = (product) => {
-    const existingItem = cart.find(item => item.id === product.id);
-    
-    if (existingItem) {
-      setCart(cart.map(item =>
-        item.id === product.id
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      ));
-    } else {
-      setCart([...cart, { ...product, quantity: 1 }]);
-    }
-  };
+// Ajouter au panier avec feedback visuel
+const addToCart = (product) => {
+  const existingItem = cart.find(item => item.id === product.id);
+  
+  if (existingItem) {
+    setCart(cart.map(item =>
+      item.id === product.id
+        ? { ...item, quantity: item.quantity + 1 }
+        : item
+    ));
+  } else {
+    setCart([...cart, { ...product, quantity: 1 }]);
+  }
+  
+  // Animation de feedback (optionnel)
+  showToast(`${product.name} ajouté au panier`, 'success');
+};
 
   // Mettre à jour la quantité
   const updateQuantity = (productId, newQuantity) => {
@@ -451,6 +484,179 @@ const calculateChange = () => {
             }}
           />
         </div>
+
+        {/* Barre de recherche */}
+<div style={{ marginBottom: '20px' }}>
+  <div style={{ position: 'relative' }}>
+    <Search 
+      size={20} 
+      style={{ 
+        position: 'absolute', 
+        left: '12px', 
+        top: '50%', 
+        transform: 'translateY(-50%)',
+        color: 'var(--color-text-muted)'
+      }} 
+    />
+    <input
+      type="text"
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+      placeholder="Rechercher un produit (nom ou code-barres)..."
+      autoFocus
+      style={{
+        width: '100%',
+        padding: '12px 12px 12px 45px',
+        border: '2px solid var(--color-border)',
+        borderRadius: '8px',
+        fontSize: '16px',
+        background: 'var(--color-surface)',
+        color: 'var(--color-text-primary)'
+      }}
+    />
+  </div>
+</div>
+
+{/* NOUVELLE SECTION - Produits populaires */}
+{topProducts.length > 0 && searchTerm === '' && (
+  <div style={{ marginBottom: '20px' }}>
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px', 
+      marginBottom: '12px',
+      color: 'var(--color-text-primary)'
+    }}>
+      <span style={{ fontSize: '18px' }}>⭐</span>
+      <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>
+        Produits populaires
+      </h3>
+      <span style={{ 
+        fontSize: '12px', 
+        color: 'var(--color-text-muted)',
+        background: 'var(--color-surface-hover)',
+        padding: '2px 8px',
+        borderRadius: '10px'
+      }}>
+        Les plus vendus
+      </span>
+    </div>
+    
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', 
+      gap: '10px',
+      padding: '15px',
+      background: 'var(--color-surface)',
+      borderRadius: '12px',
+      border: '2px solid var(--color-primary)',
+      boxShadow: '0 2px 8px rgba(59, 130, 246, 0.1)'
+    }}>
+      {topProducts.map(product => (
+        <div
+          key={product.id}
+          onClick={() => addToCart(product)}
+          style={{
+            background: 'var(--color-bg)',
+            border: '2px solid var(--color-border)',
+            borderRadius: '10px',
+            padding: '10px',
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+            position: 'relative',
+            overflow: 'hidden'
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-primary)';
+            e.currentTarget.style.transform = 'translateY(-2px)';
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.2)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.borderColor = 'var(--color-border)';
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = 'none';
+          }}
+        >
+          {/* Badge "Populaire" */}
+          <div style={{
+            position: 'absolute',
+            top: '5px',
+            right: '5px',
+            background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+            color: 'white',
+            fontSize: '10px',
+            fontWeight: 'bold',
+            padding: '2px 6px',
+            borderRadius: '8px',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+          }}>
+            ⭐ TOP
+          </div>
+          
+          {/* Image du produit */}
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              style={{
+                width: '100%',
+                height: '80px',
+                objectFit: 'cover',
+                borderRadius: '6px',
+                marginBottom: '8px',
+                background: 'var(--color-surface-hover)'
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '100%',
+                height: '80px',
+                background: 'var(--color-surface-hover)',
+                borderRadius: '6px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '32px',
+                marginBottom: '8px'
+              }}
+            >
+              📦
+            </div>
+          )}
+          
+          <div>
+            <div style={{ 
+              fontWeight: '600', 
+              fontSize: '13px', 
+              marginBottom: '4px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {product.name}
+            </div>
+            <div style={{ 
+              fontSize: '14px', 
+              fontWeight: 'bold', 
+              color: 'var(--color-primary)' 
+            }}>
+              {product.sellingPrice.toLocaleString()} FCFA
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* Liste complète des produits */}
+<div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
+  gap: '15px', 
+  marginTop: '20px' 
+}}></div>
 
         {/* Grille de produits */}
         {/* Liste des produits */}
@@ -1145,6 +1351,15 @@ const calculateChange = () => {
           Fermer la caisse
         </button>
       </div>
+
+      <div style={{ 
+  fontSize: '11px', 
+  color: 'var(--color-text-muted)',
+  marginTop: '2px'
+}}>
+  🔥 {product.salesCount} vendus
+</div>
+
     </div>
   </div>
 )}
@@ -1172,6 +1387,8 @@ const calculateChange = () => {
     onClose={() => setShowKeypad(false)}
   />
 )}
+
+
     </div>
   );
 }
