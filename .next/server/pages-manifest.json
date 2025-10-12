@@ -2,11 +2,12 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/inventory": "pages/inventory.js",
-  "/pos": "pages/pos.js",
-  "/api/stores": "pages/api/stores.js",
   "/api/credits": "pages/api/credits.js",
+  "/credits": "pages/credits.js",
   "/api/sales": "pages/api/sales.js",
+  "/api/products": "pages/api/products.js",
+  "/api/stores": "pages/api/stores.js",
   "/api/customers": "pages/api/customers.js",
-  "/api/products": "pages/api/products.js"
+  "/pos": "pages/pos.js",
+  "/api/cash-sessions": "pages/api/cash-sessions.js"
 }
