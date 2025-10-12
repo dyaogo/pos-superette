@@ -251,80 +251,117 @@ export default function InventoryPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredProducts.map((product) => (
-                <tr 
-                  key={product.id}
-                  style={{ 
-                    borderBottom: '1px solid var(--color-border)',
-                    background: product.stock < 10 ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
-                  }}
-                >
-                  <td style={{ padding: '15px' }}>
-                    <div style={{ fontWeight: '500' }}>{product.name}</div>
-                    {product.barcode && (
-                      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>{product.barcode}</div>
-                    )}
-                  </td>
-                  <td style={{ padding: '15px' }}>{product.category}</td>
-                  <td style={{ padding: '15px', textAlign: 'right' }}>
-                    {product.costPrice.toLocaleString()} FCFA
-                  </td>
-                  <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold' }}>
-                    {product.sellingPrice.toLocaleString()} FCFA
-                  </td>
-                  <td style={{ padding: '15px', textAlign: 'center' }}>
-                    <span style={{
-                      padding: '4px 12px',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      fontWeight: '500',
-                      background: product.stock < 10 ? '#fecaca' : '#dcfce7',
-                      color: product.stock < 10 ? '#991b1b' : '#166534'
-                    }}>
-                      {product.stock}
-                    </span>
-                  </td>
-                  <td style={{ padding: '15px', textAlign: 'center' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                      <button
-                        onClick={() => setEditingProduct(product)}
-                        style={{
-                          padding: '8px 12px',
-                          background: '#3b82f6',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <Edit size={16} />
-                        Modifier
-                      </button>
-                      <button
-                        onClick={() => handleDelete(product.id, product.name)}
-                        style={{
-                          padding: '8px 12px',
-                          background: '#ef4444',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '6px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}
-                      >
-                        <Trash2 size={16} />
-                        Supprimer
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
+  {filteredProducts.map((product) => (
+    <tr 
+      key={product.id}
+      style={{ 
+        borderBottom: '1px solid var(--color-border)',
+        background: product.stock < 10 ? 'rgba(239, 68, 68, 0.05)' : 'transparent'
+      }}
+    >
+      <td style={{ padding: '15px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          {/* Image du produit */}
+          {product.image ? (
+            <img
+              src={product.image}
+              alt={product.name}
+              style={{
+                width: '50px',
+                height: '50px',
+                objectFit: 'cover',
+                borderRadius: '8px',
+                border: '1px solid var(--color-border)'
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                width: '50px',
+                height: '50px',
+                background: 'var(--color-surface-hover)',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '24px',
+                border: '1px solid var(--color-border)'
+              }}
+            >
+              📦
+            </div>
+          )}
+          
+          <div>
+            <div style={{ fontWeight: '500' }}>{product.name}</div>
+            {product.barcode && (
+              <div style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                {product.barcode}
+              </div>
+            )}
+          </div>
+        </div>
+      </td>
+      <td style={{ padding: '15px' }}>{product.category}</td>
+      <td style={{ padding: '15px', textAlign: 'right' }}>
+        {product.costPrice.toLocaleString()} FCFA
+      </td>
+      <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold' }}>
+        {product.sellingPrice.toLocaleString()} FCFA
+      </td>
+      <td style={{ padding: '15px', textAlign: 'center' }}>
+        <span style={{
+          padding: '4px 12px',
+          borderRadius: '12px',
+          fontSize: '14px',
+          fontWeight: '500',
+          background: product.stock < 10 ? '#fecaca' : '#dcfce7',
+          color: product.stock < 10 ? '#991b1b' : '#166534'
+        }}>
+          {product.stock}
+        </span>
+      </td>
+      <td style={{ padding: '15px', textAlign: 'center' }}>
+        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+          <button
+            onClick={() => setEditingProduct(product)}
+            style={{
+              padding: '8px 12px',
+              background: '#3b82f6',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <Edit size={16} />
+            Modifier
+          </button>
+          <button
+            onClick={() => handleDelete(product.id, product.name)}
+            style={{
+              padding: '8px 12px',
+              background: '#ef4444',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+          >
+            <Trash2 size={16} />
+            Supprimer
+          </button>
+        </div>
+      </td>
+    </tr>
+  ))}
+</tbody>
           </table>
         )}
       </div>

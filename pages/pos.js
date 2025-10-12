@@ -451,51 +451,92 @@ const calculateChange = () => {
         </div>
 
         {/* Grille de produits */}
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-          gap: '15px'
-        }}>
-          {filteredProducts.length === 0 ? (
-            <p style={{ gridColumn: '1 / -1', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-              Aucun produit trouvé
-            </p>
-          ) : (
-            filteredProducts.map(product => (
-              <div
-                key={product.id}
-                onClick={() => addToCart(product)}
-                style={{
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '12px',
-                  padding: '15px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  background: 'var(--color-surface)'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
-                  e.currentTarget.style.transform = 'translateY(-2px)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = 'none';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
-              >
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '16px' }}>{product.name}</h3>
-                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
-                  {product.category}
-                </p>
-                <p style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
-                  {product.sellingPrice} FCFA
-                </p>
-                <p style={{ margin: '8px 0 0 0', fontSize: '12px', color: 'var(--color-text-muted)' }}>
-                  Stock: {product.stock || 0}
-                </p>
-              </div>
-            ))
-          )}
+        {/* Liste des produits */}
+<div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', 
+  gap: '15px', 
+  marginTop: '20px' 
+}}>
+  {filteredProducts.map(product => (
+    <div
+      key={product.id}
+      onClick={() => addToCart(product)}
+      style={{
+        background: 'var(--color-surface)',
+        border: '2px solid var(--color-border)',
+        borderRadius: '12px',
+        padding: '12px',
+        cursor: 'pointer',
+        transition: 'all 0.2s',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '10px'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'var(--color-primary)';
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'var(--color-border)';
+        e.currentTarget.style.transform = 'translateY(0)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {/* Image du produit */}
+      {product.image ? (
+        <img
+          src={product.image}
+          alt={product.name}
+          style={{
+            width: '100%',
+            height: '120px',
+            objectFit: 'cover',
+            borderRadius: '8px',
+            background: 'var(--color-surface-hover)'
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            width: '100%',
+            height: '120px',
+            background: 'var(--color-surface-hover)',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'var(--color-text-muted)',
+            fontSize: '48px'
+          }}
+        >
+          📦
         </div>
+      )}
+      
+      <div>
+        <div style={{ fontWeight: '600', fontSize: '14px', marginBottom: '4px' }}>
+          {product.name}
+        </div>
+        <div style={{ 
+          fontSize: '16px', 
+          fontWeight: 'bold', 
+          color: 'var(--color-primary)' 
+        }}>
+          {product.sellingPrice.toLocaleString()} FCFA
+        </div>
+        <div style={{ 
+          fontSize: '12px', 
+          color: 'var(--color-text-secondary)',
+          marginTop: '4px'
+        }}>
+          Stock: {product.stock}
+        </div>
+      </div>
+    </div>
+  ))}
+</div>
       </div>
 
 
