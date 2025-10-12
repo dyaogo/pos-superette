@@ -25,6 +25,16 @@ globalThis.__BUILD_MANIFEST = {
       "static/chunks/main.js",
       "static/chunks/pages/dashboard.js"
     ],
+    "/inventory": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/inventory.js"
+    ],
+    "/physical-inventory": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/physical-inventory.js"
+    ],
     "/pos": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",

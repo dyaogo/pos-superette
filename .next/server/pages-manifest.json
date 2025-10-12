@@ -2,10 +2,11 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/pos": "pages/pos.js",
-  "/dashboard": "pages/dashboard.js",
-  "/returns": "pages/returns.js",
+  "/physical-inventory": "pages/physical-inventory.js",
+  "/inventory": "pages/inventory.js",
+  "/api/cash-sessions": "pages/api/cash-sessions.js",
   "/api/customers": "pages/api/customers.js",
-  "/api/sales": "pages/api/sales.js",
-  "/api/credits": "pages/api/credits.js"
+  "/pos": "pages/pos.js",
+  "/api/credits": "pages/api/credits.js",
+  "/api/sales": "pages/api/sales.js"
 }

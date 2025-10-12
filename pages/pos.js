@@ -9,6 +9,7 @@ export default function POSPage() {
   const { productCatalog, recordSale, customers, loading, currentStore, salesHistory: currentStoreSales } = useApp();  
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('Toutes'); // NOUVEAU
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [showReceipt, setShowReceipt] = useState(false);
@@ -142,13 +143,18 @@ useEffect(() => {
   return () => window.removeEventListener('keydown', handleKeyPress);
 }, [cart, showReceipt]);
 
-  // Filtrer les produits selon la recherche
-  const filteredProducts = productCatalog.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (product.barcode && product.barcode.includes(searchTerm))
-  )
-    .sort((a, b) => a.name.localeCompare(b.name)); // TRI ALPHABÉTIQUE AJOUTÉ
-
+  // Filtrer les produits par recherche ET catégorie
+const filteredProducts = productCatalog
+  .filter(product => {
+    const matchesSearch = 
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (product.barcode && product.barcode.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    const matchesCategory = categoryFilter === 'Toutes' || product.category === categoryFilter;
+    
+    return matchesSearch && matchesCategory;
+  })
+  .sort((a, b) => a.name.localeCompare(b.name));
 
 // Ajouter au panier avec feedback visuel
 const addToCart = (product) => {
@@ -463,57 +469,72 @@ const calculateChange = () => {
   </div>
 )}
 
-        {/* Recherche */}
-        <div style={{ position: 'relative', marginBottom: '20px' }}>
-          <Search 
-            size={20} 
-            style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--color-text-muted)' }} 
-          />
-          <input
-            id="product-search"
-            type="text"
-            placeholder="Rechercher un produit (nom ou code-barres)... [F1]"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '12px 12px 12px 45px',
-              border: '1px solid var(--color-border)',
-              borderRadius: '8px',
-              fontSize: '16px'
-            }}
-          />
-        </div>
-
-        {/* Barre de recherche */}
+ {/* Barre de recherche et filtres - VERSION OPTIMISÉE */}
 <div style={{ marginBottom: '20px' }}>
-  <div style={{ position: 'relative' }}>
-    <Search 
-      size={20} 
-      style={{ 
-        position: 'absolute', 
-        left: '12px', 
-        top: '50%', 
-        transform: 'translateY(-50%)',
-        color: 'var(--color-text-muted)'
-      }} 
-    />
-    <input
-      type="text"
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-      placeholder="Rechercher un produit (nom ou code-barres)..."
-      autoFocus
-      style={{
-        width: '100%',
-        padding: '12px 12px 12px 45px',
-        border: '2px solid var(--color-border)',
-        borderRadius: '8px',
-        fontSize: '16px',
-        background: 'var(--color-surface)',
-        color: 'var(--color-text-primary)'
-      }}
-    />
+  <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+    {/* Barre de recherche */}
+    <div style={{ position: 'relative', flex: '1', minWidth: '250px' }}>
+      <Search 
+        size={20} 
+        style={{ 
+          position: 'absolute', 
+          left: '12px', 
+          top: '50%', 
+          transform: 'translateY(-50%)',
+          color: 'var(--color-text-muted)'
+        }} 
+      />
+      <input
+        type="text"
+        value={searchTerm}
+        onChange={(e) => setSearchTerm(e.target.value)}
+        placeholder="Rechercher un produit..."
+        autoFocus
+        style={{
+          width: '100%',
+          padding: '12px 12px 12px 45px',
+          border: '2px solid var(--color-border)',
+          borderRadius: '8px',
+          fontSize: '16px',
+          background: 'var(--color-surface)',
+          color: 'var(--color-text-primary)'
+        }}
+      />
+    </div>
+    
+    {/* Filtres catégories */}
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+      {['Toutes', ...new Set(productCatalog.map(p => p.category))].map(cat => (
+        <button
+          key={cat}
+          onClick={() => setCategoryFilter(cat)}
+          style={{
+            padding: '10px 16px',
+            background: categoryFilter === cat ? 'var(--color-primary)' : 'var(--color-surface)',
+            color: categoryFilter === cat ? 'white' : 'var(--color-text-primary)',
+            border: `2px solid ${categoryFilter === cat ? 'var(--color-primary)' : 'var(--color-border)'}`,
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '600',
+            transition: 'all 0.2s',
+            whiteSpace: 'nowrap'
+          }}
+          onMouseEnter={(e) => {
+            if (categoryFilter !== cat) {
+              e.currentTarget.style.background = 'var(--color-surface-hover)';
+            }
+          }}
+          onMouseLeave={(e) => {
+            if (categoryFilter !== cat) {
+              e.currentTarget.style.background = 'var(--color-surface)';
+            }
+          }}
+        >
+          {cat}
+        </button>
+      ))}
+    </div>
   </div>
 </div>
 
