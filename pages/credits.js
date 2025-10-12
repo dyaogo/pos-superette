@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '../src/contexts/AppContext';
 import { CreditCard, Plus, DollarSign, Clock, CheckCircle, AlertCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import Toast from '../components/Toast';
 
 export default function CreditsPage() {
   const { customers, loading, salesHistory } = useApp();
@@ -8,6 +9,14 @@ export default function CreditsPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [filter, setFilter] = useState('all');
   const [expandedCredit, setExpandedCredit] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedCredit, setSelectedCredit] = useState(null);
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+  };
 
   // Charger les crédits
   useEffect(() => {
@@ -18,6 +27,7 @@ export default function CreditsPage() {
     try {
       const res = await fetch('/api/credits');
       const data = await res.json();
+      console.log('Crédits chargés:', data);
       setCredits(data);
     } catch (error) {
       console.error('Erreur chargement crédits:', error);
@@ -47,19 +57,70 @@ export default function CreditsPage() {
     return customer ? customer.name : 'Client inconnu';
   };
 
-  // Trouver la vente liée au crédit
-  const findRelatedSale = (creditDescription) => {
-    // Le description contient "Vente RECXXXX"
-    const match = creditDescription?.match(/REC\d+/);
+  // Trouver la vente liée au crédit - VERSION AMÉLIORÉE
+  const findRelatedSale = (credit) => {
+    console.log('Recherche vente pour crédit:', credit.description);
+    console.log('Ventes disponibles:', salesHistory.length);
+    
+    // Chercher par description "Vente RECXXXX"
+    const match = credit.description?.match(/REC[\w-]+/);
     if (match) {
       const receiptNumber = match[0];
-      return salesHistory.find(s => s.receiptNumber === receiptNumber);
+      console.log('Numéro de reçu trouvé:', receiptNumber);
+      const sale = salesHistory.find(s => s.receiptNumber === receiptNumber);
+      console.log('Vente trouvée:', sale ? 'Oui' : 'Non');
+      return sale;
     }
-    return null;
+    
+    // Fallback: chercher par date et montant proche
+    const creditDate = new Date(credit.createdAt);
+    const matchingSales = salesHistory.filter(s => {
+      const saleDate = new Date(s.createdAt);
+      const dateDiff = Math.abs(saleDate - creditDate);
+      const amountMatch = Math.abs(s.total - credit.amount) < 1;
+      return dateDiff < 60000 && amountMatch; // Moins de 1 minute de différence
+    });
+    
+    console.log('Ventes correspondantes (par date/montant):', matchingSales.length);
+    return matchingSales[0];
   };
 
   const toggleExpand = (creditId) => {
     setExpandedCredit(expandedCredit === creditId ? null : creditId);
+  };
+
+  const handlePayment = async () => {
+    if (!selectedCredit || !paymentAmount) {
+      showToast('Montant de remboursement requis', 'error');
+      return;
+    }
+
+    const amount = parseFloat(paymentAmount);
+    if (amount <= 0 || amount > selectedCredit.remainingAmount) {
+      showToast('Montant invalide', 'error');
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/credits/${selectedCredit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ paymentAmount: amount })
+      });
+
+      if (res.ok) {
+        await loadCredits();
+        setShowPaymentModal(false);
+        setSelectedCredit(null);
+        setPaymentAmount('');
+        showToast(`Remboursement de ${amount.toLocaleString()} FCFA enregistré`, 'success');
+      } else {
+        showToast('Erreur lors du remboursement', 'error');
+      }
+    } catch (error) {
+      console.error('Erreur remboursement:', error);
+      showToast('Erreur lors du remboursement', 'error');
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -83,9 +144,11 @@ export default function CreditsPage() {
       if (res.ok) {
         loadCredits();
         setShowAddModal(false);
+        showToast('Crédit créé avec succès', 'success');
       }
     } catch (error) {
       console.error('Erreur création crédit:', error);
+      showToast('Erreur lors de la création', 'error');
     }
   };
 
@@ -190,7 +253,7 @@ export default function CreditsPage() {
             <tbody>
               {filteredCredits.map(credit => {
                 const isOverdue = new Date(credit.dueDate) < new Date() && credit.status !== 'paid';
-                const relatedSale = findRelatedSale(credit.description);
+                const relatedSale = findRelatedSale(credit);
                 const isExpanded = expandedCredit === credit.id;
 
                 return (
@@ -238,26 +301,54 @@ export default function CreditsPage() {
                         </span>
                       </td>
                       <td style={{ padding: '15px', textAlign: 'center' }}>
-                        {relatedSale && (
-                          <button
-                            onClick={() => toggleExpand(credit.id)}
-                            style={{
-                              padding: '6px 12px',
-                              background: 'var(--color-primary)',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              margin: '0 auto'
-                            }}
-                          >
-                            {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                            Détails
-                          </button>
-                        )}
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          {/* Bouton Détails */}
+                          {relatedSale && (
+                            <button
+                              onClick={() => toggleExpand(credit.id)}
+                              style={{
+                                padding: '6px 12px',
+                                background: 'var(--color-primary)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '13px'
+                              }}
+                            >
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                              Détails
+                            </button>
+                          )}
+                          
+                          {/* Bouton Rembourser */}
+                          {credit.status !== 'paid' && (
+                            <button
+                              onClick={() => {
+                                setSelectedCredit(credit);
+                                setShowPaymentModal(true);
+                              }}
+                              style={{
+                                padding: '6px 12px',
+                                background: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontSize: '13px'
+                              }}
+                            >
+                              <DollarSign size={16} />
+                              Rembourser
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
 
@@ -309,7 +400,132 @@ export default function CreditsPage() {
         )}
       </div>
 
-      {/* Modal Ajout crédit - reste inchangé */}
+      {/* Modal Remboursement */}
+      {showPaymentModal && selectedCredit && (
+        <div
+          onClick={() => setShowPaymentModal(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 2000
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: 'var(--color-surface)',
+              padding: '30px',
+              borderRadius: '12px',
+              width: '450px'
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Enregistrer un remboursement</h2>
+            
+            <div style={{ marginBottom: '20px', padding: '15px', background: 'var(--color-bg)', borderRadius: '8px' }}>
+              <div style={{ marginBottom: '8px' }}>
+                <strong>Client:</strong> {getCustomerName(selectedCredit.customerId)}
+              </div>
+              <div style={{ marginBottom: '8px' }}>
+                <strong>Montant total:</strong> {selectedCredit.amount.toLocaleString()} FCFA
+              </div>
+              <div>
+                <strong>Restant à payer:</strong> 
+                <span style={{ color: '#ef4444', fontWeight: 'bold', marginLeft: '8px' }}>
+                  {selectedCredit.remainingAmount.toLocaleString()} FCFA
+                </span>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+                Montant du remboursement (FCFA)
+              </label>
+              <input
+                type="number"
+                value={paymentAmount}
+                onChange={(e) => setPaymentAmount(e.target.value)}
+                max={selectedCredit.remainingAmount}
+                placeholder="Entrez le montant"
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid var(--color-border)',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text-primary)'
+                }}
+              />
+              
+              {/* Boutons montants suggérés */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', marginTop: '10px' }}>
+                {[
+                  Math.floor(selectedCredit.remainingAmount / 4),
+                  Math.floor(selectedCredit.remainingAmount / 2),
+                  selectedCredit.remainingAmount
+                ].filter(amount => amount > 0).map(amount => (
+                  <button
+                    key={amount}
+                    onClick={() => setPaymentAmount(amount.toString())}
+                    style={{
+                      padding: '8px',
+                      background: 'var(--color-surface-hover)',
+                      border: '1px solid var(--color-border)',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      fontWeight: '600'
+                    }}
+                  >
+                    {amount.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={() => setShowPaymentModal(false)}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: 'var(--color-border)',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handlePayment}
+                style={{
+                  flex: 1,
+                  padding: '12px',
+                  background: '#10b981',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Confirmer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Ajout crédit */}
       {showAddModal && (
         <div
           onClick={() => setShowAddModal(false)}
@@ -444,6 +660,15 @@ export default function CreditsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
       )}
     </div>
   );
