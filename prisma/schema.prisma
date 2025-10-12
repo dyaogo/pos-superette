@@ -31,7 +31,7 @@ model Product {
   costPrice    Float
   sellingPrice Float
   stock        Int      @default(0)
-  image        String?  // NOUVEAU - URL ou base64 de l'image
+  image        String?  @db.Text  // CHANGÉ - permet de stocker de grandes chaînes
   createdAt    DateTime @default(now())
   
   store        Store    @relation(fields: [storeId], references: [id])

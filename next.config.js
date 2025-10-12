@@ -1,23 +1,8 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+module.exports = {
   reactStrictMode: true,
-  experimental: {
-    appDir: false
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb', // Augmenter la limite pour les images
+    },
   },
-  // Désactiver le cache pour le développement
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
-        ],
-      },
-    ]
-  }
 }
-
-module.exports = nextConfig
