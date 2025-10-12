@@ -54,12 +54,18 @@ export function AppProvider({ children }) {
     }
   };
 
- const loadData = async () => {
+const loadData = async () => {
   try {
     // Charger produits
     const productsRes = await fetch('/api/products');
     const productsData = await productsRes.json();
-    setProductCatalog(productsData);
+    
+    // Trier par ordre alphabétique
+    const sortedProducts = productsData.sort((a, b) => 
+      a.name.localeCompare(b.name)
+    );
+    
+    setProductCatalog(sortedProducts);
 
     // Charger ventes
     const salesRes = await fetch('/api/sales');
@@ -71,7 +77,7 @@ export function AppProvider({ children }) {
     const customersData = await customersRes.json();
     setCustomers(customersData);
 
-    // Charger crédits - NOUVEAU
+    // Charger crédits
     const creditsRes = await fetch('/api/credits');
     const creditsData = await creditsRes.json();
     setCredits(creditsData);

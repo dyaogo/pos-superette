@@ -34,6 +34,10 @@ export default function CreditsPage() {
     }
   };
 
+  const sortedCustomers = customers.sort((a, b) => 
+  a.name.localeCompare(b.name)
+);
+
   // Filtrer les crédits
   const filteredCredits = credits.filter(credit => {
     if (filter === 'pending') return credit.status === 'pending';

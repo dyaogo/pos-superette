@@ -116,7 +116,9 @@ useEffect(() => {
   const filteredProducts = productCatalog.filter(product =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (product.barcode && product.barcode.includes(searchTerm))
-  );
+  )
+    .sort((a, b) => a.name.localeCompare(b.name)); // TRI ALPHABÉTIQUE AJOUTÉ
+
 
   // Ajouter un produit au panier
   const addToCart = (product) => {

@@ -25,7 +25,9 @@ export default function InventoryPage() {
     const matchesCategory = categoryFilter === 'all' || product.category === categoryFilter;
 
     return matchesSearch && matchesCategory;
-  });
+  })
+    .sort((a, b) => a.name.localeCompare(b.name)); // TRI ALPHABÉTIQUE AJOUTÉ
+
 
   // Statistiques
   const totalProducts = productCatalog.length;
