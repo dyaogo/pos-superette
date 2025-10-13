@@ -9,8 +9,19 @@ import {
   Package,
   Calendar,
   Award,
-  AlertCircle
+  AlertCircle,
+  Download,  // NOUVEAU
+  FileText, // NOUVEAU
+  Table     // NOUVEAU
 } from 'lucide-react';
+import { 
+  exportToCSV, 
+  exportToExcel, 
+  exportToPDF,
+  prepareSalesData,
+  prepareProductsData,
+  prepareCreditsData
+} from '../utils/exportData'; // NOUVEAU
 
 export default function DashboardPage() {
   const { salesHistory, productCatalog, customers, credits, loading } = useApp();
@@ -97,6 +108,8 @@ export default function DashboardPage() {
       .map(([label, value]) => ({ label, value: Math.round(value) }));
   }, [periodSales]);
 
+  
+
   // Top 5 produits les plus vendus
   const topProducts = useMemo(() => {
     const productSales = {};
@@ -127,8 +140,38 @@ export default function DashboardPage() {
   }
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div id="dashboard-content" style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* En-tête */}
+      {/* En-tête pour impression PDF */}
+<div className="print-header" style={{ display: 'none' }}>
+  <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+    <h1 style={{ fontSize: '28px', color: '#1f2937', marginBottom: '10px' }}>
+      📊 Rapport d'Activité - Superette
+    </h1>
+    <div className="header-info">
+      <p style={{ margin: '5px 0', fontSize: '14px' }}>
+        <strong>Période:</strong> {
+          period === 'today' ? "Aujourd'hui" :
+          period === 'week' ? '7 derniers jours' :
+          period === 'month' ? '30 derniers jours' : 'Année'
+        }
+      </p>
+      <p style={{ margin: '5px 0', fontSize: '14px' }}>
+        <strong>Date d'impression:</strong> {new Date().toLocaleString('fr-FR')}
+      </p>
+      <p style={{ margin: '5px 0', fontSize: '14px' }}>
+        <strong>CA Total:</strong> {stats.totalRevenue.toLocaleString()} FCFA
+      </p>
+    </div>
+  </div>
+</div>
+
+<style jsx>{`
+  @media print {
+    .print-header { display: block !important; }
+  }
+`}</style>
+
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
@@ -170,6 +213,160 @@ export default function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* NOUVELLE SECTION - Boutons d'export */}
+<div style={{ 
+  background: 'var(--color-surface)', 
+  padding: '20px', 
+  borderRadius: '12px',
+  border: '1px solid var(--color-border)',
+  marginBottom: '30px'
+}}>
+  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '15px' }}>
+    <div>
+      <h3 style={{ margin: '0 0 5px 0', fontSize: '16px', fontWeight: '600' }}>
+        📥 Exporter les données
+      </h3>
+      <p style={{ margin: 0, fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+        Téléchargez vos rapports dans différents formats
+      </p>
+    </div>
+    
+    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+      {/* Export Excel - Ventes */}
+      <button
+        onClick={() => {
+          const data = prepareSalesData(periodSales);
+          exportToExcel(data, `ventes_${period}_${Date.now()}`, 'Ventes');
+        }}
+        style={{
+          padding: '10px 16px',
+          background: '#10b981',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+      >
+        <Download size={18} />
+        Excel - Ventes
+      </button>
+
+      {/* Export Excel - Produits */}
+      <button
+        onClick={() => {
+          const data = prepareProductsData(productCatalog);
+          exportToExcel(data, `produits_${Date.now()}`, 'Produits');
+        }}
+        style={{
+          padding: '10px 16px',
+          background: '#3b82f6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+      >
+        <Table size={18} />
+        Excel - Produits
+      </button>
+
+      {/* Export Excel - Crédits */}
+      <button
+        onClick={() => {
+          const data = prepareCreditsData(credits, customers);
+          exportToExcel(data, `credits_${Date.now()}`, 'Crédits');
+        }}
+        style={{
+          padding: '10px 16px',
+          background: '#f59e0b',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+      >
+        <Download size={18} />
+        Excel - Crédits
+      </button>
+
+      {/* Export CSV */}
+      <button
+        onClick={() => {
+          const data = prepareSalesData(periodSales);
+          exportToCSV(data, `ventes_${period}_${Date.now()}`);
+        }}
+        style={{
+          padding: '10px 16px',
+          background: '#8b5cf6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+      >
+        <FileText size={18} />
+        CSV - Ventes
+      </button>
+
+      {/* Export PDF */}
+      <button
+        onClick={() => exportToPDF('dashboard-content', `rapport_${period}_${Date.now()}`)}
+        style={{
+          padding: '10px 16px',
+          background: '#ef4444',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          cursor: 'pointer',
+          fontWeight: '600',
+          fontSize: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          transition: 'all 0.2s'
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+        onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+      >
+        <FileText size={18} />
+        Imprimer PDF
+      </button>
+    </div>
+  </div>
+</div>
 
       {/* KPIs principaux */}
       <div style={{ 

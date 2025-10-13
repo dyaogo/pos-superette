@@ -3,6 +3,10 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/dashboard": "pages/dashboard.js",
+  "/inventory": "pages/inventory.js",
+  "/sales": "pages/sales.js",
   "/pos": "pages/pos.js",
-  "/physical-inventory": "pages/physical-inventory.js"
+  "/api/cash-sessions": "pages/api/cash-sessions.js",
+  "/stores": "pages/stores.js",
+  "/api/stores": "pages/api/stores.js"
 }
