@@ -383,6 +383,384 @@ export default function DashboardPage() {
           </tbody>
         </table>
       </div>
+{/* NOUVELLE SECTION - Analyses Avancées */}
+<div style={{ 
+  display: 'grid', 
+  gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
+  gap: '20px',
+  marginTop: '30px'
+}}>
+  {/* Marges bénéficiaires */}
+  <div style={{ 
+    background: 'var(--color-surface)', 
+    padding: '25px', 
+    borderRadius: '12px',
+    border: '1px solid var(--color-border)'
+  }}>
+    <h3 style={{ 
+      margin: '0 0 20px 0', 
+      fontSize: '18px', 
+      fontWeight: '600',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px'
+    }}>
+      💰 Marges Bénéficiaires
+    </h3>
+    
+    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#10b981', marginBottom: '10px' }}>
+      {(() => {
+        const totalProfit = periodSales.reduce((sum, sale) => {
+          return sum + (sale.items?.reduce((itemSum, item) => {
+            const product = productCatalog.find(p => p.id === item.productId);
+            if (product) {
+              const profit = (item.unitPrice - product.costPrice) * item.quantity;
+              return itemSum + profit;
+            }
+            return itemSum;
+          }, 0) || 0);
+        }, 0);
+        return Math.round(totalProfit).toLocaleString();
+      })()} FCFA
+    </div>
+    
+    <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+      Profit total sur la période
+    </div>
+    
+    <div style={{ 
+      marginTop: '15px',
+      padding: '10px',
+      background: 'var(--color-bg)',
+      borderRadius: '8px'
+    }}>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '5px' }}>
+        Marge moyenne
+      </div>
+      <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#10b981' }}>
+        {(() => {
+          const totalRevenue = stats.totalRevenue;
+          const totalProfit = periodSales.reduce((sum, sale) => {
+            return sum + (sale.items?.reduce((itemSum, item) => {
+              const product = productCatalog.find(p => p.id === item.productId);
+              if (product) {
+                const profit = (item.unitPrice - product.costPrice) * item.quantity;
+                return itemSum + profit;
+              }
+              return itemSum;
+            }, 0) || 0);
+          }, 0);
+          const marginPercent = totalRevenue > 0 ? (totalProfit / totalRevenue * 100) : 0;
+          return marginPercent.toFixed(1);
+        })()}%
+      </div>
+    </div>
+  </div>
+
+  {/* Rotation des stocks */}
+  <div style={{ 
+    background: 'var(--color-surface)', 
+    padding: '25px', 
+    borderRadius: '12px',
+    border: '1px solid var(--color-border)'
+  }}>
+    <h3 style={{ 
+      margin: '0 0 20px 0', 
+      fontSize: '18px', 
+      fontWeight: '600',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px'
+    }}>
+      🔄 Rotation des Stocks
+    </h3>
+    
+    <div style={{ fontSize: '32px', fontWeight: 'bold', color: '#3b82f6', marginBottom: '10px' }}>
+      {(() => {
+        const totalSold = periodSales.reduce((sum, sale) => {
+          return sum + (sale.items?.reduce((itemSum, item) => itemSum + item.quantity, 0) || 0);
+        }, 0);
+        const avgStock = stats.totalStock;
+        const daysInPeriod = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+        const turnover = avgStock > 0 ? (totalSold / avgStock * (365 / daysInPeriod)) : 0;
+        return turnover.toFixed(1);
+      })()}x
+    </div>
+    
+    <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+      Fois par an (estimé)
+    </div>
+    
+    <div style={{ 
+      marginTop: '15px',
+      padding: '10px',
+      background: 'var(--color-bg)',
+      borderRadius: '8px'
+    }}>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginBottom: '5px' }}>
+        Unités vendues / période
+      </div>
+      <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#3b82f6' }}>
+        {periodSales.reduce((sum, sale) => {
+          return sum + (sale.items?.reduce((itemSum, item) => itemSum + item.quantity, 0) || 0);
+        }, 0)} unités
+      </div>
+    </div>
+  </div>
+
+  {/* Analyse par catégorie */}
+  <div style={{ 
+    background: 'var(--color-surface)', 
+    padding: '25px', 
+    borderRadius: '12px',
+    border: '1px solid var(--color-border)'
+  }}>
+    <h3 style={{ 
+      margin: '0 0 20px 0', 
+      fontSize: '18px', 
+      fontWeight: '600',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '10px'
+    }}>
+      📂 Performance par Catégorie
+    </h3>
+    
+    {(() => {
+      const categorySales = {};
+      
+      periodSales.forEach(sale => {
+        sale.items?.forEach(item => {
+          const product = productCatalog.find(p => p.id === item.productId);
+          const category = product?.category || 'Autre';
+          
+          if (categorySales[category]) {
+            categorySales[category] += item.total || (item.quantity * item.unitPrice);
+          } else {
+            categorySales[category] = item.total || (item.quantity * item.unitPrice);
+          }
+        });
+      });
+      
+      const topCategory = Object.entries(categorySales)
+        .sort((a, b) => b[1] - a[1])[0];
+      
+      return (
+        <>
+          <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#8b5cf6', marginBottom: '10px' }}>
+            {topCategory ? topCategory[0] : 'N/A'}
+          </div>
+          
+          <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)', marginBottom: '15px' }}>
+            Catégorie la plus performante
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {Object.entries(categorySales)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 4)
+              .map(([cat, amount]) => (
+                <div key={cat} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>{cat}</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600' }}>
+                    {Math.round(amount).toLocaleString()} F
+                  </span>
+                </div>
+              ))}
+          </div>
+        </>
+      );
+    })()}
+  </div>
+</div>
+
+{/* Produits les plus rentables */}
+<div style={{ 
+  background: 'var(--color-surface)', 
+  padding: '25px', 
+  borderRadius: '12px',
+  border: '1px solid var(--color-border)',
+  marginTop: '30px'
+}}>
+  <h3 style={{ 
+    margin: '0 0 20px 0', 
+    fontSize: '18px', 
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  }}>
+    💎 Top 5 des produits les plus rentables
+  </h3>
+  
+  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+    <thead>
+      <tr style={{ borderBottom: '2px solid var(--color-border)' }}>
+        <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px', fontWeight: '600' }}>
+          Produit
+        </th>
+        <th style={{ padding: '12px', textAlign: 'right', fontSize: '14px', fontWeight: '600' }}>
+          Marge unitaire
+        </th>
+        <th style={{ padding: '12px', textAlign: 'right', fontSize: '14px', fontWeight: '600' }}>
+          Quantité vendue
+        </th>
+        <th style={{ padding: '12px', textAlign: 'right', fontSize: '14px', fontWeight: '600' }}>
+          Profit total
+        </th>
+        <th style={{ padding: '12px', textAlign: 'right', fontSize: '14px', fontWeight: '600' }}>
+          Marge %
+        </th>
+      </tr>
+    </thead>
+    <tbody>
+      {(() => {
+        const productProfits = {};
+        
+        periodSales.forEach(sale => {
+          sale.items?.forEach(item => {
+            const product = productCatalog.find(p => p.id === item.productId);
+            if (product) {
+              const unitMargin = item.unitPrice - product.costPrice;
+              const totalProfit = unitMargin * item.quantity;
+              const marginPercent = (unitMargin / item.unitPrice) * 100;
+              
+              if (productProfits[product.id]) {
+                productProfits[product.id].quantity += item.quantity;
+                productProfits[product.id].totalProfit += totalProfit;
+              } else {
+                productProfits[product.id] = {
+                  name: product.name,
+                  unitMargin,
+                  quantity: item.quantity,
+                  totalProfit,
+                  marginPercent
+                };
+              }
+            }
+          });
+        });
+        
+        return Object.values(productProfits)
+          .sort((a, b) => b.totalProfit - a.totalProfit)
+          .slice(0, 5)
+          .map((product, index) => (
+            <tr 
+              key={index}
+              style={{ borderBottom: '1px solid var(--color-border)' }}
+            >
+              <td style={{ padding: '15px', fontWeight: '500' }}>
+                {product.name}
+              </td>
+              <td style={{ padding: '15px', textAlign: 'right', color: '#10b981', fontWeight: '600' }}>
+                {Math.round(product.unitMargin).toLocaleString()} FCFA
+              </td>
+              <td style={{ padding: '15px', textAlign: 'right' }}>
+                {product.quantity} unités
+              </td>
+              <td style={{ padding: '15px', textAlign: 'right', fontWeight: 'bold', fontSize: '16px', color: '#10b981' }}>
+                {Math.round(product.totalProfit).toLocaleString()} FCFA
+              </td>
+              <td style={{ padding: '15px', textAlign: 'right' }}>
+                <span style={{
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  background: product.marginPercent > 30 ? '#d1fae5' : product.marginPercent > 20 ? '#fef3c7' : '#fee2e2',
+                  color: product.marginPercent > 30 ? '#065f46' : product.marginPercent > 20 ? '#92400e' : '#991b1b',
+                  fontWeight: '600',
+                  fontSize: '13px'
+                }}>
+                  {product.marginPercent.toFixed(1)}%
+                </span>
+              </td>
+            </tr>
+          ));
+      })()}
+    </tbody>
+  </table>
+</div>
+
+{/* Heures de pointe */}
+<div style={{ 
+  background: 'var(--color-surface)', 
+  padding: '25px', 
+  borderRadius: '12px',
+  border: '1px solid var(--color-border)',
+  marginTop: '30px'
+}}>
+  <h3 style={{ 
+    margin: '0 0 20px 0', 
+    fontSize: '18px', 
+    fontWeight: '600',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '10px'
+  }}>
+    ⏰ Heures de Pointe
+  </h3>
+  
+  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '10px' }}>
+    {(() => {
+      const hoursSales = {};
+      
+      periodSales.forEach(sale => {
+        const hour = new Date(sale.createdAt).getHours();
+        hoursSales[hour] = (hoursSales[hour] || 0) + 1;
+      });
+      
+      const maxSales = Math.max(...Object.values(hoursSales), 1);
+      
+      return Array.from({ length: 24 }, (_, hour) => {
+        const sales = hoursSales[hour] || 0;
+        const intensity = sales / maxSales;
+        
+        return (
+          <div
+            key={hour}
+            style={{
+              padding: '10px',
+              background: sales > 0 
+                ? `rgba(59, 130, 246, ${0.1 + intensity * 0.9})` 
+                : 'var(--color-bg)',
+              borderRadius: '8px',
+              textAlign: 'center',
+              border: '1px solid var(--color-border)'
+            }}
+          >
+            <div style={{ 
+              fontSize: '12px', 
+              fontWeight: '600',
+              color: intensity > 0.5 ? 'white' : 'var(--color-text-primary)',
+              marginBottom: '4px'
+            }}>
+              {hour}h
+            </div>
+            <div style={{ 
+              fontSize: '16px', 
+              fontWeight: 'bold',
+              color: intensity > 0.5 ? 'white' : 'var(--color-primary)'
+            }}>
+              {sales}
+            </div>
+          </div>
+        );
+      });
+    })()}
+  </div>
+  
+  <div style={{ 
+    marginTop: '15px',
+    padding: '10px',
+    background: 'var(--color-bg)',
+    borderRadius: '8px',
+    fontSize: '13px',
+    color: 'var(--color-text-secondary)',
+    textAlign: 'center'
+  }}>
+    💡 Plus la case est foncée, plus l'activité est élevée à cette heure
+  </div>
+</div>
+
     </div>
   );
 }

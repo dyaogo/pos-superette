@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST="{\"pages/physical-inventory.js -> xlsx\":{\"id\":\"pages/physical-inventory.js -> xlsx\",\"files\":[\"static/chunks/_pages-dir-browser_node_modules_xlsx_xlsx_mjs.js\"]}}"
+self.__REACT_LOADABLE_MANIFEST="{}"
