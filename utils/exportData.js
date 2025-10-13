@@ -37,16 +37,16 @@ export const exportToCSV = (data, filename) => {
 };
 
 // Exporter en Excel
-export const exportToExcel = async (data, filename, sheetName = 'Données') => {
+
+import * as XLSX from 'xlsx';
+
+export const exportToExcel = (data, filename, sheetName = 'Données') => {
   if (!data || data.length === 0) {
     alert('Aucune donnée à exporter');
     return;
   }
 
   try {
-    // Importer la bibliothèque XLSX dynamiquement
-    const XLSX = await import('https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs');
-    
     // Créer une feuille de calcul
     const worksheet = XLSX.utils.json_to_sheet(data);
     

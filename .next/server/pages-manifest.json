@@ -4,9 +4,5 @@
   "/_document": "pages/_document.js",
   "/dashboard": "pages/dashboard.js",
   "/inventory": "pages/inventory.js",
-  "/sales": "pages/sales.js",
-  "/pos": "pages/pos.js",
-  "/api/cash-sessions": "pages/api/cash-sessions.js",
-  "/stores": "pages/stores.js",
-  "/api/stores": "pages/api/stores.js"
+  "/pos": "pages/pos.js"
 }
