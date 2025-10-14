@@ -25,12 +25,31 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'PUT') {
     try {
+      const { code, name, address, phone, currency, taxRate } = req.body;
+      
+      // Validation
+      if (!code || !name) {
+        return res.status(400).json({ error: 'Code et nom requis' });
+      }
+
+      // Préparer les données avec gestion des champs vides
+      const updateData = {
+        code: code.trim(),
+        name: name.trim(),
+        address: address && address.trim() !== '' ? address.trim() : null,
+        phone: phone && phone.trim() !== '' ? phone.trim() : null,
+        currency: currency || 'FCFA',
+        taxRate: parseFloat(taxRate) || 18
+      };
+
       const store = await prisma.store.update({
         where: { id },
-        data: req.body
+        data: updateData
       });
+      
       res.status(200).json(store);
     } catch (error) {
+      console.error('Erreur PUT store:', error);
       res.status(500).json({ error: error.message });
     }
   } else if (req.method === 'DELETE') {

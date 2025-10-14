@@ -1,110 +1,174 @@
-import { useState, useEffect } from 'react';
-import { useApp } from '../src/contexts/AppContext';
-import { Store, Plus, Edit, Trash2, MapPin, Phone, DollarSign } from 'lucide-react';
-import Toast from '../components/Toast';
+import { useState, useEffect } from "react";
+import { useApp } from "../src/contexts/AppContext";
+import {
+  Store,
+  Plus,
+  Edit,
+  Trash2,
+  MapPin,
+  Phone,
+  DollarSign,
+} from "lucide-react";
+import Toast from "../components/Toast";
 
 export default function StoresPage() {
+  const [formData, setFormData] = useState({
+    code: "",
+    name: "",
+    address: "",
+    phone: "",
+    currency: "FCFA",
+    taxRate: 18,
+  });
+
   const { stores, currentStore, changeStore, loading, reloadData } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStore, setEditingStore] = useState(null);
   const [toast, setToast] = useState(null);
 
-  const showToast = (message, type = 'success') => {
+  const showToast = (message, type = "success") => {
     setToast({ message, type });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const formData = new FormData(e.target);
-    
+
     const storeData = {
-      code: formData.get('code'),
-      name: formData.get('name'),
-      address: formData.get('address') || null,
-      phone: formData.get('phone') || null,
-      currency: formData.get('currency') || 'FCFA',
-      taxRate: parseFloat(formData.get('taxRate')) || 18
+      code: formData.code,
+      name: formData.name,
+      address: formData.address || null,
+      phone: formData.phone || null,
+      currency: formData.currency || "FCFA",
+      taxRate: parseFloat(formData.taxRate) || 18,
     };
 
+    useEffect(() => {
+      if (editingStore) {
+        setFormData({
+          code: editingStore.code,
+          name: editingStore.name,
+          address: editingStore.address || "",
+          phone: editingStore.phone || "",
+          currency: editingStore.currency || "FCFA",
+          taxRate: editingStore.taxRate || 18,
+        });
+      } else {
+        setFormData({
+          code: "",
+          name: "",
+          address: "",
+          phone: "",
+          currency: "FCFA",
+          taxRate: 18,
+        });
+      }
+    }, [editingStore, showAddModal]);
+
+    // LOGS DE DEBUG
+    console.log("📤 Données envoyées:", storeData);
+    console.log("📊 TVA brute:", formData.get("taxRate"));
+    console.log("📊 TVA parseFloat:", parseFloat(formData.get("taxRate")));
+
     try {
-      const url = editingStore ? `/api/stores/${editingStore.id}` : '/api/stores';
-      const method = editingStore ? 'PUT' : 'POST';
-      
+      const url = editingStore
+        ? `/api/stores/${editingStore.id}`
+        : "/api/stores";
+      const method = editingStore ? "PUT" : "POST";
+
       const res = await fetch(url, {
         method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(storeData)
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(storeData),
       });
+
+      // LOG DE LA RÉPONSE
+      const responseData = await res.json();
+      console.log("📥 Réponse API:", responseData);
 
       if (res.ok) {
         await reloadData();
         setShowAddModal(false);
         setEditingStore(null);
-        showToast(editingStore ? 'Magasin modifié' : 'Magasin créé', 'success');
+        showToast(editingStore ? "Magasin modifié" : "Magasin créé", "success");
       } else {
-        showToast('Erreur lors de l\'opération', 'error');
+        showToast("Erreur lors de l'opération", "error");
       }
     } catch (error) {
-      console.error('Erreur:', error);
-      showToast('Erreur lors de l\'opération', 'error');
+      console.error("Erreur:", error);
+      showToast("Erreur lors de l'opération", "error");
     }
   };
 
   const handleDelete = async (storeId, storeName) => {
-    if (!confirm(`Supprimer le magasin "${storeName}" ?\n\nATTENTION : Toutes les données liées seront supprimées.`)) {
+    if (
+      !confirm(
+        `Supprimer le magasin "${storeName}" ?\n\nATTENTION : Toutes les données liées seront supprimées.`
+      )
+    ) {
       return;
     }
 
     try {
       const res = await fetch(`/api/stores/${storeId}`, {
-        method: 'DELETE'
+        method: "DELETE",
       });
 
       if (res.ok) {
         await reloadData();
-        showToast('Magasin supprimé', 'success');
+        showToast("Magasin supprimé", "success");
       } else {
-        showToast('Erreur lors de la suppression', 'error');
+        showToast("Erreur lors de la suppression", "error");
       }
     } catch (error) {
-      console.error('Erreur:', error);
-      showToast('Erreur lors de la suppression', 'error');
+      console.error("Erreur:", error);
+      showToast("Erreur lors de la suppression", "error");
     }
   };
 
   if (loading) {
-    return <div style={{ padding: '20px' }}>Chargement...</div>;
+    return <div style={{ padding: "20px" }}>Chargement...</div>;
   }
 
   return (
-    <div style={{ padding: '30px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}>
       {/* En-tête */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '30px',
-        flexWrap: 'wrap',
-        gap: '20px'
-      }}>
-        <h1 style={{ margin: 0, fontSize: '28px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "30px",
+          flexWrap: "wrap",
+          gap: "20px",
+        }}
+      >
+        <h1
+          style={{
+            margin: 0,
+            fontSize: "28px",
+            fontWeight: "bold",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
           <Store size={32} />
           Gestion des Magasins
         </h1>
-        
+
         <button
           onClick={() => setShowAddModal(true)}
           style={{
-            padding: '12px 24px',
-            background: '#3b82f6',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px'
+            padding: "12px 24px",
+            background: "#3b82f6",
+            color: "white",
+            border: "none",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
           }}
         >
           <Plus size={20} />
@@ -113,140 +177,202 @@ export default function StoresPage() {
       </div>
 
       {/* Statistiques globales */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-        gap: '20px', 
-        marginBottom: '30px' 
-      }}>
-        <div style={{ 
-          background: 'linear-gradient(135deg, #3b82f6, #2563eb)',
-          padding: '20px', 
-          borderRadius: '12px',
-          color: 'white'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "20px",
+          marginBottom: "30px",
+        }}
+      >
+        <div
+          style={{
+            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+            padding: "20px",
+            borderRadius: "12px",
+            color: "white",
+          }}
+        >
+          <div style={{ fontSize: "14px", opacity: 0.9, marginBottom: "8px" }}>
             Total magasins
           </div>
-          <div style={{ fontSize: '32px', fontWeight: 'bold' }}>
+          <div style={{ fontSize: "32px", fontWeight: "bold" }}>
             {stores.length}
           </div>
         </div>
 
-        <div style={{ 
-          background: 'linear-gradient(135deg, #10b981, #059669)',
-          padding: '20px', 
-          borderRadius: '12px',
-          color: 'white'
-        }}>
-          <div style={{ fontSize: '14px', opacity: 0.9, marginBottom: '8px' }}>
+        <div
+          style={{
+            background: "linear-gradient(135deg, #10b981, #059669)",
+            padding: "20px",
+            borderRadius: "12px",
+            color: "white",
+          }}
+        >
+          <div style={{ fontSize: "14px", opacity: 0.9, marginBottom: "8px" }}>
             Magasin actif
           </div>
-          <div style={{ fontSize: '20px', fontWeight: 'bold' }}>
-            {currentStore?.name || 'Aucun'}
+          <div style={{ fontSize: "20px", fontWeight: "bold" }}>
+            {currentStore?.name || "Aucun"}
           </div>
         </div>
       </div>
 
       {/* Liste des magasins */}
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
-        gap: '20px'
-      }}>
-        {stores.map(store => (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(350px, 1fr))",
+          gap: "20px",
+        }}
+      >
+        {stores.map((store) => (
           <div
             key={store.id}
             style={{
-              background: 'var(--color-surface)',
-              border: currentStore?.id === store.id ? '3px solid var(--color-primary)' : '1px solid var(--color-border)',
-              borderRadius: '12px',
-              padding: '20px',
-              position: 'relative',
-              transition: 'all 0.2s',
-              boxShadow: currentStore?.id === store.id ? '0 4px 12px rgba(59, 130, 246, 0.2)' : 'none'
+              background: "var(--color-surface)",
+              border:
+                currentStore?.id === store.id
+                  ? "3px solid var(--color-primary)"
+                  : "1px solid var(--color-border)",
+              borderRadius: "12px",
+              padding: "20px",
+              position: "relative",
+              transition: "all 0.2s",
+              boxShadow:
+                currentStore?.id === store.id
+                  ? "0 4px 12px rgba(59, 130, 246, 0.2)"
+                  : "none",
             }}
           >
             {/* Badge magasin actif */}
             {currentStore?.id === store.id && (
-              <div style={{
-                position: 'absolute',
-                top: '10px',
-                right: '10px',
-                background: 'var(--color-primary)',
-                color: 'white',
-                padding: '4px 12px',
-                borderRadius: '12px',
-                fontSize: '12px',
-                fontWeight: 'bold'
-              }}>
+              <div
+                style={{
+                  position: "absolute",
+                  top: "10px",
+                  right: "10px",
+                  background: "var(--color-primary)",
+                  color: "white",
+                  padding: "4px 12px",
+                  borderRadius: "12px",
+                  fontSize: "12px",
+                  fontWeight: "bold",
+                }}
+              >
                 ✓ ACTIF
               </div>
             )}
 
             {/* Nom du magasin */}
-            <h3 style={{ 
-              margin: '0 0 15px 0', 
-              fontSize: '20px', 
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px'
-            }}>
+            <h3
+              style={{
+                margin: "0 0 15px 0",
+                fontSize: "20px",
+                fontWeight: "bold",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+              }}
+            >
               <Store size={24} color="var(--color-primary)" />
               {store.name}
             </h3>
 
             {/* Code */}
-            <div style={{ 
-              marginBottom: '10px',
-              padding: '8px 12px',
-              background: 'var(--color-bg)',
-              borderRadius: '6px',
-              fontSize: '14px',
-              fontWeight: '600',
-              color: 'var(--color-primary)'
-            }}>
+            <div
+              style={{
+                marginBottom: "10px",
+                padding: "8px 12px",
+                background: "var(--color-bg)",
+                borderRadius: "6px",
+                fontSize: "14px",
+                fontWeight: "600",
+                color: "var(--color-primary)",
+              }}
+            >
               Code: {store.code}
             </div>
 
             {/* Infos */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "8px",
+                marginBottom: "15px",
+              }}
+            >
               {store.address && (
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '14px' }}>
-                  <MapPin size={16} style={{ marginTop: '2px', color: 'var(--color-text-secondary)' }} />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: "8px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <MapPin
+                    size={16}
+                    style={{
+                      marginTop: "2px",
+                      color: "var(--color-text-secondary)",
+                    }}
+                  />
                   <span>{store.address}</span>
                 </div>
               )}
-              
+
               {store.phone && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                  <Phone size={16} style={{ color: 'var(--color-text-secondary)' }} />
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    fontSize: "14px",
+                  }}
+                >
+                  <Phone
+                    size={16}
+                    style={{ color: "var(--color-text-secondary)" }}
+                  />
                   <span>{store.phone}</span>
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
-                <DollarSign size={16} style={{ color: 'var(--color-text-secondary)' }} />
-                <span>{store.currency} • TVA: {store.taxRate}%</span>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  fontSize: "14px",
+                }}
+              >
+                <DollarSign
+                  size={16}
+                  style={{ color: "var(--color-text-secondary)" }}
+                />
+                <span>
+                  {store.currency} • TVA: {store.taxRate}%
+                </span>
               </div>
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: '8px' }}>
+            <div style={{ display: "flex", gap: "8px" }}>
               {currentStore?.id !== store.id && (
                 <button
                   onClick={() => changeStore(store)}
                   style={{
                     flex: 1,
-                    padding: '10px',
-                    background: 'var(--color-primary)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontWeight: '600',
-                    fontSize: '14px'
+                    padding: "10px",
+                    background: "var(--color-primary)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
                   }}
                 >
                   Activer
@@ -260,18 +386,18 @@ export default function StoresPage() {
                 }}
                 style={{
                   flex: 1,
-                  padding: '10px',
-                  background: 'var(--color-surface-hover)',
-                  color: 'var(--color-text-primary)',
-                  border: '1px solid var(--color-border)',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '4px'
+                  padding: "10px",
+                  background: "var(--color-surface-hover)",
+                  color: "var(--color-text-primary)",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontWeight: "600",
+                  fontSize: "14px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "4px",
                 }}
               >
                 <Edit size={16} />
@@ -282,15 +408,20 @@ export default function StoresPage() {
                 onClick={() => handleDelete(store.id, store.name)}
                 disabled={stores.length === 1}
                 style={{
-                  padding: '10px 12px',
-                  background: stores.length === 1 ? 'var(--color-border)' : '#ef4444',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: stores.length === 1 ? 'not-allowed' : 'pointer',
-                  opacity: stores.length === 1 ? 0.5 : 1
+                  padding: "10px 12px",
+                  background:
+                    stores.length === 1 ? "var(--color-border)" : "#ef4444",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: stores.length === 1 ? "not-allowed" : "pointer",
+                  opacity: stores.length === 1 ? 0.5 : 1,
                 }}
-                title={stores.length === 1 ? 'Impossible de supprimer le dernier magasin' : 'Supprimer'}
+                title={
+                  stores.length === 1
+                    ? "Impossible de supprimer le dernier magasin"
+                    : "Supprimer"
+                }
               >
                 <Trash2 size={16} />
               </button>
@@ -307,36 +438,42 @@ export default function StoresPage() {
             setEditingStore(null);
           }}
           style={{
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
-              background: 'var(--color-surface)',
-              padding: '30px',
-              borderRadius: '12px',
-              width: '500px',
-              maxHeight: '90vh',
-              overflow: 'auto'
+              background: "var(--color-surface)",
+              padding: "30px",
+              borderRadius: "12px",
+              width: "500px",
+              maxHeight: "90vh",
+              overflow: "auto",
             }}
           >
             <h2 style={{ marginTop: 0 }}>
-              {editingStore ? 'Modifier le magasin' : 'Nouveau magasin'}
+              {editingStore ? "Modifier le magasin" : "Nouveau magasin"}
             </h2>
 
             <form onSubmit={handleSubmit}>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+              <div style={{ marginBottom: "15px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontWeight: "500",
+                  }}
+                >
                   Code *
                 </label>
                 <input
@@ -346,18 +483,24 @@ export default function StoresPage() {
                   defaultValue={editingStore?.code}
                   placeholder="MAG001"
                   style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text-primary)'
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "8px",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text-primary)",
                   }}
                 />
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+              <div style={{ marginBottom: "15px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontWeight: "500",
+                  }}
+                >
                   Nom du magasin *
                 </label>
                 <input
@@ -367,18 +510,24 @@ export default function StoresPage() {
                   defaultValue={editingStore?.name}
                   placeholder="Superette Centre"
                   style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text-primary)'
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "8px",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text-primary)",
                   }}
                 />
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+              <div style={{ marginBottom: "15px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontWeight: "500",
+                  }}
+                >
                   Adresse
                 </label>
                 <input
@@ -387,18 +536,24 @@ export default function StoresPage() {
                   defaultValue={editingStore?.address}
                   placeholder="123 Rue de la Paix"
                   style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text-primary)'
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "8px",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text-primary)",
                   }}
                 />
               </div>
 
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+              <div style={{ marginBottom: "15px" }}>
+                <label
+                  style={{
+                    display: "block",
+                    marginBottom: "5px",
+                    fontWeight: "500",
+                  }}
+                >
                   Téléphone
                 </label>
                 <input
@@ -407,58 +562,82 @@ export default function StoresPage() {
                   defaultValue={editingStore?.phone}
                   placeholder="+226 XX XX XX XX"
                   style={{
-                    width: '100%',
-                    padding: '10px',
-                    border: '1px solid var(--color-border)',
-                    borderRadius: '8px',
-                    background: 'var(--color-surface)',
-                    color: 'var(--color-text-primary)'
+                    width: "100%",
+                    padding: "10px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "8px",
+                    background: "var(--color-surface)",
+                    color: "var(--color-text-primary)",
                   }}
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "15px",
+                  marginBottom: "20px",
+                }}
+              >
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "5px",
+                      fontWeight: "500",
+                    }}
+                  >
                     Devise
                   </label>
                   <input
                     type="text"
                     name="currency"
-                    defaultValue={editingStore?.currency || 'FCFA'}
+                    defaultValue={editingStore?.currency || "FCFA"}
                     style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '8px',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-text-primary)'
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "8px",
+                      background: "var(--color-surface)",
+                      color: "var(--color-text-primary)",
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "5px",
+                      fontWeight: "500",
+                    }}
+                  >
                     Taux TVA (%)
                   </label>
                   <input
                     type="number"
                     name="taxRate"
                     step="0.01"
-                    defaultValue={editingStore?.taxRate || 18}
+                    min="0"
+                    max="100"
+                    value={formData.taxRate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, taxRate: e.target.value })
+                    }
                     style={{
-                      width: '100%',
-                      padding: '10px',
-                      border: '1px solid var(--color-border)',
-                      borderRadius: '8px',
-                      background: 'var(--color-surface)',
-                      color: 'var(--color-text-primary)'
+                      width: "100%",
+                      padding: "10px",
+                      border: "1px solid var(--color-border)",
+                      borderRadius: "8px",
+                      background: "var(--color-surface)",
+                      color: "var(--color-text-primary)",
                     }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '10px' }}>
+              <div style={{ display: "flex", gap: "10px" }}>
                 <button
                   type="button"
                   onClick={() => {
@@ -467,12 +646,12 @@ export default function StoresPage() {
                   }}
                   style={{
                     flex: 1,
-                    padding: '12px',
-                    background: 'var(--color-border)',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: '600'
+                    padding: "12px",
+                    background: "var(--color-border)",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600",
                   }}
                 >
                   Annuler
@@ -481,16 +660,16 @@ export default function StoresPage() {
                   type="submit"
                   style={{
                     flex: 1,
-                    padding: '12px',
-                    background: '#3b82f6',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                    fontWeight: '600'
+                    padding: "12px",
+                    background: "#3b82f6",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600",
                   }}
                 >
-                  {editingStore ? 'Modifier' : 'Créer'}
+                  {editingStore ? "Modifier" : "Créer"}
                 </button>
               </div>
             </form>
