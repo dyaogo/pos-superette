@@ -56,6 +56,19 @@ export function AppProvider({ children }) {
 
 const loadData = async () => {
   try {
+    // NOUVEAU - Recharger les stores aussi !
+    const storesRes = await fetch('/api/stores');
+    const storesData = await storesRes.json();
+    setStores(storesData);
+    
+    // Si currentStore existe, le mettre à jour avec les nouvelles données
+    if (currentStore) {
+      const updatedCurrentStore = storesData.find(s => s.id === currentStore.id);
+      if (updatedCurrentStore) {
+        setCurrentStore(updatedCurrentStore);
+      }
+    }
+    
     // Charger produits
     const productsRes = await fetch('/api/products');
     const productsData = await productsRes.json();
@@ -85,7 +98,6 @@ const loadData = async () => {
     console.error('Erreur chargement données:', error);
   }
 };
-
   // Changer de magasin - OPTIMISÉ
 const changeStore = async (store) => {
   if (currentStore?.id === store.id) return; // NOUVEAU - Ne rien faire si c'est le même
