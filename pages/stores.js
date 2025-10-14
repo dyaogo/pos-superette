@@ -84,7 +84,14 @@ export default function StoresPage() {
       console.log("📥 Réponse API:", responseData);
 
       if (res.ok) {
+        // Recharger les données
         await reloadData();
+
+        // Si on a modifié le magasin actif, le mettre à jour aussi
+        if (editingStore && currentStore?.id === editingStore.id) {
+          changeStore(responseData);
+        }
+
         setShowAddModal(false);
         setEditingStore(null);
         showToast(editingStore ? "Magasin modifié" : "Magasin créé", "success");
