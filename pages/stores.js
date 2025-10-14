@@ -21,6 +21,28 @@ export default function StoresPage() {
     taxRate: 18,
   });
 
+  useEffect(() => {
+    if (editingStore) {
+      setFormData({
+        code: editingStore.code,
+        name: editingStore.name,
+        address: editingStore.address || "",
+        phone: editingStore.phone || "",
+        currency: editingStore.currency || "FCFA",
+        taxRate: editingStore.taxRate || 18,
+      });
+    } else {
+      setFormData({
+        code: "",
+        name: "",
+        address: "",
+        phone: "",
+        currency: "FCFA",
+        taxRate: 18,
+      });
+    }
+  }, [editingStore, showAddModal]);
+
   const { stores, currentStore, changeStore, loading, reloadData } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStore, setEditingStore] = useState(null);
@@ -41,28 +63,6 @@ export default function StoresPage() {
       currency: formData.currency || "FCFA",
       taxRate: parseFloat(formData.taxRate) || 18,
     };
-
-    useEffect(() => {
-      if (editingStore) {
-        setFormData({
-          code: editingStore.code,
-          name: editingStore.name,
-          address: editingStore.address || "",
-          phone: editingStore.phone || "",
-          currency: editingStore.currency || "FCFA",
-          taxRate: editingStore.taxRate || 18,
-        });
-      } else {
-        setFormData({
-          code: "",
-          name: "",
-          address: "",
-          phone: "",
-          currency: "FCFA",
-          taxRate: 18,
-        });
-      }
-    }, [editingStore, showAddModal]);
 
     // LOGS DE DEBUG
     console.log("📤 Données envoyées:", storeData);
