@@ -12,6 +12,11 @@ import {
 import Toast from "../components/Toast";
 
 export default function StoresPage() {
+  // 1️⃣ TOUS LES HOOKS D'ABORD
+  const { stores, currentStore, changeStore, loading, reloadData } = useApp();
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingStore, setEditingStore] = useState(null);
+  const [toast, setToast] = useState(null);
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -21,6 +26,7 @@ export default function StoresPage() {
     taxRate: 18,
   });
 
+  // 2️⃣ PUIS LE useEffect
   useEffect(() => {
     if (editingStore) {
       setFormData({
@@ -31,7 +37,7 @@ export default function StoresPage() {
         currency: editingStore.currency || "FCFA",
         taxRate: editingStore.taxRate || 18,
       });
-    } else {
+    } else if (!showAddModal) {
       setFormData({
         code: "",
         name: "",
@@ -43,11 +49,7 @@ export default function StoresPage() {
     }
   }, [editingStore, showAddModal]);
 
-  const { stores, currentStore, changeStore, loading, reloadData } = useApp();
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingStore, setEditingStore] = useState(null);
-  const [toast, setToast] = useState(null);
-
+  // 3️⃣ ENSUITE LES FONCTIONS
   const showToast = (message, type = "success") => {
     setToast({ message, type });
   };
@@ -64,10 +66,7 @@ export default function StoresPage() {
       taxRate: parseFloat(formData.taxRate) || 18,
     };
 
-    // LOGS DE DEBUG
     console.log("📤 Données envoyées:", storeData);
-    console.log("📊 TVA brute:", formData.get("taxRate"));
-    console.log("📊 TVA parseFloat:", parseFloat(formData.get("taxRate")));
 
     try {
       const url = editingStore
@@ -81,7 +80,6 @@ export default function StoresPage() {
         body: JSON.stringify(storeData),
       });
 
-      // LOG DE LA RÉPONSE
       const responseData = await res.json();
       console.log("📥 Réponse API:", responseData);
 
@@ -125,10 +123,12 @@ export default function StoresPage() {
     }
   };
 
+  // 4️⃣ GESTION DU LOADING
   if (loading) {
     return <div style={{ padding: "20px" }}>Chargement...</div>;
   }
 
+  // 5️⃣ LE RETURN AVEC LE JSX
   return (
     <div style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}>
       {/* En-tête */}
@@ -176,7 +176,7 @@ export default function StoresPage() {
         </button>
       </div>
 
-      {/* Statistiques globales */}
+      {/* Statistiques */}
       <div
         style={{
           display: "grid",
@@ -245,7 +245,6 @@ export default function StoresPage() {
                   : "none",
             }}
           >
-            {/* Badge magasin actif */}
             {currentStore?.id === store.id && (
               <div
                 style={{
@@ -264,7 +263,6 @@ export default function StoresPage() {
               </div>
             )}
 
-            {/* Nom du magasin */}
             <h3
               style={{
                 margin: "0 0 15px 0",
@@ -279,7 +277,6 @@ export default function StoresPage() {
               {store.name}
             </h3>
 
-            {/* Code */}
             <div
               style={{
                 marginBottom: "10px",
@@ -294,7 +291,6 @@ export default function StoresPage() {
               Code: {store.code}
             </div>
 
-            {/* Infos */}
             <div
               style={{
                 display: "flex",
@@ -358,7 +354,6 @@ export default function StoresPage() {
               </div>
             </div>
 
-            {/* Actions */}
             <div style={{ display: "flex", gap: "8px" }}>
               {currentStore?.id !== store.id && (
                 <button
@@ -430,7 +425,7 @@ export default function StoresPage() {
         ))}
       </div>
 
-      {/* Modal Ajout/Modification */}
+      {/* Modal */}
       {showAddModal && (
         <div
           onClick={() => {
@@ -480,7 +475,10 @@ export default function StoresPage() {
                   type="text"
                   name="code"
                   required
-                  defaultValue={editingStore?.code}
+                  value={formData.code}
+                  onChange={(e) =>
+                    setFormData({ ...formData, code: e.target.value })
+                  }
                   placeholder="MAG001"
                   style={{
                     width: "100%",
@@ -507,7 +505,10 @@ export default function StoresPage() {
                   type="text"
                   name="name"
                   required
-                  defaultValue={editingStore?.name}
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
                   placeholder="Superette Centre"
                   style={{
                     width: "100%",
@@ -533,7 +534,10 @@ export default function StoresPage() {
                 <input
                   type="text"
                   name="address"
-                  defaultValue={editingStore?.address}
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
                   placeholder="123 Rue de la Paix"
                   style={{
                     width: "100%",
@@ -559,7 +563,10 @@ export default function StoresPage() {
                 <input
                   type="tel"
                   name="phone"
-                  defaultValue={editingStore?.phone}
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
                   placeholder="+226 XX XX XX XX"
                   style={{
                     width: "100%",
@@ -593,7 +600,10 @@ export default function StoresPage() {
                   <input
                     type="text"
                     name="currency"
-                    defaultValue={editingStore?.currency || "FCFA"}
+                    value={formData.currency}
+                    onChange={(e) =>
+                      setFormData({ ...formData, currency: e.target.value })
+                    }
                     style={{
                       width: "100%",
                       padding: "10px",
