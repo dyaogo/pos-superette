@@ -63,7 +63,7 @@ export default function StoresPage() {
       address: formData.address || null,
       phone: formData.phone || null,
       currency: formData.currency || "FCFA",
-      taxRate: parseFloat(formData.taxRate) || 18,
+      taxRate: formData.taxRate !== "" ? parseFloat(formData.taxRate) : 18, // ✅ BON
     };
 
     console.log("📤 Données envoyées:", storeData);
