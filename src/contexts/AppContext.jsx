@@ -11,6 +11,7 @@ export function AppProvider({ children }) {
   const [credits, setCredits] = useState([]); // NOUVEAU
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false); // NOUVEAU
+  const [lastLoadTime, setLastLoadTime] = useState(null); // ✨ AJOUTEZ CETTE LIGNE
 
 
   // Initialisation au démarrage - AVEC PROTECTION
@@ -54,9 +55,16 @@ export function AppProvider({ children }) {
     }
   };
 
-const loadData = async () => {
+const loadData = async (force = false) => {
+  // ✨ Cache de 30 secondes - ne recharge pas si récent
+  const now = Date.now();
+  if (!force && lastLoadTime && (now - lastLoadTime) < 30000) {
+    console.log('📦 Données en cache, pas de rechargement');
+    return;
+  }
+
   try {
-    // PARALLÉLISER tous les appels au lieu de les faire séquentiellement
+    // Paralléliser tous les appels
     const [storesRes, productsRes, salesRes, customersRes, creditsRes] = await Promise.all([
       fetch('/api/stores'),
       fetch('/api/products'),
@@ -94,6 +102,8 @@ const loadData = async () => {
     setSalesHistory(salesData);
     setCustomers(customersData);
     setCredits(creditsData);
+    
+    setLastLoadTime(now); // ✨ AJOUTEZ CETTE LIGNE À LA FIN
   } catch (error) {
     console.error('Erreur chargement données:', error);
   }
@@ -144,6 +154,41 @@ const addSaleOptimistic = (newSale) => {
   setSalesHistory(prev => [newSale, ...prev]);
 };
 
+// Mettre à jour le stock d'un produit après vente
+const updateProductStockOptimistic = (productId, quantitySold) => {
+  setProductCatalog(prev => prev.map(p => 
+    p.id === productId 
+      ? { ...p, stock: Math.max(0, p.stock - quantitySold) }
+      : p
+  ).sort((a, b) => a.name.localeCompare(b.name)));
+};
+
+// Mettre à jour plusieurs stocks en une fois
+const updateMultipleProductStocksOptimistic = (stockUpdates) => {
+  // stockUpdates = [{productId, quantitySold}, ...]
+  setProductCatalog(prev => {
+    const updated = prev.map(p => {
+      const update = stockUpdates.find(u => u.productId === p.id);
+      if (update) {
+        return { ...p, stock: Math.max(0, p.stock - update.quantitySold) };
+      }
+      return p;
+    });
+    return updated.sort((a, b) => a.name.localeCompare(b.name));
+  });
+};
+
+// Ajouter un crédit sans tout recharger
+const addCreditOptimistic = (newCredit) => {
+  setCredits(prev => [newCredit, ...prev]);
+};
+
+// Mettre à jour un crédit sans tout recharger
+const updateCreditOptimistic = (creditId, updatedData) => {
+  setCredits(prev => prev.map(c => 
+    c.id === creditId ? { ...c, ...updatedData } : c
+  ));
+};
   // Filtrer par magasin actif
   const currentStoreProducts = productCatalog.filter(
     p => !currentStore || p.storeId === currentStore.id
@@ -325,6 +370,10 @@ const recordSale = async (saleData) => {
         deleteProduct,
         updateProductOptimistic,    // ✨ NOUVEAU
       addSaleOptimistic,          // ✨ NOUVEAU
+      updateProductStockOptimistic,   // ✨ NOUVEAU
+      updateMultipleProductStocksOptimistic, // ✨ NOUVEAU
+      addCreditOptimistic,            // ✨ NOUVEAU
+      updateCreditOptimistic,         // ✨ NOUVEAU
       addCustomer,
         addCustomer,
         updateCustomer,
