@@ -181,3 +181,17 @@ model CashOperation {
   
   session     CashSession @relation(fields: [sessionId], references: [id])
 }
+model StockTransfer {
+  id            String   @id @default(cuid())
+  fromStoreId   String
+  toStoreId     String
+  productId     String
+  productName   String
+  quantity      Int
+  status        String   @default("pending") // pending, completed, cancelled
+  initiatedBy   String   @default("Admin")
+  completedBy   String?
+  notes         String?
+  createdAt     DateTime @default(now())
+  completedAt   DateTime?
+}
