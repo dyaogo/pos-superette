@@ -13,10 +13,20 @@ import Toast from "../components/Toast";
 
 export default function StoresPage() {
   // 1️⃣ TOUS LES HOOKS D'ABORD
-  const { stores, currentStore, changeStore, loading, reloadData } = useApp();
+  const {
+    stores,
+    currentStore,
+    changeStore,
+    loading,
+    reloadData,
+    updateStoreOptimistic, // ✨ NOUVEAU
+    addStoreOptimistic, // ✨ NOUVEAU
+    deleteStoreOptimistic, // ✨ NOUVEAU
+  } = useApp();
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStore, setEditingStore] = useState(null);
   const [toast, setToast] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false); // ✨ NOUVEAU pour loader
   const [formData, setFormData] = useState({
     code: "",
     name: "",
@@ -56,6 +66,7 @@ export default function StoresPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSubmitting(true); // ✨ Afficher le loader
 
     const storeData = {
       code: formData.code,
@@ -84,23 +95,27 @@ export default function StoresPage() {
       console.log("📥 Réponse API:", responseData);
 
       if (res.ok) {
-        // Recharger les données
-        await reloadData();
-
-        // Si on a modifié le magasin actif, le mettre à jour aussi
-        if (editingStore && currentStore?.id === editingStore.id) {
-          changeStore(responseData);
+        // ✨ MISE À JOUR OPTIMISTE - Instantanée !
+        if (editingStore) {
+          updateStoreOptimistic(editingStore.id, responseData);
+        } else {
+          addStoreOptimistic(responseData);
         }
 
         setShowAddModal(false);
         setEditingStore(null);
-        showToast(editingStore ? "Magasin modifié" : "Magasin créé", "success");
+        showToast(
+          editingStore ? "Magasin modifié ✓" : "Magasin créé ✓",
+          "success"
+        );
       } else {
         showToast("Erreur lors de l'opération", "error");
       }
     } catch (error) {
       console.error("Erreur:", error);
       showToast("Erreur lors de l'opération", "error");
+    } finally {
+      setIsSubmitting(false); // ✨ Cacher le loader
     }
   };
 
@@ -119,7 +134,8 @@ export default function StoresPage() {
       });
 
       if (res.ok) {
-        await reloadData();
+        // ✨ MISE À JOUR OPTIMISTE
+        deleteStoreOptimistic(storeId);
         showToast("Magasin supprimé", "success");
       } else {
         showToast("Erreur lors de la suppression", "error");
@@ -675,19 +691,50 @@ export default function StoresPage() {
                 </button>
                 <button
                   type="submit"
+                  disabled={isSubmitting}
                   style={{
                     flex: 1,
                     padding: "12px",
-                    background: "#3b82f6",
+                    background: isSubmitting ? "#9ca3af" : "#3b82f6",
                     color: "white",
                     border: "none",
                     borderRadius: "8px",
-                    cursor: "pointer",
+                    cursor: isSubmitting ? "not-allowed" : "pointer",
                     fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
                   }}
                 >
-                  {editingStore ? "Modifier" : "Créer"}
+                  {isSubmitting ? (
+                    <>
+                      <div
+                        style={{
+                          width: "16px",
+                          height: "16px",
+                          border: "2px solid white",
+                          borderTopColor: "transparent",
+                          borderRadius: "50%",
+                          animation: "spin 0.6s linear infinite",
+                        }}
+                      />
+                      Enregistrement...
+                    </>
+                  ) : editingStore ? (
+                    "Modifier"
+                  ) : (
+                    "Créer"
+                  )}
                 </button>
+
+                <style jsx>{`
+                  @keyframes spin {
+                    to {
+                      transform: rotate(360deg);
+                    }
+                  }
+                `}</style>
               </div>
             </form>
           </div>

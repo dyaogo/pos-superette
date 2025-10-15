@@ -56,9 +56,25 @@ export function AppProvider({ children }) {
 
 const loadData = async () => {
   try {
-    // NOUVEAU - Recharger les stores aussi !
-    const storesRes = await fetch('/api/stores');
-    const storesData = await storesRes.json();
+    // PARALLÉLISER tous les appels au lieu de les faire séquentiellement
+    const [storesRes, productsRes, salesRes, customersRes, creditsRes] = await Promise.all([
+      fetch('/api/stores'),
+      fetch('/api/products'),
+      fetch('/api/sales'),
+      fetch('/api/customers'),
+      fetch('/api/credits')
+    ]);
+    
+    // Traiter les réponses
+    const [storesData, productsData, salesData, customersData, creditsData] = await Promise.all([
+      storesRes.json(),
+      productsRes.json(),
+      salesRes.json(),
+      customersRes.json(),
+      creditsRes.json()
+    ]);
+    
+    // Mettre à jour les états
     setStores(storesData);
     
     // Si currentStore existe, le mettre à jour avec les nouvelles données
@@ -69,30 +85,14 @@ const loadData = async () => {
       }
     }
     
-    // Charger produits
-    const productsRes = await fetch('/api/products');
-    const productsData = await productsRes.json();
-    
-    // Trier par ordre alphabétique
+    // Trier les produits
     const sortedProducts = productsData.sort((a, b) => 
       a.name.localeCompare(b.name)
     );
     
     setProductCatalog(sortedProducts);
-
-    // Charger ventes
-    const salesRes = await fetch('/api/sales');
-    const salesData = await salesRes.json();
     setSalesHistory(salesData);
-
-    // Charger clients
-    const customersRes = await fetch('/api/customers');
-    const customersData = await customersRes.json();
     setCustomers(customersData);
-
-    // Charger crédits
-    const creditsRes = await fetch('/api/credits');
-    const creditsData = await creditsRes.json();
     setCredits(creditsData);
   } catch (error) {
     console.error('Erreur chargement données:', error);
@@ -107,6 +107,41 @@ const changeStore = async (store) => {
     localStorage.setItem('currentStoreId', store.id);
   }
   await loadData();
+};
+// ✨ NOUVELLES FONCTIONS DE MISE À JOUR OPTIMISTE
+
+// Mettre à jour un store sans tout recharger
+const updateStoreOptimistic = (storeId, updatedData) => {
+  setStores(prev => prev.map(s => 
+    s.id === storeId ? { ...s, ...updatedData } : s
+  ));
+  
+  // Si c'est le store actif, le mettre à jour aussi
+  if (currentStore?.id === storeId) {
+    setCurrentStore(prev => ({ ...prev, ...updatedData }));
+  }
+};
+
+// Ajouter un store sans tout recharger
+const addStoreOptimistic = (newStore) => {
+  setStores(prev => [...prev, newStore]);
+};
+
+// Supprimer un store sans tout recharger
+const deleteStoreOptimistic = (storeId) => {
+  setStores(prev => prev.filter(s => s.id !== storeId));
+};
+
+// Mettre à jour un produit sans tout recharger
+const updateProductOptimistic = (productId, updatedData) => {
+  setProductCatalog(prev => prev.map(p => 
+    p.id === productId ? { ...p, ...updatedData } : p
+  ).sort((a, b) => a.name.localeCompare(b.name)));
+};
+
+// Ajouter une vente sans tout recharger
+const addSaleOptimistic = (newSale) => {
+  setSalesHistory(prev => [newSale, ...prev]);
 };
 
   // Filtrer par magasin actif
@@ -269,6 +304,9 @@ const recordSale = async (saleData) => {
         currentStore,
         changeStore,
         updateCurrentStore,
+        updateStoreOptimistic,      // ✨ NOUVEAU
+      addStoreOptimistic,         // ✨ NOUVEAU
+      deleteStoreOptimistic,      // ✨ NOUVEAU
 
         // Données filtrées par magasin
         productCatalog: currentStoreProducts,
@@ -285,6 +323,9 @@ const recordSale = async (saleData) => {
         addProduct,
         updateProduct,
         deleteProduct,
+        updateProductOptimistic,    // ✨ NOUVEAU
+      addSaleOptimistic,          // ✨ NOUVEAU
+      addCustomer,
         addCustomer,
         updateCustomer,
         recordSale,  // AJOUTEZ CETTE LIGNE
