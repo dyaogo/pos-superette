@@ -12,6 +12,7 @@ import {
   X,
   AlertTriangle,
   CheckCircle,
+  Check,
 } from "lucide-react";
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
@@ -23,19 +24,19 @@ export default function POSPage() {
     recordSale,
     customers,
     loading,
-    addSaleOptimistic, // ✨ NOUVEAU
-    updateMultipleProductStocksOptimistic, // ✨ NOUVEAU
-    addCreditOptimistic, // ✨ NOUVEAU
+    addSaleOptimistic,
+    updateMultipleProductStocksOptimistic,
+    addCreditOptimistic,
     reloadData,
     currentStore,
     salesHistory: currentStoreSales,
   } = useApp();
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("Toutes"); // NOUVEAU
+  const [categoryFilter, setCategoryFilter] = useState("Toutes");
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState("cash");
-  const [isProcessing, setIsProcessing] = useState(false); // ✨ NOUVEAU - loader
+  const [isProcessing, setIsProcessing] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastSale, setLastSale] = useState(null);
   const [cashSession, setCashSession] = useState(null);
@@ -43,7 +44,7 @@ export default function POSPage() {
   const [openingAmount, setOpeningAmount] = useState("50000");
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closingAmount, setClosingAmount] = useState("");
-  const [cashReceived, setCashReceived] = useState(""); // NOUVEAU pour le calcul de rendu
+  const [cashReceived, setCashReceived] = useState("");
   const [toast, setToast] = useState(null);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [showKeypad, setShowKeypad] = useState(false);
@@ -68,7 +69,6 @@ export default function POSPage() {
       });
     });
 
-    // Trier et ajouter les stats
     const sortedProducts = Object.entries(productSales)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
@@ -88,21 +88,17 @@ export default function POSPage() {
     const handleKeyDown = (e) => {
       const now = Date.now();
 
-      // Si plus de 100ms entre les touches, nouveau scan
       if (now - lastKeyTime > 100) {
         setScanBuffer("");
       }
 
       setLastKeyTime(now);
 
-      // Si c'est Enter, traiter le code-barres
       if (e.key === "Enter" && scanBuffer.length > 0) {
         e.preventDefault();
         processBarcodeScan(scanBuffer);
         setScanBuffer("");
-      }
-      // Accumuler les caractères (sauf les touches spéciales)
-      else if (e.key.length === 1) {
+      } else if (e.key.length === 1) {
         setScanBuffer((prev) => prev + e.key);
       }
     };
@@ -119,16 +115,14 @@ export default function POSPage() {
   const processBarcodeScan = (barcode) => {
     console.log("Code-barres scanné:", barcode);
 
-    // Chercher le produit par code-barres
     const product = productCatalog.find((p) => p.barcode === barcode);
 
     if (product) {
       addToCart(product);
-      // Feedback sonore (optionnel)
       const audio = new Audio(
         "data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVa3m7q5aFg1Ln+PyvmwhBTGH0fPTgjMGHm7A7+OZSA0PVa3m7q5aFg=="
       );
-      audio.play().catch(() => {}); // Ignorer les erreurs
+      audio.play().catch(() => {});
     } else {
       alert(`Produit non trouvé: ${barcode}`);
     }
@@ -137,13 +131,11 @@ export default function POSPage() {
   // Raccourcis clavier
   useEffect(() => {
     const handleKeyPress = (e) => {
-      // F1 - Focus sur la recherche
       if (e.key === "F1") {
         e.preventDefault();
         document.getElementById("product-search")?.focus();
       }
 
-      // F2 - Vider le panier
       if (e.key === "F2") {
         e.preventDefault();
         if (cart.length > 0 && confirm("Vider le panier ?")) {
@@ -151,7 +143,6 @@ export default function POSPage() {
         }
       }
 
-      // F3 - Finaliser la vente
       if (e.key === "F3") {
         e.preventDefault();
         if (cart.length > 0) {
@@ -159,7 +150,6 @@ export default function POSPage() {
         }
       }
 
-      // Échap - Fermer les modals
       if (e.key === "Escape") {
         setShowReceipt(false);
       }
@@ -169,7 +159,6 @@ export default function POSPage() {
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [cart, showReceipt]);
 
-  // Filtrer les produits par recherche ET catégorie
   const filteredProducts = productCatalog
     .filter((product) => {
       const matchesSearch =
@@ -184,7 +173,6 @@ export default function POSPage() {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Ajouter au panier avec feedback visuel
   const addToCart = (product) => {
     const existingItem = cart.find((item) => item.id === product.id);
 
@@ -200,10 +188,8 @@ export default function POSPage() {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
 
-    // Animation de feedback (optionnel)
-    showToast(`${product.name} ajouté au panier`, "success", 1500); // Toast rapide
+    showToast(`${product.name} ajouté au panier`, "success", 1500);
 
-    // ✨ Animation du bouton (optionnel)
     const button = document.getElementById(`product-${product.id}`);
     if (button) {
       button.style.transform = "scale(0.95)";
@@ -213,7 +199,6 @@ export default function POSPage() {
     }
   };
 
-  // Mettre à jour la quantité
   const updateQuantity = (productId, newQuantity) => {
     if (newQuantity <= 0) {
       removeFromCart(productId);
@@ -226,26 +211,26 @@ export default function POSPage() {
     }
   };
 
-  // Retirer du panier
   const removeFromCart = (productId) => {
     setCart(cart.filter((item) => item.id !== productId));
   };
 
-  // Calculer le total
-  const total = cart.reduce(
-    (sum, item) => sum + item.sellingPrice * item.quantity,
-    0
-  );
+  const calculateTotal = () => {
+    return cart.reduce(
+      (sum, item) => sum + item.sellingPrice * item.quantity,
+      0
+    );
+  };
+
+  const total = calculateTotal();
   const itemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Finaliser la vente - VERSION AVEC CRÉDIT
   const completeSale = async () => {
     if (cart.length === 0) {
       showToast("Le panier est vide", "error");
       return;
     }
 
-    // Validation crédit
     if (paymentMethod === "credit") {
       if (!selectedCustomer || selectedCustomer.id === "") {
         showToast("Sélectionnez un client pour vente à crédit", "error");
@@ -257,7 +242,6 @@ export default function POSPage() {
       }
     }
 
-    // Vérifier si paiement espèces avec montant insuffisant
     if (paymentMethod === "cash" && cashReceived) {
       const received = parseFloat(cashReceived);
       if (received < total) {
@@ -290,7 +274,6 @@ export default function POSPage() {
 
     const result = await recordSale(saleData);
 
-    // Si vente à crédit, créer l'enregistrement de crédit
     if (result.success && paymentMethod === "credit") {
       try {
         await fetch("/api/credits", {
@@ -333,8 +316,6 @@ export default function POSPage() {
       }
 
       setShowReceipt(true);
-
-      // Réinitialiser
       setCart([]);
       setSearchTerm("");
       setSelectedCustomer(null);
@@ -345,7 +326,6 @@ export default function POSPage() {
     }
   };
 
-  // Charger la session active
   useEffect(() => {
     loadActiveSession();
   }, [currentStore]);
@@ -366,7 +346,6 @@ export default function POSPage() {
     }
   };
 
-  // Ouvrir une session
   const openCashSession = async () => {
     if (!currentStore) {
       showToast("Aucun magasin sélectionné", "error");
@@ -398,7 +377,6 @@ export default function POSPage() {
     }
   };
 
-  // Fermer une session
   const closeCashSession = async () => {
     if (!cashSession || !closingAmount) {
       showToast("Montant de fermeture requis", "error");
@@ -419,7 +397,6 @@ export default function POSPage() {
         const closedSession = await res.json();
         const diff = closedSession.difference;
 
-        // Message détaillé
         const message =
           `Session fermée !\n` +
           `Attendu: ${closedSession.expectedAmount.toLocaleString()} FCFA\n` +
@@ -438,9 +415,8 @@ export default function POSPage() {
     }
   };
 
-  //Créez une fonction optimisée pour enregistrer la vente
   const handleCompleteSale = async (paymentData) => {
-    setIsProcessing(true); // ✨ Afficher le loader
+    setIsProcessing(true);
 
     try {
       const saleData = {
@@ -458,17 +434,15 @@ export default function POSPage() {
         change: paymentData.change || 0,
         customerId: selectedCustomer?.id || null,
         customerName: selectedCustomer?.name || null,
-        cashier: "Admin", // Ou récupérer l'utilisateur connecté
+        cashier: "Admin",
         createdAt: new Date().toISOString(),
       };
 
-      // Si c'est un crédit
       if (paymentData.method === "credit" && paymentData.creditData) {
         saleData.creditAmount = paymentData.creditData.amount;
         saleData.creditDueDate = paymentData.creditData.dueDate;
       }
 
-      // Enregistrer la vente
       const res = await fetch("/api/sales", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -481,31 +455,25 @@ export default function POSPage() {
 
       const savedSale = await res.json();
 
-      // ✨ MISE À JOUR OPTIMISTE - Instantanée !
-
-      // 1. Ajouter la vente à l'historique
       addSaleOptimistic(savedSale);
 
-      // 2. Mettre à jour les stocks
       const stockUpdates = cart.map((item) => ({
         productId: item.id,
         quantitySold: item.quantity,
       }));
       updateMultipleProductStocksOptimistic(stockUpdates);
 
-      // 3. Si c'est un crédit, l'ajouter
       if (paymentData.method === "credit" && savedSale.credit) {
         addCreditOptimistic(savedSale.credit);
       }
 
-      // Réinitialiser le panier
       setCart([]);
       setSelectedCustomer(null);
-      setShowPaymentModal(false);
+      setShowReceipt(false);
 
-      // Afficher le reçu
       if (paymentData.printReceipt) {
-        printReceipt(savedSale);
+        setLastSale(savedSale);
+        setShowReceipt(true);
       }
 
       showToast("Vente enregistrée avec succès ! ✓", "success");
@@ -513,11 +481,10 @@ export default function POSPage() {
       console.error("Erreur vente:", error);
       showToast("Erreur lors de la vente", "error");
     } finally {
-      setIsProcessing(false); // ✨ Cacher le loader
+      setIsProcessing(false);
     }
   };
 
-  // NOUVEAU : Calculer le rendu de monnaie
   const calculateChange = () => {
     const received = parseFloat(cashReceived) || 0;
     return Math.max(0, received - total);
@@ -615,7 +582,7 @@ export default function POSPage() {
                   }}
                 >
                   Fond de caisse: {cashSession.openingAmount.toLocaleString()}{" "}
-                  FCFA • Ouvert par {cashSession.openedBy} •
+                  FCFA • Ouvert par {cashSession.openedBy} •{" "}
                   {new Date(cashSession.openedAt).toLocaleTimeString("fr-FR")}
                 </div>
               </div>
@@ -637,7 +604,7 @@ export default function POSPage() {
           </div>
         )}
 
-        {/* Barre de recherche et filtres - VERSION OPTIMISÉE */}
+        {/* Barre de recherche et filtres */}
         <div style={{ marginBottom: "20px" }}>
           <div
             style={{
@@ -647,7 +614,6 @@ export default function POSPage() {
               flexWrap: "wrap",
             }}
           >
-            {/* Barre de recherche */}
             <div style={{ position: "relative", flex: "1", minWidth: "250px" }}>
               <Search
                 size={20}
@@ -660,6 +626,7 @@ export default function POSPage() {
                 }}
               />
               <input
+                id="product-search"
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -677,7 +644,6 @@ export default function POSPage() {
               />
             </div>
 
-            {/* Filtres catégories */}
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
               {[
                 "Toutes",
@@ -727,7 +693,7 @@ export default function POSPage() {
           </div>
         </div>
 
-        {/* NOUVELLE SECTION - Produits populaires */}
+        {/* Produits populaires */}
         {topProducts.length > 0 && searchTerm === "" && (
           <div style={{ marginBottom: "20px" }}>
             <div
@@ -771,6 +737,7 @@ export default function POSPage() {
               {topProducts.map((product) => (
                 <div
                   key={product.id}
+                  id={`product-${product.id}`}
                   onClick={() => addToCart(product)}
                   style={{
                     background: "var(--color-bg)",
@@ -794,7 +761,6 @@ export default function POSPage() {
                     e.currentTarget.style.boxShadow = "none";
                   }}
                 >
-                  {/* Badge "Populaire" */}
                   <div
                     style={{
                       position: "absolute",
@@ -812,7 +778,6 @@ export default function POSPage() {
                     ⭐ TOP
                   </div>
 
-                  {/* Image du produit */}
                   {product.image ? (
                     <img
                       src={product.image}
@@ -866,6 +831,15 @@ export default function POSPage() {
                     >
                       {product.sellingPrice.toLocaleString()} FCFA
                     </div>
+                    <div
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--color-text-muted)",
+                        marginTop: "2px",
+                      }}
+                    >
+                      🔥 {product.salesCount} vendus
+                    </div>
                   </div>
                 </div>
               ))}
@@ -873,18 +847,7 @@ export default function POSPage() {
           </div>
         )}
 
-        {/* Liste complète des produits */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-            gap: "15px",
-            marginTop: "20px",
-          }}
-        ></div>
-
         {/* Grille de produits */}
-        {/* Liste des produits */}
         <div
           style={{
             display: "grid",
@@ -896,6 +859,7 @@ export default function POSPage() {
           {filteredProducts.map((product) => (
             <div
               key={product.id}
+              id={`product-${product.id}`}
               onClick={() => addToCart(product)}
               style={{
                 background: "var(--color-surface)",
@@ -919,7 +883,6 @@ export default function POSPage() {
                 e.currentTarget.style.boxShadow = "none";
               }}
             >
-              {/* Image du produit */}
               {product.image ? (
                 <img
                   src={product.image}
@@ -994,7 +957,6 @@ export default function POSPage() {
           flexDirection: "column",
         }}
       >
-        {/* En-tête du panier */}
         <div style={{ padding: "20px", borderBottom: "1px solid #e5e7eb" }}>
           <div
             style={{
@@ -1008,7 +970,6 @@ export default function POSPage() {
             <h2 style={{ margin: 0 }}>Panier ({itemsCount})</h2>
           </div>
 
-          {/* Sélection client */}
           <select
             value={selectedCustomer?.id || ""}
             onChange={(e) => {
@@ -1031,7 +992,6 @@ export default function POSPage() {
             ))}
           </select>
 
-          {/* Mode de paiement avec calcul de rendu */}
           <div style={{ marginBottom: "15px" }}>
             <label
               style={{
@@ -1095,7 +1055,6 @@ export default function POSPage() {
             </div>
           </div>
 
-          {/* Date d'échéance pour crédit */}
           {paymentMethod === "credit" && (
             <div style={{ marginBottom: "15px" }}>
               <label
@@ -1126,7 +1085,6 @@ export default function POSPage() {
             </div>
           )}
 
-          {/* Calcul de rendu pour paiement espèces */}
           {paymentMethod === "cash" && (
             <div style={{ marginBottom: "15px" }}>
               <label
@@ -1160,7 +1118,6 @@ export default function POSPage() {
                   }}
                 />
 
-                {/* Bouton clavier numérique */}
                 <button
                   onClick={() => setShowKeypad(true)}
                   style={{
@@ -1182,7 +1139,6 @@ export default function POSPage() {
                 </button>
               </div>
 
-              {/* Montants suggérés */}
               <div style={{ marginTop: "10px" }}>
                 <label
                   style={{
@@ -1242,7 +1198,6 @@ export default function POSPage() {
                 </div>
               </div>
 
-              {/* Affichage du rendu si montant suffisant */}
               {cashReceived && parseFloat(cashReceived) >= total && (
                 <div
                   style={{
@@ -1271,7 +1226,6 @@ export default function POSPage() {
                 </div>
               )}
 
-              {/* Alerte si montant insuffisant */}
               {cashReceived && parseFloat(cashReceived) < total && (
                 <div
                   style={{
@@ -1304,7 +1258,6 @@ export default function POSPage() {
           )}
         </div>
 
-        {/* Articles du panier */}
         <div style={{ flex: 1, overflow: "auto", padding: "15px" }}>
           {cart.length === 0 ? (
             <p
@@ -1406,7 +1359,6 @@ export default function POSPage() {
           )}
         </div>
 
-        {/* Bas du panier - Total et paiement */}
         <div
           style={{
             padding: "20px",
@@ -1430,39 +1382,37 @@ export default function POSPage() {
           </div>
 
           <button
-            onClick={() =>
-              handleCompleteSale({
-                method: paymentMethod,
-                amountPaid: amountPaid,
-                change: change,
-                printReceipt: true,
-                creditData:
-                  paymentMethod === "credit"
-                    ? {
-                        amount: creditAmount,
-                        dueDate: creditDueDate,
-                      }
-                    : null,
-              })
-            }
+            onClick={completeSale}
             disabled={
-              isProcessing ||
-              (paymentMethod === "cash" && amountPaid < calculateTotal())
+              cart.length === 0 ||
+              isProcessingSale ||
+              !cashSession ||
+              (paymentMethod === "cash" &&
+                cashReceived &&
+                parseFloat(cashReceived) < total)
             }
             style={{
-              flex: 1,
+              width: "100%",
               padding: "15px",
-              background: isProcessing
-                ? "#9ca3af"
-                : paymentMethod === "cash" && amountPaid < calculateTotal()
-                ? "#d1d5db"
-                : "#10b981",
+              background:
+                cart.length === 0 ||
+                isProcessingSale ||
+                !cashSession ||
+                (paymentMethod === "cash" &&
+                  cashReceived &&
+                  parseFloat(cashReceived) < total)
+                  ? "#9ca3af"
+                  : "#10b981",
               color: "white",
               border: "none",
               borderRadius: "8px",
               cursor:
-                isProcessing ||
-                (paymentMethod === "cash" && amountPaid < calculateTotal())
+                cart.length === 0 ||
+                isProcessingSale ||
+                !cashSession ||
+                (paymentMethod === "cash" &&
+                  cashReceived &&
+                  parseFloat(cashReceived) < total)
                   ? "not-allowed"
                   : "pointer",
               fontWeight: "bold",
@@ -1473,7 +1423,7 @@ export default function POSPage() {
               gap: "10px",
             }}
           >
-            {isProcessing ? (
+            {isProcessingSale ? (
               <>
                 <div
                   style={{
@@ -1494,22 +1444,13 @@ export default function POSPage() {
               </>
             )}
           </button>
-
-          <style jsx>{`
-            @keyframes spin {
-              to {
-                transform: rotate(360deg);
-              }
-            }
-          `}</style>
         </div>
       </div>
-      {/* Modal d'impression */}
+
       {showReceipt && lastSale && (
         <ReceiptPrinter sale={lastSale} onClose={() => setShowReceipt(false)} />
       )}
 
-      {/* Modal Ouverture Session */}
       {showSessionModal && (
         <div
           onClick={() => setShowSessionModal(false)}
@@ -1626,7 +1567,6 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* Modal Fermeture Session */}
       {showCloseModal && cashSession && (
         <div
           onClick={() => setShowCloseModal(false)}
@@ -1774,18 +1714,24 @@ export default function POSPage() {
                 Fermer la caisse
               </button>
             </div>
-
-            <div
-              style={{
-                fontSize: "11px",
-                color: "var(--color-text-muted)",
-                marginTop: "2px",
-              }}
-            >
-              🔥 {product.salesCount} vendus
-            </div>
           </div>
         </div>
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
+      {showKeypad && (
+        <NumericKeypad
+          value={cashReceived}
+          onChange={setCashReceived}
+          onClose={() => setShowKeypad(false)}
+        />
       )}
 
       <style jsx>{`
@@ -1795,24 +1741,6 @@ export default function POSPage() {
           }
         }
       `}</style>
-
-      {/* Toast Notifications */}
-      {toast && (
-        <Toast
-          message={toast.message}
-          type={toast.type}
-          onClose={() => setToast(null)}
-        />
-      )}
-
-      {/* Clavier numérique */}
-      {showKeypad && (
-        <NumericKeypad
-          value={cashReceived}
-          onChange={setCashReceived}
-          onClose={() => setShowKeypad(false)}
-        />
-      )}
     </div>
   );
 }
