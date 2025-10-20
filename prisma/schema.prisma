@@ -195,3 +195,34 @@ model StockTransfer {
   createdAt     DateTime @default(now())
   completedAt   DateTime?
 }
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  username      String   @unique
+  password      String   // Hashé avec bcrypt
+  fullName      String
+  role          String   @default("cashier") // admin, manager, cashier
+  storeId       String?  // Magasin assigné (null = tous les magasins)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastLogin     DateTime?
+  createdBy     String?
+  
+  activityLogs  ActivityLog[]
+}
+
+model ActivityLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String   // login, logout, create_sale, delete_product, etc.
+  entity      String?  // sale, product, user, etc.
+  entityId    String?
+  details     String?  @db.Text
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+}
