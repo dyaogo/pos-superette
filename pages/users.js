@@ -1,3 +1,4 @@
+import ProtectedRoute from "../components/ProtectedRoute";
 import { useState, useEffect } from "react";
 import { useApp } from "../src/contexts/AppContext";
 import {
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 import Toast from "../components/Toast";
 
-export default function UsersPage() {
+function UsersPage() {
   const { stores } = useApp();
   const [users, setUsers] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
@@ -1209,3 +1210,13 @@ export default function UsersPage() {
     </div>
   );
 }
+// ✨ WRAPPER la page avec ProtectedRoute
+function UsersPageWithAuth() {
+  return (
+    <ProtectedRoute requiredRoles={["admin"]}>
+      <UsersPage />
+    </ProtectedRoute>
+  );
+}
+
+export default UsersPageWithAuth;

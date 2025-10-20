@@ -1,3 +1,4 @@
+import ProtectedRoute from "../components/ProtectedRoute";
 import { useState, useEffect } from "react";
 import { useApp } from "../src/contexts/AppContext";
 import {
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import Toast from "../components/Toast";
 
-export default function StoresPage() {
+function StoresPage() {
   // 1️⃣ TOUS LES HOOKS D'ABORD
   const {
     stores,
@@ -752,3 +753,12 @@ export default function StoresPage() {
     </div>
   );
 }
+function StoresPageProtected() {
+  return (
+    <ProtectedRoute requiredRoles={["admin"]}>
+      <StoresPage />
+    </ProtectedRoute>
+  );
+}
+
+export default StoresPageProtected;

@@ -1,3 +1,4 @@
+import ProtectedRoute from "../components/ProtectedRoute";
 import { useState, useEffect } from "react";
 import { useApp } from "../src/contexts/AppContext";
 import {
@@ -11,7 +12,7 @@ import {
 } from "lucide-react";
 import Toast from "../components/Toast";
 
-export default function TransfersPage() {
+function TransfersPage() {
   const { stores, productCatalog, currentStore, loading } = useApp();
   const [transfers, setTransfers] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -720,3 +721,12 @@ export default function TransfersPage() {
     </div>
   );
 }
+function TransfersPageProtected() {
+  return (
+    <ProtectedRoute requiredRoles={["admin", "manager"]}>
+      <TransfersPage />
+    </ProtectedRoute>
+  );
+}
+
+export default TransfersPageProtected;

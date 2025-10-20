@@ -1,3 +1,4 @@
+import ProtectedRoute from "../components/ProtectedRoute";
 import { useState, useEffect } from "react";
 import { useApp } from "../src/contexts/AppContext";
 import {
@@ -18,7 +19,7 @@ import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
 
-export default function POSPage() {
+function POSPage() {
   const {
     productCatalog,
     recordSale,
@@ -1744,3 +1745,12 @@ export default function POSPage() {
     </div>
   );
 }
+function POSPageProtected() {
+  return (
+    <ProtectedRoute>
+      <POSPage />
+    </ProtectedRoute>
+  );
+}
+
+export default POSPageProtected;

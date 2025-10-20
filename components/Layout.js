@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
+import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTEZ
 import {
   Home,
   ShoppingCart,
@@ -15,36 +16,111 @@ import {
   Store as StoreIcon,
   ArrowRightLeft,
   BarChart3,
+  UserCog,
+  LogOut,
+  User, // ✨ AJOUTEZ LogOut et User
 } from "lucide-react";
-import StoreSelector from "./StoreSelector"; // NOUVEAU
+import StoreSelector from "./StoreSelector";
 
 export default function Layout({ children }) {
   const router = useRouter();
+  const { currentUser, logout, hasPermission } = useAuth(); // ✨ AJOUTEZ
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // ✨ Pages publiques (sans authentification requise)
+  const publicPages = ["/login", "/unauthorized"];
+  const isPublicPage = publicPages.includes(router.pathname);
+
+  // Si page publique, pas de layout
+  if (isPublicPage) {
+    return children;
+  }
+
   const menuItems = [
-    { path: "/dashboard", icon: Home, label: "Tableau de bord" },
+    {
+      path: "/dashboard",
+      icon: Home,
+      label: "Tableau de bord",
+      permission: "view_dashboard",
+    },
     {
       path: "/consolidated-dashboard",
       icon: BarChart3,
       label: "Dashboard Consolidé",
-    }, // ✨ AJOUTEZ CETTE LIGNE
-    { path: "/pos", icon: ShoppingCart, label: "Caisse" },
-    { path: "/inventory", icon: Package, label: "Inventaire" },
+      permission: "view_consolidated_dashboard",
+    },
+    {
+      path: "/pos",
+      icon: ShoppingCart,
+      label: "Caisse",
+      permission: "manage_pos",
+    },
+    {
+      path: "/inventory",
+      icon: Package,
+      label: "Inventaire",
+      permission: "manage_inventory",
+    },
     {
       path: "/physical-inventory",
       icon: ClipboardList,
       label: "Inventaire Physique",
+      permission: "manage_inventory",
     },
-    { path: "/stores", icon: StoreIcon, label: "Magasins" },
-    { path: "/transfers", icon: ArrowRightLeft, label: "Transferts" }, // ✨ AJOUTEZ CETTE LIGNE
-
-    { path: "/sales", icon: FileText, label: "Ventes" },
-    { path: "/customers", icon: Users, label: "Clients" },
-    { path: "/credits", icon: CreditCard, label: "Crédits" },
-    { path: "/returns", icon: Package, label: "Retours" },
-    { path: "/settings", icon: Settings, label: "Paramètres" },
+    {
+      path: "/stores",
+      icon: StoreIcon,
+      label: "Magasins",
+      permission: "view_stores",
+    },
+    {
+      path: "/transfers",
+      icon: ArrowRightLeft,
+      label: "Transferts",
+      permission: "manage_transfers",
+    },
+    {
+      path: "/users",
+      icon: UserCog,
+      label: "Utilisateurs",
+      permission: "manage_users",
+    },
+    {
+      path: "/sales",
+      icon: FileText,
+      label: "Ventes",
+      permission: "view_sales",
+    },
+    {
+      path: "/customers",
+      icon: Users,
+      label: "Clients",
+      permission: "manage_customers",
+    },
+    {
+      path: "/credits",
+      icon: CreditCard,
+      label: "Crédits",
+      permission: "manage_credits",
+    },
+    {
+      path: "/returns",
+      icon: Package,
+      label: "Retours",
+      permission: "view_returns",
+    },
+    {
+      path: "/settings",
+      icon: Settings,
+      label: "Paramètres",
+      permission: "view_settings",
+    },
   ];
+
+  // ✨ Filtrer les menus selon les permissions
+  const visibleMenuItems = menuItems.filter(
+    (item) => !item.permission || hasPermission(item.permission)
+  );
 
   return (
     <div
@@ -65,6 +141,8 @@ export default function Layout({ children }) {
           height: "100vh",
           overflowY: "auto",
           zIndex: 100,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
         {/* Logo */}
@@ -97,8 +175,8 @@ export default function Layout({ children }) {
         </div>
 
         {/* Menu */}
-        <nav style={{ padding: "20px 0" }}>
-          {menuItems.map((item) => {
+        <nav style={{ padding: "20px 0", flex: 1 }}>
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = router.pathname === item.path;
 
@@ -116,16 +194,20 @@ export default function Layout({ children }) {
                       : "transparent",
                     color: isActive ? "white" : "var(--color-text-primary)",
                     transition: "all 0.2s",
-                    marginBottom: "4px",
+                    borderLeft: isActive
+                      ? "4px solid white"
+                      : "4px solid transparent",
                   }}
                   onMouseEnter={(e) => {
-                    if (!isActive)
+                    if (!isActive) {
                       e.currentTarget.style.background =
                         "var(--color-surface-hover)";
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    if (!isActive)
+                    if (!isActive) {
                       e.currentTarget.style.background = "transparent";
+                    }
                   }}
                 >
                   <Icon size={20} />
@@ -135,46 +217,171 @@ export default function Layout({ children }) {
             );
           })}
         </nav>
+
+        {/* ✨ Section utilisateur et déconnexion */}
+        {currentUser && (
+          <div
+            style={{
+              borderTop: "1px solid var(--color-border)",
+              padding: "15px",
+            }}
+          >
+            {sidebarOpen ? (
+              <>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    marginBottom: "10px",
+                    padding: "10px",
+                    background: "var(--color-bg)",
+                    borderRadius: "8px",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "40px",
+                      height: "40px",
+                      borderRadius: "50%",
+                      background: "var(--color-primary)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "white",
+                      fontWeight: "bold",
+                      fontSize: "16px",
+                    }}
+                  >
+                    {currentUser.fullName.charAt(0).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1, overflow: "hidden" }}>
+                    <div
+                      style={{
+                        fontWeight: "600",
+                        fontSize: "14px",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
+                      {currentUser.fullName}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "12px",
+                        color: "var(--color-text-muted)",
+                      }}
+                    >
+                      {currentUser.role === "admin"
+                        ? "Administrateur"
+                        : currentUser.role === "manager"
+                        ? "Gérant"
+                        : "Caissier"}
+                    </div>
+                  </div>
+                </div>
+
+                <Link href="/profile">
+                  <div
+                    style={{
+                      padding: "10px",
+                      background: "var(--color-bg)",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                      marginBottom: "10px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) =>
+                      (e.currentTarget.style.background =
+                        "var(--color-surface-hover)")
+                    }
+                    onMouseLeave={(e) =>
+                      (e.currentTarget.style.background = "var(--color-bg)")
+                    }
+                  >
+                    <div style={{ fontSize: "14px", fontWeight: "500" }}>
+                      Voir mon profil
+                    </div>
+                  </div>
+                </Link>
+
+                <button
+                  onClick={logout}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    background: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "#dc2626")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background = "#ef4444")
+                  }
+                >
+                  <LogOut size={18} />
+                  Déconnexion
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={logout}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  background: "#ef4444",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+                title="Déconnexion"
+              >
+                <LogOut size={20} />
+              </button>
+            )}
+          </div>
+        )}
       </aside>
 
-      {/* Main Content */}
+      {/* Main content */}
       <main
         style={{
-          flex: 1,
           marginLeft: sidebarOpen ? "250px" : "70px",
+          flex: 1,
           transition: "margin-left 0.3s",
+          minHeight: "100vh",
         }}
       >
-        {/* Header avec sélecteur de magasin */}
-        <header
+        {/* Store Selector */}
+        <div
           style={{
+            padding: "15px 30px",
             background: "var(--color-surface)",
             borderBottom: "1px solid var(--color-border)",
-            padding: "16px 30px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
             position: "sticky",
             top: 0,
             zIndex: 50,
           }}
         >
-          <div
-            style={{
-              fontSize: "18px",
-              fontWeight: "600",
-              color: "var(--color-text-primary)",
-            }}
-          >
-            {menuItems.find((item) => item.path === router.pathname)?.label ||
-              "POS Superette"}
-          </div>
-
-          {/* NOUVEAU : Sélecteur de magasin */}
           <StoreSelector />
-        </header>
+        </div>
 
-        {/* Page Content */}
+        {/* Page content */}
         <div>{children}</div>
       </main>
     </div>

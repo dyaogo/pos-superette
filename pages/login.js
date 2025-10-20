@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
+import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTEZ
 import { User, Lock, AlertCircle } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { login } = useAuth(); // ✨ UTILISEZ LE CONTEXTE
   const [formData, setFormData] = useState({
     username: "",
     password: "",
@@ -16,29 +18,15 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
 
-    try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
-      });
+    const result = await login(formData.username, formData.password); // ✨ UTILISEZ login du contexte
 
-      const data = await res.json();
-
-      if (res.ok) {
-        // Stocker l'utilisateur dans localStorage
-        localStorage.setItem("currentUser", JSON.stringify(data));
-
-        // Rediriger vers le dashboard
-        router.push("/dashboard");
-      } else {
-        setError(data.error || "Erreur de connexion");
-      }
-    } catch (error) {
-      setError("Erreur de connexion au serveur");
-    } finally {
-      setLoading(false);
+    if (result.success) {
+      router.push("/dashboard");
+    } else {
+      setError(result.error);
     }
+
+    setLoading(false);
   };
 
   return (

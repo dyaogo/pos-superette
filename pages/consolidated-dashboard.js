@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import ProtectedRoute from "../components/ProtectedRoute";
 import { useApp } from "../src/contexts/AppContext";
 import {
   Store,
@@ -13,7 +14,7 @@ import {
   Activity,
 } from "lucide-react";
 
-export default function ConsolidatedDashboard() {
+function ConsolidatedDashboard() {
   const { stores, loading } = useApp();
   const [stats, setStats] = useState(null);
   const [period, setPeriod] = useState("month");
@@ -999,3 +1000,12 @@ export default function ConsolidatedDashboard() {
     </div>
   );
 }
+function ConsolidatedDashboardProtected() {
+  return (
+    <ProtectedRoute requiredRoles={["admin", "manager"]}>
+      <ConsolidatedDashboard />
+    </ProtectedRoute>
+  );
+}
+
+export default ConsolidatedDashboardProtected;
