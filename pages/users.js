@@ -42,12 +42,28 @@ export default function UsersPage() {
   }, []);
 
   const loadUsers = async () => {
+    setLoading(true);
     try {
       const res = await fetch("/api/users");
+
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+
       const data = await res.json();
-      setUsers(data);
+
+      // Vérifier que c'est bien un tableau
+      if (Array.isArray(data)) {
+        setUsers(data);
+      } else {
+        console.error("Format de données incorrect:", data);
+        setUsers([]);
+        showToast("Erreur de format des données", "error");
+      }
     } catch (error) {
       console.error("Erreur chargement utilisateurs:", error);
+      setUsers([]);
+      showToast("Erreur lors du chargement des utilisateurs", "error");
     } finally {
       setLoading(false);
     }

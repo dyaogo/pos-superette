@@ -3,6 +3,7 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/consolidated-dashboard": "pages/consolidated-dashboard.js",
-  "/dashboard": "pages/dashboard.js",
-  "/pos": "pages/pos.js"
+  "/pos": "pages/pos.js",
+  "/api/users": "pages/api/users.js",
+  "/users": "pages/users.js"
 }
