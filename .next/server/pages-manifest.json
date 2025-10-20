@@ -2,13 +2,6 @@
   "/_app": "pages/_app.js",
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
-  "/returns": "pages/returns.js",
-  "/credits": "pages/credits.js",
-  "/settings": "pages/settings.js",
-  "/api/stores": "pages/api/stores.js",
-  "/api/credits": "pages/api/credits.js",
-  "/api/customers": "pages/api/customers.js",
-  "/api/products": "pages/api/products.js",
-  "/api/sales": "pages/api/sales.js",
-  "/api/cash-sessions": "pages/api/cash-sessions.js"
+  "/transfers": "pages/transfers.js",
+  "/pos": "pages/pos.js"
 }

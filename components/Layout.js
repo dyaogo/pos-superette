@@ -13,7 +13,8 @@ import {
   X,
   ClipboardList,
   Store as StoreIcon,
-  ArrowRightLeft, // ✨ AJOUTEZ CETTE LIGNE
+  ArrowRightLeft,
+  BarChart3,
 } from "lucide-react";
 import StoreSelector from "./StoreSelector"; // NOUVEAU
 
@@ -23,6 +24,11 @@ export default function Layout({ children }) {
 
   const menuItems = [
     { path: "/dashboard", icon: Home, label: "Tableau de bord" },
+    {
+      path: "/consolidated-dashboard",
+      icon: BarChart3,
+      label: "Dashboard Consolidé",
+    }, // ✨ AJOUTEZ CETTE LIGNE
     { path: "/pos", icon: ShoppingCart, label: "Caisse" },
     { path: "/inventory", icon: Package, label: "Inventaire" },
     {
