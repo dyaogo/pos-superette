@@ -1,7 +1,8 @@
 import ProtectedRoute from "../components/ProtectedRoute";
-import PermissionGate from "../components/PermissionGate";
+import PermissionGate from "../components/PermissionGate"; // ✨ AJOUTÉ
 import { useState, useMemo } from "react";
 import { useApp } from "../src/contexts/AppContext";
+import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTÉ
 import SalesChart from "../components/SalesChart";
 import {
   TrendingUp,
@@ -12,9 +13,11 @@ import {
   Calendar,
   Award,
   AlertCircle,
-  Download, // NOUVEAU
-  FileText, // NOUVEAU
-  Table, // NOUVEAU
+  Download,
+  FileText,
+  Table,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import {
   exportToCSV,
@@ -23,14 +26,14 @@ import {
   prepareSalesData,
   prepareProductsData,
   prepareCreditsData,
-} from "../utils/exportData"; // NOUVEAU
+} from "../utils/exportData";
 
 function DashboardPage() {
   const { salesHistory, productCatalog, customers, credits, loading } =
     useApp();
-  const [period, setPeriod] = useState("week"); // today, week, month, year
+  const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
+  const [period, setPeriod] = useState("week");
 
-  // Calculer les dates selon la période
   const getDateRange = () => {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -57,7 +60,6 @@ function DashboardPage() {
 
   const { start, end } = getDateRange();
 
-  // Filtrer les ventes par période
   const periodSales = useMemo(() => {
     return salesHistory.filter((sale) => {
       const saleDate = new Date(sale.createdAt);
@@ -65,7 +67,6 @@ function DashboardPage() {
     });
   }, [salesHistory, start, end]);
 
-  // Statistiques globales
   const stats = useMemo(() => {
     const totalRevenue = periodSales.reduce((sum, sale) => sum + sale.total, 0);
     const totalSales = periodSales.length;
@@ -97,7 +98,6 @@ function DashboardPage() {
     };
   }, [periodSales, productCatalog, customers, credits]);
 
-  // Données pour le graphique des ventes par jour
   const salesByDay = useMemo(() => {
     const days = {};
 
@@ -120,7 +120,6 @@ function DashboardPage() {
       .map(([label, value]) => ({ label, value: Math.round(value) }));
   }, [periodSales]);
 
-  // Top 5 produits les plus vendus
   const topProducts = useMemo(() => {
     const productSales = {};
 
@@ -156,7 +155,6 @@ function DashboardPage() {
       style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}
     >
       {/* En-tête */}
-      {/* En-tête pour impression PDF */}
       <div className="print-header" style={{ display: "none" }}>
         <div style={{ textAlign: "center", marginBottom: "30px" }}>
           <h1
@@ -177,23 +175,11 @@ function DashboardPage() {
             </p>
             <p style={{ margin: "5px 0", fontSize: "14px" }}>
               <strong>Date d'impression:</strong>{" "}
-              {new Date().toLocaleString("fr-FR")}
-            </p>
-            <p style={{ margin: "5px 0", fontSize: "14px" }}>
-              <strong>CA Total:</strong> {stats.totalRevenue.toLocaleString()}{" "}
-              FCFA
+              {new Date().toLocaleDateString("fr-FR")}
             </p>
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @media print {
-          .print-header {
-            display: block !important;
-          }
-        }
-      `}</style>
 
       <div
         style={{
@@ -202,262 +188,56 @@ function DashboardPage() {
           alignItems: "center",
           marginBottom: "30px",
           flexWrap: "wrap",
-          gap: "20px",
+          gap: "15px",
         }}
       >
-        <h1
-          style={{
-            margin: 0,
-            fontSize: "28px",
-            fontWeight: "bold",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
-          <TrendingUp size={32} />
-          Tableau de Bord & Analytics
-        </h1>
+        <div>
+          <h1
+            style={{
+              margin: 0,
+              fontSize: "28px",
+              fontWeight: "bold",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <TrendingUp size={32} />
+            Tableau de bord
+          </h1>
+          <p
+            style={{
+              margin: "5px 0 0 0",
+              color: "var(--color-text-secondary)",
+            }}
+          >
+            Vue d'ensemble de votre activité
+          </p>
+        </div>
 
-        {/* Filtres de période */}
-        <div style={{ display: "flex", gap: "10px" }}>
-          {[
-            { value: "today", label: "Aujourd'hui" },
-            { value: "week", label: "7 derniers jours" },
-            { value: "month", label: "30 derniers jours" },
-            { value: "year", label: "Année" },
-          ].map((p) => (
-            <button
-              key={p.value}
-              onClick={() => setPeriod(p.value)}
-              style={{
-                padding: "10px 20px",
-                background:
-                  period === p.value
-                    ? "var(--color-primary)"
-                    : "var(--color-surface)",
-                color:
-                  period === p.value ? "white" : "var(--color-text-primary)",
-                border: `2px solid ${
-                  period === p.value
-                    ? "var(--color-primary)"
-                    : "var(--color-border)"
-                }`,
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                transition: "all 0.2s",
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <select
+            value={period}
+            onChange={(e) => setPeriod(e.target.value)}
+            style={{
+              padding: "10px 15px",
+              border: "2px solid var(--color-border)",
+              borderRadius: "8px",
+              background: "var(--color-surface)",
+              color: "var(--color-text-primary)",
+              fontWeight: "600",
+              cursor: "pointer",
+            }}
+          >
+            <option value="today">Aujourd'hui</option>
+            <option value="week">7 derniers jours</option>
+            <option value="month">30 derniers jours</option>
+            <option value="year">Année</option>
+          </select>
         </div>
       </div>
 
-      {/* NOUVELLE SECTION - Boutons d'export */}
-      <div
-        style={{
-          background: "var(--color-surface)",
-          padding: "20px",
-          borderRadius: "12px",
-          border: "1px solid var(--color-border)",
-          marginBottom: "30px",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: "15px",
-          }}
-        >
-          <div>
-            <h3
-              style={{
-                margin: "0 0 5px 0",
-                fontSize: "16px",
-                fontWeight: "600",
-              }}
-            >
-              📥 Exporter les données
-            </h3>
-            <p
-              style={{
-                margin: 0,
-                fontSize: "13px",
-                color: "var(--color-text-secondary)",
-              }}
-            >
-              Téléchargez vos rapports dans différents formats
-            </p>
-          </div>
-
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            {/* Export Excel - Ventes */}
-            <button
-              onClick={() => {
-                const data = prepareSalesData(periodSales);
-                exportToExcel(data, `ventes_${period}_${Date.now()}`, "Ventes");
-              }}
-              style={{
-                padding: "10px 16px",
-                background: "#10b981",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.transform = "translateY(-2px)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "translateY(0)")
-              }
-            >
-              <Download size={18} />
-              Excel - Ventes
-            </button>
-
-            {/* Export Excel - Produits */}
-            <button
-              onClick={() => {
-                const data = prepareProductsData(productCatalog);
-                exportToExcel(data, `produits_${Date.now()}`, "Produits");
-              }}
-              style={{
-                padding: "10px 16px",
-                background: "#3b82f6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.transform = "translateY(-2px)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "translateY(0)")
-              }
-            >
-              <Table size={18} />
-              Excel - Produits
-            </button>
-
-            {/* Export Excel - Crédits */}
-            <button
-              onClick={() => {
-                const data = prepareCreditsData(credits, customers);
-                exportToExcel(data, `credits_${Date.now()}`, "Crédits");
-              }}
-              style={{
-                padding: "10px 16px",
-                background: "#f59e0b",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.transform = "translateY(-2px)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "translateY(0)")
-              }
-            >
-              <Download size={18} />
-              Excel - Crédits
-            </button>
-
-            {/* Export CSV */}
-            <button
-              onClick={() => {
-                const data = prepareSalesData(periodSales);
-                exportToCSV(data, `ventes_${period}_${Date.now()}`);
-              }}
-              style={{
-                padding: "10px 16px",
-                background: "#8b5cf6",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.transform = "translateY(-2px)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "translateY(0)")
-              }
-            >
-              <FileText size={18} />
-              CSV - Ventes
-            </button>
-
-            {/* Export PDF */}
-            <button
-              onClick={() =>
-                exportToPDF(
-                  "dashboard-content",
-                  `rapport_${period}_${Date.now()}`
-                )
-              }
-              style={{
-                padding: "10px 16px",
-                background: "#ef4444",
-                color: "white",
-                border: "none",
-                borderRadius: "8px",
-                cursor: "pointer",
-                fontWeight: "600",
-                fontSize: "14px",
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                transition: "all 0.2s",
-              }}
-              onMouseEnter={(e) =>
-                (e.currentTarget.style.transform = "translateY(-2px)")
-              }
-              onMouseLeave={(e) =>
-                (e.currentTarget.style.transform = "translateY(0)")
-              }
-            >
-              <FileText size={18} />
-              Imprimer PDF
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* KPIs principaux */}
+      {/* Cartes statistiques principales */}
       <div
         style={{
           display: "grid",
@@ -466,975 +246,818 @@ function DashboardPage() {
           marginBottom: "30px",
         }}
       >
-        {/* Chiffre d'affaires */}
+        {/* Chiffre d'affaires - Visible par tous */}
         <div
           style={{
-            background: "linear-gradient(135deg, #3b82f6, #2563eb)",
+            background: "var(--color-surface)",
             padding: "25px",
             borderRadius: "12px",
-            color: "white",
-            boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)",
+            border: "1px solid var(--color-border)",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
+              gap: "12px",
+              marginBottom: "15px",
             }}
           >
-            <DollarSign size={24} />
-            <span style={{ fontSize: "14px", opacity: 0.9 }}>
-              Chiffre d'affaires
-            </span>
-          </div>
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-              marginBottom: "5px",
-            }}
-          >
-            {stats.totalRevenue.toLocaleString()} FCFA
-          </div>
-          <div style={{ fontSize: "13px", opacity: 0.8 }}>
-            {stats.totalSales} ventes • Ticket moyen:{" "}
-            {Math.round(stats.averageTicket).toLocaleString()} FCFA
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <DollarSign size={24} color="white" />
+            </div>
+            <div>
+              <div
+                style={{
+                  color: "var(--color-text-secondary)",
+                  fontSize: "14px",
+                }}
+              >
+                Chiffre d'affaires
+              </div>
+              <div
+                style={{
+                  fontSize: "28px",
+                  fontWeight: "bold",
+                  color: "#3b82f6",
+                }}
+              >
+                {stats.totalRevenue.toLocaleString()} FCFA
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Ventes */}
+        {/* Nombre de ventes - Visible par tous */}
         <div
           style={{
-            background: "linear-gradient(135deg, #10b981, #059669)",
+            background: "var(--color-surface)",
             padding: "25px",
             borderRadius: "12px",
-            color: "white",
-            boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+            border: "1px solid var(--color-border)",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
+              gap: "12px",
+              marginBottom: "15px",
             }}
           >
-            <ShoppingBag size={24} />
-            <span style={{ fontSize: "14px", opacity: 0.9 }}>Transactions</span>
-          </div>
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-              marginBottom: "5px",
-            }}
-          >
-            {stats.totalSales}
-          </div>
-          <div style={{ fontSize: "13px", opacity: 0.8 }}>
-            Total des ventes effectuées
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                background: "linear-gradient(135deg, #10b981, #059669)",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <ShoppingBag size={24} color="white" />
+            </div>
+            <div>
+              <div
+                style={{
+                  color: "var(--color-text-secondary)",
+                  fontSize: "14px",
+                }}
+              >
+                Nombre de ventes
+              </div>
+              <div
+                style={{
+                  fontSize: "28px",
+                  fontWeight: "bold",
+                  color: "#10b981",
+                }}
+              >
+                {stats.totalSales}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Clients */}
+        {/* Ticket moyen - Visible par tous */}
         <div
           style={{
-            background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+            background: "var(--color-surface)",
             padding: "25px",
             borderRadius: "12px",
-            color: "white",
-            boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
+            border: "1px solid var(--color-border)",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
+              gap: "12px",
+              marginBottom: "15px",
             }}
           >
-            <Users size={24} />
-            <span style={{ fontSize: "14px", opacity: 0.9 }}>Clients</span>
-          </div>
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-              marginBottom: "5px",
-            }}
-          >
-            {stats.totalCustomers}
-          </div>
-          <div style={{ fontSize: "13px", opacity: 0.8 }}>
-            Clients enregistrés
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                background: "linear-gradient(135deg, #f59e0b, #d97706)",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Award size={24} color="white" />
+            </div>
+            <div>
+              <div
+                style={{
+                  color: "var(--color-text-secondary)",
+                  fontSize: "14px",
+                }}
+              >
+                Ticket moyen
+              </div>
+              <div
+                style={{
+                  fontSize: "28px",
+                  fontWeight: "bold",
+                  color: "#f59e0b",
+                }}
+              >
+                {Math.round(stats.averageTicket).toLocaleString()} FCFA
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Stock */}
+        {/* Clients - Visible par tous */}
         <div
           style={{
-            background: "linear-gradient(135deg, #f59e0b, #d97706)",
+            background: "var(--color-surface)",
             padding: "25px",
             borderRadius: "12px",
-            color: "white",
-            boxShadow: "0 4px 12px rgba(245, 158, 11, 0.3)",
+            border: "1px solid var(--color-border)",
           }}
         >
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "10px",
-              marginBottom: "10px",
+              gap: "12px",
+              marginBottom: "15px",
             }}
           >
-            <Package size={24} />
-            <span style={{ fontSize: "14px", opacity: 0.9 }}>
-              Valeur du stock
-            </span>
-          </div>
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-              marginBottom: "5px",
-            }}
-          >
-            {Math.round(stats.stockValue).toLocaleString()} FCFA
-          </div>
-          <div style={{ fontSize: "13px", opacity: 0.8 }}>
-            {stats.totalStock} unités • {stats.lowStock} en rupture
+            <div
+              style={{
+                width: "48px",
+                height: "48px",
+                background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+                borderRadius: "12px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <Users size={24} color="white" />
+            </div>
+            <div>
+              <div
+                style={{
+                  color: "var(--color-text-secondary)",
+                  fontSize: "14px",
+                }}
+              >
+                Clients
+              </div>
+              <div
+                style={{
+                  fontSize: "28px",
+                  fontWeight: "bold",
+                  color: "#8b5cf6",
+                }}
+              >
+                {stats.totalCustomers}
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Graphiques et analyses */}
+      {/* ✨ Section Profit - Visible seulement pour Admin et Manager */}
+      <PermissionGate roles={["admin", "manager"]}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+            gap: "20px",
+            marginBottom: "30px",
+            padding: "20px",
+            background:
+              "linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 95, 70, 0.05))",
+            borderRadius: "12px",
+            border: "2px solid rgba(16, 185, 129, 0.3)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "15px",
+            }}
+          >
+            <div
+              style={{
+                width: "60px",
+                height: "60px",
+                background: "linear-gradient(135deg, #10b981, #059669)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
+              }}
+            >
+              <Eye size={28} color="white" />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "var(--color-text-secondary)",
+                  fontWeight: "600",
+                  marginBottom: "5px",
+                }}
+              >
+                💰 Profit total
+              </div>
+              <div
+                style={{
+                  fontSize: "32px",
+                  fontWeight: "bold",
+                  color: "#10b981",
+                }}
+              >
+                {(() => {
+                  const totalProfit = periodSales.reduce((sum, sale) => {
+                    return (
+                      sum +
+                      (sale.items?.reduce((itemSum, item) => {
+                        const product = productCatalog.find(
+                          (p) => p.id === item.productId
+                        );
+                        if (product) {
+                          const profit =
+                            (item.unitPrice - product.costPrice) *
+                            item.quantity;
+                          return itemSum + profit;
+                        }
+                        return itemSum;
+                      }, 0) || 0)
+                    );
+                  }, 0);
+                  return totalProfit.toLocaleString();
+                })()}{" "}
+                FCFA
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "15px",
+            }}
+          >
+            <div
+              style={{
+                width: "60px",
+                height: "60px",
+                background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
+              }}
+            >
+              <TrendingUp size={28} color="white" />
+            </div>
+            <div>
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "var(--color-text-secondary)",
+                  fontWeight: "600",
+                  marginBottom: "5px",
+                }}
+              >
+                📊 Marge moyenne
+              </div>
+              <div
+                style={{
+                  fontSize: "32px",
+                  fontWeight: "bold",
+                  color: "#8b5cf6",
+                }}
+              >
+                {(() => {
+                  const totalRevenue = stats.totalRevenue;
+                  const totalProfit = periodSales.reduce((sum, sale) => {
+                    return (
+                      sum +
+                      (sale.items?.reduce((itemSum, item) => {
+                        const product = productCatalog.find(
+                          (p) => p.id === item.productId
+                        );
+                        if (product) {
+                          const profit =
+                            (item.unitPrice - product.costPrice) *
+                            item.quantity;
+                          return itemSum + profit;
+                        }
+                        return itemSum;
+                      }, 0) || 0)
+                    );
+                  }, 0);
+                  const marginPercent =
+                    totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+                  return marginPercent.toFixed(1);
+                })()}
+                %
+              </div>
+            </div>
+          </div>
+        </div>
+      </PermissionGate>
+
+      {/* Graphique des ventes */}
+      <div style={{ marginBottom: "30px" }}>
+        <SalesChart data={salesByDay} />
+      </div>
+
+      {/* Section inférieure - 2 colonnes */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "2fr 1fr",
+          gridTemplateColumns: "1fr 1fr",
           gap: "20px",
           marginBottom: "30px",
         }}
       >
-        {/* Graphique des ventes */}
-        <SalesChart data={salesByDay} title="📈 Évolution des ventes" />
-
-        {/* Alertes et infos */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-          {/* Crédits en cours */}
-          {stats.activeCreditsCount > 0 && (
-            <div
-              style={{
-                background: "var(--color-surface)",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "2px solid #f59e0b",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "10px",
-                }}
-              >
-                <AlertCircle size={20} color="#f59e0b" />
-                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "600" }}>
-                  Crédits en cours
-                </h3>
-              </div>
-              <div
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  color: "#f59e0b",
-                  marginBottom: "5px",
-                }}
-              >
-                {stats.totalCreditsAmount.toLocaleString()} FCFA
-              </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "var(--color-text-secondary)",
-                }}
-              >
-                {stats.activeCreditsCount} crédits actifs
-              </div>
-            </div>
-          )}
-
-          {/* Stock faible */}
-          {stats.lowStock > 0 && (
-            <div
-              style={{
-                background: "var(--color-surface)",
-                padding: "20px",
-                borderRadius: "12px",
-                border: "2px solid #ef4444",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "10px",
-                }}
-              >
-                <AlertCircle size={20} color="#ef4444" />
-                <h3 style={{ margin: 0, fontSize: "16px", fontWeight: "600" }}>
-                  Alerte stock
-                </h3>
-              </div>
-              <div
-                style={{
-                  fontSize: "24px",
-                  fontWeight: "bold",
-                  color: "#ef4444",
-                  marginBottom: "5px",
-                }}
-              >
-                {stats.lowStock} produits
-              </div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "var(--color-text-secondary)",
-                }}
-              >
-                En rupture ou stock faible
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Top produits */}
-      <div
-        style={{
-          background: "var(--color-surface)",
-          padding: "25px",
-          borderRadius: "12px",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <h3
+        {/* Top 5 produits */}
+        <div
           style={{
-            margin: "0 0 20px 0",
-            fontSize: "18px",
-            fontWeight: "600",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
+            background: "var(--color-surface)",
+            padding: "25px",
+            borderRadius: "12px",
+            border: "1px solid var(--color-border)",
           }}
         >
-          <Award size={24} color="#f59e0b" />
-          Top 5 des produits les plus vendus
-        </h3>
+          <h3
+            style={{
+              margin: "0 0 20px 0",
+              fontSize: "18px",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <Award size={20} />
+            Top 5 Produits
+          </h3>
 
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "left",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Rang
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "left",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Produit
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "right",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Quantité vendue
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "right",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Chiffre d'affaires
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {topProducts.map((product, index) => (
-              <tr
-                key={product.name}
-                style={{ borderBottom: "1px solid var(--color-border)" }}
-              >
-                <td style={{ padding: "15px" }}>
-                  <span
+          {topProducts.length === 0 ? (
+            <p
+              style={{
+                color: "var(--color-text-secondary)",
+                textAlign: "center",
+              }}
+            >
+              Aucune vente sur cette période
+            </p>
+          ) : (
+            <div
+              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+            >
+              {topProducts.map((product, index) => (
+                <div
+                  key={product.name}
+                  style={{
+                    padding: "15px",
+                    background: "var(--color-bg)",
+                    borderRadius: "8px",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                  }}
+                >
+                  <div
                     style={{
-                      display: "inline-block",
-                      width: "30px",
-                      height: "30px",
-                      borderRadius: "50%",
-                      background:
-                        index === 0
-                          ? "#f59e0b"
-                          : index === 1
-                          ? "#9ca3af"
-                          : index === 2
-                          ? "#cd7f32"
-                          : "var(--color-surface-hover)",
-                      color: index < 3 ? "white" : "var(--color-text-primary)",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: "bold",
-                      fontSize: "14px",
+                      gap: "12px",
                     }}
                   >
-                    {index + 1}
-                  </span>
-                </td>
-                <td style={{ padding: "15px", fontWeight: "500" }}>
-                  {product.name}
-                </td>
-                <td
+                    <div
+                      style={{
+                        width: "32px",
+                        height: "32px",
+                        borderRadius: "50%",
+                        background:
+                          index === 0
+                            ? "linear-gradient(135deg, #f59e0b, #d97706)"
+                            : index === 1
+                            ? "linear-gradient(135deg, #94a3b8, #64748b)"
+                            : index === 2
+                            ? "linear-gradient(135deg, #cd7f32, #b8732d)"
+                            : "var(--color-border)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
+                        fontWeight: "bold",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {index + 1}
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: "600" }}>{product.name}</div>
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "var(--color-text-secondary)",
+                        }}
+                      >
+                        {product.quantity} vendus
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div style={{ fontWeight: "bold", color: "#10b981" }}>
+                      {product.revenue.toLocaleString()} FCFA
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Stock & Alertes */}
+        <div
+          style={{
+            background: "var(--color-surface)",
+            padding: "25px",
+            borderRadius: "12px",
+            border: "1px solid var(--color-border)",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 20px 0",
+              fontSize: "18px",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <Package size={20} />
+            Inventaire
+          </h3>
+
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "15px" }}
+          >
+            <div
+              style={{
+                padding: "15px",
+                background: "var(--color-bg)",
+                borderRadius: "8px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "var(--color-text-secondary)",
+                  marginBottom: "5px",
+                }}
+              >
+                Total produits
+              </div>
+              <div style={{ fontSize: "24px", fontWeight: "bold" }}>
+                {stats.totalStock} unités
+              </div>
+            </div>
+
+            <div
+              style={{
+                padding: "15px",
+                background: "var(--color-bg)",
+                borderRadius: "8px",
+              }}
+            >
+              <div
+                style={{
+                  fontSize: "14px",
+                  color: "var(--color-text-secondary)",
+                  marginBottom: "5px",
+                }}
+              >
+                Valeur du stock
+              </div>
+              <div
+                style={{
+                  fontSize: "24px",
+                  fontWeight: "bold",
+                  color: "#3b82f6",
+                }}
+              >
+                {stats.stockValue.toLocaleString()} FCFA
+              </div>
+            </div>
+
+            {stats.lowStock > 0 && (
+              <div
+                style={{
+                  padding: "15px",
+                  background: "rgba(239, 68, 68, 0.1)",
+                  border: "2px solid #ef4444",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                }}
+              >
+                <AlertCircle size={24} color="#ef4444" />
+                <div>
+                  <div style={{ fontWeight: "600", color: "#ef4444" }}>
+                    {stats.lowStock} produit(s) en stock faible
+                  </div>
+                  <div style={{ fontSize: "13px", color: "#991b1b" }}>
+                    Réapprovisionnement nécessaire
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {stats.activeCreditsCount > 0 && (
+              <div
+                style={{
+                  padding: "15px",
+                  background: "rgba(245, 158, 11, 0.1)",
+                  border: "2px solid #f59e0b",
+                  borderRadius: "8px",
+                }}
+              >
+                <div
                   style={{
-                    padding: "15px",
-                    textAlign: "right",
+                    fontSize: "14px",
+                    color: "#d97706",
+                    marginBottom: "5px",
                     fontWeight: "600",
-                    color: "var(--color-primary)",
                   }}
                 >
-                  {product.quantity} unités
-                </td>
-                <td
-                  style={{
-                    padding: "15px",
-                    textAlign: "right",
-                    fontWeight: "bold",
-                    fontSize: "16px",
-                  }}
-                >
-                  {Math.round(product.revenue).toLocaleString()} FCFA
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {/* NOUVELLE SECTION - Analyses Avancées */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-          gap: "20px",
-          marginTop: "30px",
-        }}
-      >
-        {/* Marges bénéficiaires */}
-        <div
-          style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "18px",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            💰 Marges Bénéficiaires
-          </h3>
-
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-              color: "#10b981",
-              marginBottom: "10px",
-            }}
-          >
-            {(() => {
-              const totalProfit = periodSales.reduce((sum, sale) => {
-                return (
-                  sum +
-                  (sale.items?.reduce((itemSum, item) => {
-                    const product = productCatalog.find(
-                      (p) => p.id === item.productId
-                    );
-                    if (product) {
-                      const profit =
-                        (item.unitPrice - product.costPrice) * item.quantity;
-                      return itemSum + profit;
-                    }
-                    return itemSum;
-                  }, 0) || 0)
-                );
-              }, 0);
-              return Math.round(totalProfit).toLocaleString();
-            })()}{" "}
-            FCFA
-          </div>
-
-          <div
-            style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}
-          >
-            Profit total sur la période
-          </div>
-
-          <div
-            style={{
-              marginTop: "15px",
-              padding: "10px",
-              background: "var(--color-bg)",
-              borderRadius: "8px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: "var(--color-text-muted)",
-                marginBottom: "5px",
-              }}
-            >
-              Marge moyenne
-            </div>
-            <div
-              style={{ fontSize: "20px", fontWeight: "bold", color: "#10b981" }}
-            >
-              {(() => {
-                const totalRevenue = stats.totalRevenue;
-                const totalProfit = periodSales.reduce((sum, sale) => {
-                  return (
-                    sum +
-                    (sale.items?.reduce((itemSum, item) => {
-                      const product = productCatalog.find(
-                        (p) => p.id === item.productId
-                      );
-                      if (product) {
-                        const profit =
-                          (item.unitPrice - product.costPrice) * item.quantity;
-                        return itemSum + profit;
-                      }
-                      return itemSum;
-                    }, 0) || 0)
-                  );
-                }, 0);
-                const marginPercent =
-                  totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-                return marginPercent.toFixed(1);
-              })()}
-              %
-            </div>
-          </div>
-        </div>
-
-        {/* Rotation des stocks */}
-        <div
-          style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "18px",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            🔄 Rotation des Stocks
-          </h3>
-
-          <div
-            style={{
-              fontSize: "32px",
-              fontWeight: "bold",
-              color: "#3b82f6",
-              marginBottom: "10px",
-            }}
-          >
-            {(() => {
-              const totalSold = periodSales.reduce((sum, sale) => {
-                return (
-                  sum +
-                  (sale.items?.reduce(
-                    (itemSum, item) => itemSum + item.quantity,
-                    0
-                  ) || 0)
-                );
-              }, 0);
-              const avgStock = stats.totalStock;
-              const daysInPeriod = Math.max(
-                1,
-                Math.ceil((end - start) / (1000 * 60 * 60 * 24))
-              );
-              const turnover =
-                avgStock > 0
-                  ? (totalSold / avgStock) * (365 / daysInPeriod)
-                  : 0;
-              return turnover.toFixed(1);
-            })()}
-            x
-          </div>
-
-          <div
-            style={{ fontSize: "14px", color: "var(--color-text-secondary)" }}
-          >
-            Fois par an (estimé)
-          </div>
-
-          <div
-            style={{
-              marginTop: "15px",
-              padding: "10px",
-              background: "var(--color-bg)",
-              borderRadius: "8px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "12px",
-                color: "var(--color-text-muted)",
-                marginBottom: "5px",
-              }}
-            >
-              Unités vendues / période
-            </div>
-            <div
-              style={{ fontSize: "20px", fontWeight: "bold", color: "#3b82f6" }}
-            >
-              {periodSales.reduce((sum, sale) => {
-                return (
-                  sum +
-                  (sale.items?.reduce(
-                    (itemSum, item) => itemSum + item.quantity,
-                    0
-                  ) || 0)
-                );
-              }, 0)}{" "}
-              unités
-            </div>
-          </div>
-        </div>
-
-        {/* Analyse par catégorie */}
-        <div
-          style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "18px",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            📂 Performance par Catégorie
-          </h3>
-
-          {(() => {
-            const categorySales = {};
-
-            periodSales.forEach((sale) => {
-              sale.items?.forEach((item) => {
-                const product = productCatalog.find(
-                  (p) => p.id === item.productId
-                );
-                const category = product?.category || "Autre";
-
-                if (categorySales[category]) {
-                  categorySales[category] +=
-                    item.total || item.quantity * item.unitPrice;
-                } else {
-                  categorySales[category] =
-                    item.total || item.quantity * item.unitPrice;
-                }
-              });
-            });
-
-            const topCategory = Object.entries(categorySales).sort(
-              (a, b) => b[1] - a[1]
-            )[0];
-
-            return (
-              <>
+                  Crédits actifs
+                </div>
                 <div
                   style={{
                     fontSize: "24px",
                     fontWeight: "bold",
-                    color: "#8b5cf6",
-                    marginBottom: "10px",
+                    color: "#f59e0b",
                   }}
                 >
-                  {topCategory ? topCategory[0] : "N/A"}
+                  {stats.totalCreditsAmount.toLocaleString()} FCFA
                 </div>
-
                 <div
                   style={{
-                    fontSize: "14px",
-                    color: "var(--color-text-secondary)",
-                    marginBottom: "15px",
+                    fontSize: "13px",
+                    color: "#d97706",
+                    marginTop: "5px",
                   }}
                 >
-                  Catégorie la plus performante
+                  {stats.activeCreditsCount} client(s)
                 </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-                <div
+      {/* ✨ Tableau des profits par produit - Visible seulement pour Admin et Manager */}
+      <PermissionGate roles={["admin", "manager"]}>
+        <div
+          style={{
+            background: "var(--color-surface)",
+            padding: "25px",
+            borderRadius: "12px",
+            border: "1px solid var(--color-border)",
+            marginBottom: "30px",
+          }}
+        >
+          <h3
+            style={{
+              margin: "0 0 20px 0",
+              fontSize: "18px",
+              fontWeight: "600",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+            }}
+          >
+            <Eye size={20} color="#10b981" />
+            Analyse de Rentabilité par Produit
+          </h3>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr
                   style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: "8px",
+                    background: "var(--color-bg)",
+                    borderBottom: "2px solid var(--color-border)",
                   }}
                 >
-                  {Object.entries(categorySales)
-                    .sort((a, b) => b[1] - a[1])
-                    .slice(0, 4)
-                    .map(([cat, amount]) => (
-                      <div
-                        key={cat}
+                  <th
+                    style={{
+                      padding: "12px",
+                      textAlign: "left",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Produit
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px",
+                      textAlign: "right",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Quantité vendue
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px",
+                      textAlign: "right",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Marge unitaire
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px",
+                      textAlign: "right",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Profit total
+                  </th>
+                  <th
+                    style={{
+                      padding: "12px",
+                      textAlign: "right",
+                      fontSize: "14px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Marge %
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(() => {
+                  const productProfits = {};
+
+                  periodSales.forEach((sale) => {
+                    sale.items?.forEach((item) => {
+                      const product = productCatalog.find(
+                        (p) => p.id === item.productId
+                      );
+                      if (product) {
+                        const unitMargin = item.unitPrice - product.costPrice;
+                        const totalProfit = unitMargin * item.quantity;
+                        const marginPercent =
+                          (unitMargin / item.unitPrice) * 100;
+
+                        if (productProfits[product.id]) {
+                          productProfits[product.id].quantity += item.quantity;
+                          productProfits[product.id].totalProfit += totalProfit;
+                        } else {
+                          productProfits[product.id] = {
+                            name: product.name,
+                            unitMargin,
+                            quantity: item.quantity,
+                            totalProfit,
+                            marginPercent,
+                          };
+                        }
+                      }
+                    });
+                  });
+
+                  return Object.values(productProfits)
+                    .sort((a, b) => b.totalProfit - a.totalProfit)
+                    .slice(0, 10)
+                    .map((product) => (
+                      <tr
+                        key={product.name}
                         style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
+                          borderBottom: "1px solid var(--color-border)",
                         }}
                       >
-                        <span
+                        <td style={{ padding: "12px", fontWeight: "500" }}>
+                          {product.name}
+                        </td>
+                        <td
                           style={{
-                            fontSize: "13px",
+                            padding: "12px",
+                            textAlign: "right",
                             color: "var(--color-text-secondary)",
                           }}
                         >
-                          {cat}
-                        </span>
-                        <span style={{ fontSize: "14px", fontWeight: "600" }}>
-                          {Math.round(amount).toLocaleString()} F
-                        </span>
-                      </div>
-                    ))}
-                </div>
-              </>
-            );
-          })()}
+                          {product.quantity}
+                        </td>
+                        <td
+                          style={{
+                            padding: "12px",
+                            textAlign: "right",
+                            fontWeight: "600",
+                            color: "#3b82f6",
+                          }}
+                        >
+                          {product.unitMargin.toLocaleString()} FCFA
+                        </td>
+                        <td
+                          style={{
+                            padding: "12px",
+                            textAlign: "right",
+                            fontWeight: "bold",
+                            color: "#10b981",
+                          }}
+                        >
+                          {product.totalProfit.toLocaleString()} FCFA
+                        </td>
+                        <td
+                          style={{
+                            padding: "12px",
+                            textAlign: "right",
+                            fontWeight: "600",
+                          }}
+                        >
+                          <span
+                            style={{
+                              padding: "4px 12px",
+                              borderRadius: "12px",
+                              background:
+                                product.marginPercent > 30
+                                  ? "#dcfce7"
+                                  : product.marginPercent > 15
+                                  ? "#fef3c7"
+                                  : "#fee2e2",
+                              color:
+                                product.marginPercent > 30
+                                  ? "#166534"
+                                  : product.marginPercent > 15
+                                  ? "#92400e"
+                                  : "#991b1b",
+                            }}
+                          >
+                            {product.marginPercent.toFixed(1)}%
+                          </span>
+                        </td>
+                      </tr>
+                    ));
+                })()}
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
-
-      {/* Produits les plus rentables */}
-      <div
-        style={{
-          background: "var(--color-surface)",
-          padding: "25px",
-          borderRadius: "12px",
-          border: "1px solid var(--color-border)",
-          marginTop: "30px",
-        }}
-      >
-        <h3
-          style={{
-            margin: "0 0 20px 0",
-            fontSize: "18px",
-            fontWeight: "600",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
-          💎 Top 5 des produits les plus rentables
-        </h3>
-
-        <table style={{ width: "100%", borderCollapse: "collapse" }}>
-          <thead>
-            <tr style={{ borderBottom: "2px solid var(--color-border)" }}>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "left",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Produit
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "right",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Marge unitaire
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "right",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Quantité vendue
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "right",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Profit total
-              </th>
-              <th
-                style={{
-                  padding: "12px",
-                  textAlign: "right",
-                  fontSize: "14px",
-                  fontWeight: "600",
-                }}
-              >
-                Marge %
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {(() => {
-              const productProfits = {};
-
-              periodSales.forEach((sale) => {
-                sale.items?.forEach((item) => {
-                  const product = productCatalog.find(
-                    (p) => p.id === item.productId
-                  );
-                  if (product) {
-                    const unitMargin = item.unitPrice - product.costPrice;
-                    const totalProfit = unitMargin * item.quantity;
-                    const marginPercent = (unitMargin / item.unitPrice) * 100;
-
-                    if (productProfits[product.id]) {
-                      productProfits[product.id].quantity += item.quantity;
-                      productProfits[product.id].totalProfit += totalProfit;
-                    } else {
-                      productProfits[product.id] = {
-                        name: product.name,
-                        unitMargin,
-                        quantity: item.quantity,
-                        totalProfit,
-                        marginPercent,
-                      };
-                    }
-                  }
-                });
-              });
-
-              return Object.values(productProfits)
-                .sort((a, b) => b.totalProfit - a.totalProfit)
-                .slice(0, 5)
-                .map((product, index) => (
-                  <tr
-                    key={index}
-                    style={{ borderBottom: "1px solid var(--color-border)" }}
-                  >
-                    <td style={{ padding: "15px", fontWeight: "500" }}>
-                      {product.name}
-                    </td>
-                    <td
-                      style={{
-                        padding: "15px",
-                        textAlign: "right",
-                        color: "#10b981",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {Math.round(product.unitMargin).toLocaleString()} FCFA
-                    </td>
-                    <td style={{ padding: "15px", textAlign: "right" }}>
-                      {product.quantity} unités
-                    </td>
-                    <td
-                      style={{
-                        padding: "15px",
-                        textAlign: "right",
-                        fontWeight: "bold",
-                        fontSize: "16px",
-                        color: "#10b981",
-                      }}
-                    >
-                      {Math.round(product.totalProfit).toLocaleString()} FCFA
-                    </td>
-                    <td style={{ padding: "15px", textAlign: "right" }}>
-                      <span
-                        style={{
-                          padding: "4px 8px",
-                          borderRadius: "6px",
-                          background:
-                            product.marginPercent > 30
-                              ? "#d1fae5"
-                              : product.marginPercent > 20
-                              ? "#fef3c7"
-                              : "#fee2e2",
-                          color:
-                            product.marginPercent > 30
-                              ? "#065f46"
-                              : product.marginPercent > 20
-                              ? "#92400e"
-                              : "#991b1b",
-                          fontWeight: "600",
-                          fontSize: "13px",
-                        }}
-                      >
-                        {product.marginPercent.toFixed(1)}%
-                      </span>
-                    </td>
-                  </tr>
-                ));
-            })()}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Heures de pointe */}
-      <div
-        style={{
-          background: "var(--color-surface)",
-          padding: "25px",
-          borderRadius: "12px",
-          border: "1px solid var(--color-border)",
-          marginTop: "30px",
-        }}
-      >
-        <h3
-          style={{
-            margin: "0 0 20px 0",
-            fontSize: "18px",
-            fontWeight: "600",
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-          }}
-        >
-          ⏰ Heures de Pointe
-        </h3>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))",
-            gap: "10px",
-          }}
-        >
-          {(() => {
-            const hoursSales = {};
-
-            periodSales.forEach((sale) => {
-              const hour = new Date(sale.createdAt).getHours();
-              hoursSales[hour] = (hoursSales[hour] || 0) + 1;
-            });
-
-            const maxSales = Math.max(...Object.values(hoursSales), 1);
-
-            return Array.from({ length: 24 }, (_, hour) => {
-              const sales = hoursSales[hour] || 0;
-              const intensity = sales / maxSales;
-
-              return (
-                <div
-                  key={hour}
-                  style={{
-                    padding: "10px",
-                    background:
-                      sales > 0
-                        ? `rgba(59, 130, 246, ${0.1 + intensity * 0.9})`
-                        : "var(--color-bg)",
-                    borderRadius: "8px",
-                    textAlign: "center",
-                    border: "1px solid var(--color-border)",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: "600",
-                      color:
-                        intensity > 0.5 ? "white" : "var(--color-text-primary)",
-                      marginBottom: "4px",
-                    }}
-                  >
-                    {hour}h
-                  </div>
-                  <div
-                    style={{
-                      fontSize: "16px",
-                      fontWeight: "bold",
-                      color: intensity > 0.5 ? "white" : "var(--color-primary)",
-                    }}
-                  >
-                    {sales}
-                  </div>
-                </div>
-              );
-            });
-          })()}
-        </div>
-
-        <div
-          style={{
-            marginTop: "15px",
-            padding: "10px",
-            background: "var(--color-bg)",
-            borderRadius: "8px",
-            fontSize: "13px",
-            color: "var(--color-text-secondary)",
-            textAlign: "center",
-          }}
-        >
-          💡 Plus la case est foncée, plus l'activité est élevée à cette heure
-        </div>
-      </div>
+      </PermissionGate>
     </div>
   );
 }
+
 function DashboardPageProtected() {
   return (
     <ProtectedRoute>
