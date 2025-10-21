@@ -1,6 +1,7 @@
-import ProtectedRoute from "../components/ProtectedRoute";
 import { useState, useEffect } from "react";
 import { useApp } from "../src/contexts/AppContext";
+import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTÉ
+import PermissionGate from "../components/PermissionGate"; // ✨ AJOUTÉ
 import {
   ShoppingCart,
   Plus,
@@ -19,7 +20,7 @@ import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
 
-function POSPage() {
+export default function POSPage() {
   const {
     productCatalog,
     recordSale,
@@ -32,6 +33,7 @@ function POSPage() {
     currentStore,
     salesHistory: currentStoreSales,
   } = useApp();
+  const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Toutes");
@@ -51,11 +53,9 @@ function POSPage() {
   const [showKeypad, setShowKeypad] = useState(false);
   const [creditDueDate, setCreditDueDate] = useState("");
 
-  // État pour le scan
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
 
-  // Calculer les produits les plus vendus avec statistiques
   const getTopProducts = () => {
     const productSales = {};
 
@@ -84,7 +84,6 @@ function POSPage() {
 
   const topProducts = getTopProducts();
 
-  // Détecter le scan de code-barres
   useEffect(() => {
     const handleKeyDown = (e) => {
       const now = Date.now();
@@ -129,7 +128,6 @@ function POSPage() {
     }
   };
 
-  // Raccourcis clavier
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "F1") {
@@ -416,76 +414,6 @@ function POSPage() {
     }
   };
 
-  const handleCompleteSale = async (paymentData) => {
-    setIsProcessing(true);
-
-    try {
-      const saleData = {
-        storeId: currentStore?.id,
-        items: cart.map((item) => ({
-          productId: item.id,
-          productName: item.name,
-          quantity: item.quantity,
-          unitPrice: item.sellingPrice,
-          total: item.quantity * item.sellingPrice,
-        })),
-        total: calculateTotal(),
-        paymentMethod: paymentData.method,
-        amountPaid: paymentData.amountPaid || calculateTotal(),
-        change: paymentData.change || 0,
-        customerId: selectedCustomer?.id || null,
-        customerName: selectedCustomer?.name || null,
-        cashier: "Admin",
-        createdAt: new Date().toISOString(),
-      };
-
-      if (paymentData.method === "credit" && paymentData.creditData) {
-        saleData.creditAmount = paymentData.creditData.amount;
-        saleData.creditDueDate = paymentData.creditData.dueDate;
-      }
-
-      const res = await fetch("/api/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(saleData),
-      });
-
-      if (!res.ok) {
-        throw new Error("Erreur lors de l'enregistrement");
-      }
-
-      const savedSale = await res.json();
-
-      addSaleOptimistic(savedSale);
-
-      const stockUpdates = cart.map((item) => ({
-        productId: item.id,
-        quantitySold: item.quantity,
-      }));
-      updateMultipleProductStocksOptimistic(stockUpdates);
-
-      if (paymentData.method === "credit" && savedSale.credit) {
-        addCreditOptimistic(savedSale.credit);
-      }
-
-      setCart([]);
-      setSelectedCustomer(null);
-      setShowReceipt(false);
-
-      if (paymentData.printReceipt) {
-        setLastSale(savedSale);
-        setShowReceipt(true);
-      }
-
-      showToast("Vente enregistrée avec succès ! ✓", "success");
-    } catch (error) {
-      console.error("Erreur vente:", error);
-      showToast("Erreur lors de la vente", "error");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const calculateChange = () => {
     const received = parseFloat(cashReceived) || 0;
     return Math.max(0, received - total);
@@ -588,6 +516,8 @@ function POSPage() {
                 </div>
               </div>
             </div>
+
+            {/* ✨ MODIFIÉ - Bouton Fermer caisse accessible à tous les utilisateurs */}
             <button
               onClick={() => setShowCloseModal(true)}
               style={{
@@ -832,6 +762,20 @@ function POSPage() {
                     >
                       {product.sellingPrice.toLocaleString()} FCFA
                     </div>
+
+                    {/* ✨ AJOUTÉ - Info stock visible seulement pour Admin et Manager */}
+                    <PermissionGate roles={["admin", "manager"]}>
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          color: "var(--color-text-muted)",
+                          marginTop: "2px",
+                        }}
+                      >
+                        Stock: {product.stock}
+                      </div>
+                    </PermissionGate>
+
                     <div
                       style={{
                         fontSize: "11px",
@@ -933,15 +877,32 @@ function POSPage() {
                 >
                   {product.sellingPrice.toLocaleString()} FCFA
                 </div>
-                <div
-                  style={{
-                    fontSize: "12px",
-                    color: "var(--color-text-secondary)",
-                    marginTop: "4px",
-                  }}
-                >
-                  Stock: {product.stock}
-                </div>
+
+                {/* ✨ MODIFIÉ - Info stock visible seulement pour Admin et Manager */}
+                <PermissionGate roles={["admin", "manager"]}>
+                  <div
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--color-text-secondary)",
+                      marginTop: "4px",
+                    }}
+                  >
+                    Stock: {product.stock}
+                  </div>
+                </PermissionGate>
+
+                {/* ✨ AJOUTÉ - Prix d'achat visible seulement pour Admin */}
+                <PermissionGate roles={["admin"]}>
+                  <div
+                    style={{
+                      fontSize: "11px",
+                      color: "var(--color-text-muted)",
+                      marginTop: "2px",
+                    }}
+                  >
+                    PA: {product.costPrice.toLocaleString()} FCFA
+                  </div>
+                </PermissionGate>
               </div>
             </div>
           ))}
@@ -1745,12 +1706,3 @@ function POSPage() {
     </div>
   );
 }
-function POSPageProtected() {
-  return (
-    <ProtectedRoute>
-      <POSPage />
-    </ProtectedRoute>
-  );
-}
-
-export default POSPageProtected;
