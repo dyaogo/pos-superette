@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
+import { useOnline } from './OnlineContext'; // ✨ AJOUTÉ
+import { offlineDB } from '../utils/offlineDB'; // ✨ AJOUTÉ
 
 const AppContext = createContext();
 
@@ -22,6 +24,7 @@ export function AppProvider({ children }) {
     }
   }, [initialized]); // MODIFIÉ
 
+  
   const initializeApp = async () => {
     setLoading(true);
     try {
@@ -55,57 +58,81 @@ export function AppProvider({ children }) {
     }
   };
 
-const loadData = async (force = false) => {
-  // ✨ Cache de 30 secondes - ne recharge pas si récent
-  const now = Date.now();
-  if (!force && lastLoadTime && (now - lastLoadTime) < 30000) {
-    console.log('📦 Données en cache, pas de rechargement');
-    return;
-  }
+const { isOnline, cacheData } = useOnline(); // ✨ AJOUTÉ
 
+// Modifier la fonction loadData pour sauvegarder en cache
+const loadData = async () => {
+  setLoading(true);
   try {
-    // Paralléliser tous les appels
-    const [storesRes, productsRes, salesRes, customersRes, creditsRes] = await Promise.all([
-      fetch('/api/stores'),
-      fetch('/api/products'),
-      fetch('/api/sales'),
-      fetch('/api/customers'),
-      fetch('/api/credits')
-    ]);
-    
-    // Traiter les réponses
-    const [storesData, productsData, salesData, customersData, creditsData] = await Promise.all([
-      storesRes.json(),
-      productsRes.json(),
-      salesRes.json(),
-      customersRes.json(),
-      creditsRes.json()
-    ]);
-    
-    // Mettre à jour les états
-    setStores(storesData);
-    
-    // Si currentStore existe, le mettre à jour avec les nouvelles données
-    if (currentStore) {
-      const updatedCurrentStore = storesData.find(s => s.id === currentStore.id);
-      if (updatedCurrentStore) {
-        setCurrentStore(updatedCurrentStore);
-      }
+    // Si en ligne, charger depuis l'API
+    if (isOnline) {
+      const [productsRes, salesRes, customersRes, creditsRes, storesRes] = await Promise.all([
+        fetch('/api/products'),
+        fetch('/api/sales'),
+        fetch('/api/customers'),
+        fetch('/api/credits'),
+        fetch('/api/stores')
+      ]);
+
+      const products = await productsRes.json();
+      const sales = await salesRes.json();
+      const customers = await customersRes.json();
+      const credits = await creditsRes.json();
+      const stores = await storesRes.json();
+
+      setProductCatalog(products);
+      setSalesHistory(sales);
+      setCustomers(customers);
+      setCredits(credits);
+      setStores(stores);
+
+      // ✨ SAUVEGARDER EN CACHE
+      await cacheData({ products, customers, credits });
+      
+    } else {
+      // ✨ Si hors ligne, charger depuis IndexedDB
+      console.log('📂 Chargement depuis le cache local...');
+      const products = await offlineDB.getProducts();
+      const customers = await offlineDB.getCustomers();
+      const credits = await offlineDB.getCredits();
+
+      setProductCatalog(products);
+      setCustomers(customers);
+      setCredits(credits);
+      
+      console.log(`✅ ${products.length} produits chargés du cache`);
     }
-    
-    // Trier les produits
-    const sortedProducts = productsData.sort((a, b) => 
-      a.name.localeCompare(b.name)
-    );
-    
-    setProductCatalog(sortedProducts);
-    setSalesHistory(salesData);
-    setCustomers(customersData);
-    setCredits(creditsData);
-    
-    setLastLoadTime(now); // ✨ AJOUTEZ CETTE LIGNE À LA FIN
   } catch (error) {
     console.error('Erreur chargement données:', error);
+    
+    // ✨ En cas d'erreur, essayer de charger depuis le cache
+    try {
+      const products = await offlineDB.getProducts();
+      const customers = await offlineDB.getCustomers();
+      const credits = await offlineDB.getCredits();
+      
+      if (products.length > 0) {
+        setProductCatalog(products);
+        setCustomers(customers);
+        setCredits(credits);
+        console.log('✅ Données chargées depuis le cache de secours');
+      }
+    } catch (cacheError) {
+      console.error('Erreur chargement cache:', cacheError);
+    }
+  } 
+  // ✨ AJOUTER - Sauvegarder en cache pour utilisation hors ligne
+try {
+  const { offlineDB } = await import('../utils/offlineDB');
+  await offlineDB.saveProducts(products);
+  await offlineDB.saveCustomers(customers);
+  await offlineDB.saveCredits(credits);
+  console.log('💾 Données mises en cache pour utilisation hors ligne');
+} catch (cacheError) {
+  console.warn('Erreur sauvegarde cache:', cacheError);
+}
+  finally {
+    setLoading(false);
   }
 };
   // Changer de magasin - OPTIMISÉ
