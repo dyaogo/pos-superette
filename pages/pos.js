@@ -1,4 +1,4 @@
-//import { useOnline } from "../src/contexts/OnlineContext"; // ✨ AJOUTÉ
+import { useOnline } from "../src/contexts/OnlineContext"; // ✨ AJOUTÉ
 import { useState, useEffect, useMemo } from "react";
 import { useApp } from "../src/contexts/AppContext";
 import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTÉ
@@ -35,6 +35,7 @@ export default function POSPage() {
     salesHistory: currentStoreSales,
   } = useApp();
   const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
+  const { isOnline } = useOnline(); // ✨ AJOUTER
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Toutes");
@@ -263,20 +264,52 @@ export default function POSPage() {
       console.log("📤 Envoi de la vente:", saleData);
 
       // Envoyer à l'API
-      const response = await fetch("/api/sales", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(saleData),
-      });
+      let newSale = null;
+      let savedOffline = false;
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("❌ Erreur API:", errorData);
-        throw new Error(errorData.error || "Erreur serveur");
+      try {
+        // Essayer d'enregistrer en ligne
+        const response = await fetch("/api/sales", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(saleData),
+        });
+
+        if (response.ok) {
+          newSale = await response.json();
+          console.log("✅ Vente enregistrée en ligne:", newSale);
+        } else {
+          throw new Error("Erreur API");
+        }
+      } catch (apiError) {
+        console.warn(
+          "⚠️ Impossible d'enregistrer en ligne, sauvegarde hors ligne...",
+          apiError
+        );
+
+        // Fallback : Sauvegarder hors ligne
+        try {
+          const { offlineDB } = await import("../src/utils/offlineDB");
+          const offlineId = await offlineDB.addPendingSale(saleData);
+
+          newSale = {
+            ...saleData,
+            id: offlineId,
+            createdAt: new Date().toISOString(),
+            synced: false,
+          };
+
+          savedOffline = true;
+          console.log("💾 Vente enregistrée hors ligne");
+        } catch (offlineError) {
+          console.error("❌ Erreur sauvegarde hors ligne:", offlineError);
+          throw new Error("Impossible d'enregistrer la vente");
+        }
       }
 
-      const newSale = await response.json();
-      console.log("✅ Vente enregistrée:", newSale);
+      if (!newSale) {
+        throw new Error("Aucune vente créée");
+      }
 
       // Créer un crédit si nécessaire
       if (paymentMethod === "credit" && selectedCustomer) {
@@ -314,7 +347,12 @@ export default function POSPage() {
       await reloadData();
 
       // Afficher le toast
-      setToast({ message: "Vente enregistrée avec succès !", type: "success" });
+      setToast({
+        message: savedOffline
+          ? "Vente enregistrée hors ligne - Sera synchronisée plus tard"
+          : "Vente enregistrée avec succès !",
+        type: savedOffline ? "warning" : "success",
+      });
       setTimeout(() => setToast(null), 3000);
     } catch (error) {
       console.error("❌ Erreur lors de la vente:", error);

@@ -1,17 +1,35 @@
 {
-  "short_name": "POS",
-  "name": "POS Superette",
-  "description": "Application de caisse pour superette",
+  "name": "POS Superette - Point de Vente",
+  "short_name": "POS Superette",
+  "description": "Application de caisse pour superette - Fonctionne hors ligne",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "theme_color": "#3b82f6",
   "background_color": "#ffffff",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
+  "categories": ["business", "productivity"],
+  "lang": "fr",
+  "dir": "ltr",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64",
-      "type": "image/x-icon"
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-1.png",
+      "sizes": "1280x720",
+      "type": "image/png"
     }
   ]
 }

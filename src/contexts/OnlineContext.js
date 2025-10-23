@@ -103,6 +103,38 @@ export function OnlineProvider({ children }) {
 
       await updatePendingCount();
       console.log("✅ Synchronisation terminée");
+
+      // ✨ Recharger la page après 1 seconde
+      setTimeout(() => {
+        if (typeof window !== "undefined") {
+          window.location.reload();
+        }
+      }, 1000);
+
+      // ✨ AJOUTER - Déclencher un événement pour recharger les données
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("syncCompleted", {
+            detail: {
+              salesSynced: pendingSales.length,
+              actionsSynced: syncQueue.length,
+            },
+          })
+        );
+      }
+
+      // ✨ AJOUTER - Notification de succès
+      const totalSynced = pendingSales.length + syncQueue.length;
+      if (
+        totalSynced > 0 &&
+        typeof window !== "undefined" &&
+        window.showToast
+      ) {
+        window.showToast(
+          `✅ ${totalSynced} élément(s) synchronisé(s)`,
+          "success"
+        );
+      }
     } catch (error) {
       console.error("Erreur globale de synchronisation:", error);
     } finally {

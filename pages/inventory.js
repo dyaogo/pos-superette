@@ -1,6 +1,8 @@
 import ProtectedRoute from "../components/ProtectedRoute";
+import PermissionGate from "../components/PermissionGate"; // ✨ AJOUTÉ
 import { useState } from "react";
 import { useApp } from "../src/contexts/AppContext";
+import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTÉ
 import ProductImportModal from "../components/ProductImportModal";
 import LoadingSpinner from "../components/LoadingSpinner";
 import {
@@ -14,12 +16,15 @@ import {
   X,
   Save,
   Upload,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import ImageUpload from "../components/ImageUpload";
 
 function InventoryPage() {
   const { productCatalog, addProduct, updateProduct, deleteProduct, loading } =
     useApp();
+  const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -41,7 +46,7 @@ function InventoryPage() {
 
       return matchesSearch && matchesCategory;
     })
-    .sort((a, b) => a.name.localeCompare(b.name)); // TRI ALPHABÉTIQUE AJOUTÉ
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   // Statistiques
   const totalProducts = productCatalog.length;
@@ -50,6 +55,13 @@ function InventoryPage() {
     0
   );
   const lowStockProducts = productCatalog.filter((p) => p.stock < 10).length;
+
+  // ✨ AJOUTÉ - Calculer la valeur d'achat et marge (Admin et Manager uniquement)
+  const totalCostValue = productCatalog.reduce(
+    (sum, p) => sum + p.costPrice * p.stock,
+    0
+  );
+  const totalMargin = totalValue - totalCostValue;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -61,43 +73,27 @@ function InventoryPage() {
       barcode: formData.get("barcode") || null,
       costPrice: parseFloat(formData.get("costPrice")),
       sellingPrice: parseFloat(formData.get("sellingPrice")),
-      stock: parseInt(formData.get("stock")) || 0,
-      image: formData.get("image") || null, // NOUVEAU
+      stock: parseInt(formData.get("stock")),
+      image: formData.get("image") || null,
     };
 
     if (editingProduct) {
-      const result = await updateProduct(editingProduct.id, productData);
-      if (result.success) {
-        alert("Produit modifié avec succès");
-        setEditingProduct(null);
-      } else {
-        alert("Erreur lors de la modification");
-      }
+      await updateProduct(editingProduct.id, productData);
+      setEditingProduct(null);
     } else {
-      const result = await addProduct(productData);
-      if (result.success) {
-        alert("Produit ajouté avec succès");
-        setShowAddModal(false);
-        e.target.reset();
-      } else {
-        alert("Erreur lors de l'ajout");
-      }
+      await addProduct(productData);
+      setShowAddModal(false);
     }
   };
 
-  const handleDelete = async (productId, productName) => {
-    if (!confirm(`Supprimer le produit "${productName}" ?`)) return;
-
-    const result = await deleteProduct(productId);
-    if (result.success) {
-      alert("Produit supprimé");
-    } else {
-      alert("Erreur lors de la suppression");
+  const handleDelete = async (id, name) => {
+    if (confirm(`Supprimer le produit "${name}" ?`)) {
+      await deleteProduct(id);
     }
   };
 
   if (loading) {
-    return <LoadingSpinner fullScreen />;
+    return <LoadingSpinner />;
   }
 
   return (
@@ -109,57 +105,64 @@ function InventoryPage() {
           justifyContent: "space-between",
           alignItems: "center",
           marginBottom: "30px",
+          flexWrap: "wrap",
+          gap: "15px",
         }}
       >
         <h1
           style={{
             margin: 0,
+            fontSize: "28px",
+            fontWeight: "bold",
             display: "flex",
             alignItems: "center",
             gap: "10px",
           }}
         >
           <Package size={32} />
-          Gestion de l'Inventaire
+          Inventaire
         </h1>
 
         <div style={{ display: "flex", gap: "10px" }}>
-          <button
-            onClick={() => setShowImportModal(true)}
-            style={{
-              padding: "12px 24px",
-              background: "var(--color-success)",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              gap: "8px",
-              fontSize: "16px",
-            }}
-          >
-            <Upload size={20} />
-            Importer Excel
-          </button>
+          {/* ✨ MODIFIÉ - Bouton Import Excel visible seulement pour Admin et Manager */}
+          <PermissionGate roles={["admin", "manager"]}>
+            <button
+              onClick={() => setShowImportModal(true)}
+              style={{
+                padding: "10px 20px",
+                background: "#10b981",
+                color: "white",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <Upload size={20} />
+              Importer Excel
+            </button>
+          </PermissionGate>
 
           <button
             onClick={() => setShowAddModal(true)}
             style={{
-              padding: "12px 24px",
-              background: "var(--color-primary)",
+              padding: "10px 20px",
+              background: "#3b82f6",
               color: "white",
               border: "none",
               borderRadius: "8px",
               cursor: "pointer",
+              fontWeight: "600",
               display: "flex",
               alignItems: "center",
               gap: "8px",
-              fontSize: "16px",
             }}
           >
             <Plus size={20} />
-            Ajouter Produit
+            Ajouter un produit
           </button>
         </div>
       </div>
@@ -168,15 +171,15 @@ function InventoryPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
           gap: "20px",
           marginBottom: "30px",
         }}
       >
         <div
           style={{
-            background: "var(--color-surface)",
             padding: "20px",
+            background: "var(--color-surface)",
             borderRadius: "12px",
             border: "1px solid var(--color-border)",
           }}
@@ -191,7 +194,11 @@ function InventoryPage() {
             Total produits
           </div>
           <div
-            style={{ fontSize: "32px", fontWeight: "bold", color: "#3b82f6" }}
+            style={{
+              fontSize: "32px",
+              fontWeight: "bold",
+              color: "var(--color-primary)",
+            }}
           >
             {totalProducts}
           </div>
@@ -199,8 +206,8 @@ function InventoryPage() {
 
         <div
           style={{
-            background: "var(--color-surface)",
             padding: "20px",
+            background: "var(--color-surface)",
             borderRadius: "12px",
             border: "1px solid var(--color-border)",
           }}
@@ -212,19 +219,93 @@ function InventoryPage() {
               fontSize: "14px",
             }}
           >
-            Valeur stock
+            Valeur stock (vente)
           </div>
           <div
-            style={{ fontSize: "32px", fontWeight: "bold", color: "#10b981" }}
+            style={{
+              fontSize: "32px",
+              fontWeight: "bold",
+              color: "#10b981",
+            }}
           >
             {totalValue.toLocaleString()} FCFA
           </div>
         </div>
 
+        {/* ✨ AJOUTÉ - Carte visible seulement pour Admin et Manager */}
+        <PermissionGate roles={["admin", "manager"]}>
+          <div
+            style={{
+              padding: "20px",
+              background: "var(--color-surface)",
+              borderRadius: "12px",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <div
+              style={{
+                color: "var(--color-text-secondary)",
+                marginBottom: "8px",
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <Eye size={16} />
+              Valeur stock (achat)
+            </div>
+            <div
+              style={{
+                fontSize: "32px",
+                fontWeight: "bold",
+                color: "#f59e0b",
+              }}
+            >
+              {totalCostValue.toLocaleString()} FCFA
+            </div>
+          </div>
+        </PermissionGate>
+
+        {/* ✨ AJOUTÉ - Marge totale visible seulement pour Admin et Manager */}
+        <PermissionGate roles={["admin", "manager"]}>
+          <div
+            style={{
+              padding: "20px",
+              background: "var(--color-surface)",
+              borderRadius: "12px",
+              border: "1px solid var(--color-border)",
+            }}
+          >
+            <div
+              style={{
+                color: "var(--color-text-secondary)",
+                marginBottom: "8px",
+                fontSize: "14px",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <TrendingDown size={16} />
+              Marge potentielle
+            </div>
+            <div
+              style={{
+                fontSize: "32px",
+                fontWeight: "bold",
+                color: "#8b5cf6",
+              }}
+            >
+              {totalMargin.toLocaleString()} FCFA
+            </div>
+          </div>
+        </PermissionGate>
+
         <div
           style={{
-            background: "var(--color-surface)",
             padding: "20px",
+            background: "var(--color-surface)",
             borderRadius: "12px",
             border: "1px solid var(--color-border)",
           }}
@@ -333,12 +414,19 @@ function InventoryPage() {
                 <th style={{ padding: "15px", textAlign: "left" }}>
                   Catégorie
                 </th>
-                <th style={{ padding: "15px", textAlign: "right" }}>
-                  Prix achat
-                </th>
+                {/* ✨ MODIFIÉ - Colonne Prix achat visible seulement pour Admin et Manager */}
+                <PermissionGate roles={["admin", "manager"]}>
+                  <th style={{ padding: "15px", textAlign: "right" }}>
+                    Prix achat
+                  </th>
+                </PermissionGate>
                 <th style={{ padding: "15px", textAlign: "right" }}>
                   Prix vente
                 </th>
+                {/* ✨ AJOUTÉ - Colonne Marge visible seulement pour Admin et Manager */}
+                <PermissionGate roles={["admin", "manager"]}>
+                  <th style={{ padding: "15px", textAlign: "right" }}>Marge</th>
+                </PermissionGate>
                 <th style={{ padding: "15px", textAlign: "center" }}>Stock</th>
                 <th style={{ padding: "15px", textAlign: "center" }}>
                   Actions
@@ -365,7 +453,6 @@ function InventoryPage() {
                         gap: "12px",
                       }}
                     >
-                      {/* Image du produit */}
                       {product.image ? (
                         <img
                           src={product.image}
@@ -375,7 +462,6 @@ function InventoryPage() {
                             height: "50px",
                             objectFit: "cover",
                             borderRadius: "8px",
-                            border: "1px solid var(--color-border)",
                           }}
                         />
                       ) : (
@@ -383,54 +469,88 @@ function InventoryPage() {
                           style={{
                             width: "50px",
                             height: "50px",
-                            background: "var(--color-surface-hover)",
+                            background: "#f3f4f6",
                             borderRadius: "8px",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "center",
-                            fontSize: "24px",
-                            border: "1px solid var(--color-border)",
                           }}
                         >
-                          📦
+                          <Package size={24} color="#9ca3af" />
                         </div>
                       )}
-
                       <div>
-                        <div style={{ fontWeight: "500" }}>{product.name}</div>
+                        <div style={{ fontWeight: "600" }}>{product.name}</div>
                         {product.barcode && (
                           <div
                             style={{
                               fontSize: "12px",
-                              color: "var(--color-text-muted)",
+                              color: "var(--color-text-secondary)",
                             }}
                           >
-                            {product.barcode}
+                            Code: {product.barcode}
                           </div>
                         )}
                       </div>
                     </div>
                   </td>
-                  <td style={{ padding: "15px" }}>{product.category}</td>
-                  <td style={{ padding: "15px", textAlign: "right" }}>
-                    {product.costPrice.toLocaleString()} FCFA
+                  <td style={{ padding: "15px" }}>
+                    <span
+                      style={{
+                        padding: "4px 12px",
+                        background: "#f3f4f6",
+                        borderRadius: "12px",
+                        fontSize: "13px",
+                      }}
+                    >
+                      {product.category}
+                    </span>
                   </td>
+                  {/* ✨ MODIFIÉ - Prix achat visible seulement pour Admin et Manager */}
+                  <PermissionGate roles={["admin", "manager"]}>
+                    <td
+                      style={{
+                        padding: "15px",
+                        textAlign: "right",
+                        color: "#f59e0b",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {product.costPrice.toLocaleString()} FCFA
+                    </td>
+                  </PermissionGate>
                   <td
                     style={{
                       padding: "15px",
                       textAlign: "right",
-                      fontWeight: "bold",
+                      color: "#10b981",
+                      fontWeight: "600",
                     }}
                   >
                     {product.sellingPrice.toLocaleString()} FCFA
                   </td>
+                  {/* ✨ AJOUTÉ - Marge visible seulement pour Admin et Manager */}
+                  <PermissionGate roles={["admin", "manager"]}>
+                    <td
+                      style={{
+                        padding: "15px",
+                        textAlign: "right",
+                        color: "#8b5cf6",
+                        fontWeight: "600",
+                      }}
+                    >
+                      {(
+                        product.sellingPrice - product.costPrice
+                      ).toLocaleString()}{" "}
+                      FCFA
+                    </td>
+                  </PermissionGate>
                   <td style={{ padding: "15px", textAlign: "center" }}>
                     <span
                       style={{
                         padding: "4px 12px",
                         borderRadius: "12px",
-                        fontSize: "14px",
-                        fontWeight: "500",
+                        fontWeight: "600",
                         background: product.stock < 10 ? "#fecaca" : "#dcfce7",
                         color: product.stock < 10 ? "#991b1b" : "#166534",
                       }}
@@ -463,23 +583,27 @@ function InventoryPage() {
                         <Edit size={16} />
                         Modifier
                       </button>
-                      <button
-                        onClick={() => handleDelete(product.id, product.name)}
-                        style={{
-                          padding: "8px 12px",
-                          background: "#ef4444",
-                          color: "white",
-                          border: "none",
-                          borderRadius: "6px",
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "4px",
-                        }}
-                      >
-                        <Trash2 size={16} />
-                        Supprimer
-                      </button>
+
+                      {/* ✨ MODIFIÉ - Bouton Supprimer visible seulement pour Admin */}
+                      <PermissionGate roles={["admin"]}>
+                        <button
+                          onClick={() => handleDelete(product.id, product.name)}
+                          style={{
+                            padding: "8px 12px",
+                            background: "#ef4444",
+                            color: "white",
+                            border: "none",
+                            borderRadius: "6px",
+                            cursor: "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "4px",
+                          }}
+                        >
+                          <Trash2 size={16} />
+                          Supprimer
+                        </button>
+                      </PermissionGate>
                     </div>
                   </td>
                 </tr>
@@ -523,6 +647,7 @@ function InventoryPage() {
     </div>
   );
 }
+
 function InventoryPageProtected() {
   return (
     <ProtectedRoute requiredPermission="manage_inventory">
@@ -533,7 +658,7 @@ function InventoryPageProtected() {
 
 export default InventoryPageProtected;
 
-// Composant Modal
+// Composant Modal (reste identique)
 function ProductModal({ title, product, onClose, onSubmit }) {
   const [imageData, setImageData] = useState(product?.image || "");
 
@@ -581,14 +706,25 @@ function ProductModal({ title, product, onClose, onSubmit }) {
           </button>
         </div>
 
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            formData.set("image", imageData); // Ajouter l'image
-            onSubmit(e);
-          }}
-        >
+        <form onSubmit={onSubmit}>
+          <input type="hidden" name="image" value={imageData} />
+
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "500",
+              }}
+            >
+              Image
+            </label>
+            <ImageUpload
+              currentImage={imageData}
+              onImageChange={setImageData}
+            />
+          </div>
+
           <div style={{ marginBottom: "15px" }}>
             <label
               style={{
@@ -602,11 +738,62 @@ function ProductModal({ title, product, onClose, onSubmit }) {
             <input
               type="text"
               name="name"
-              required
               defaultValue={product?.name}
+              required
               style={{
                 width: "100%",
-                padding: "12px",
+                padding: "10px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "8px",
+                background: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "500",
+              }}
+            >
+              Catégorie *
+            </label>
+            <input
+              type="text"
+              name="category"
+              defaultValue={product?.category}
+              required
+              style={{
+                width: "100%",
+                padding: "10px",
+                border: "1px solid var(--color-border)",
+                borderRadius: "8px",
+                background: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "500",
+              }}
+            >
+              Code-barres
+            </label>
+            <input
+              type="text"
+              name="barcode"
+              defaultValue={product?.barcode}
+              style={{
+                width: "100%",
+                padding: "10px",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
                 background: "var(--color-surface)",
@@ -631,80 +818,18 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                   fontWeight: "500",
                 }}
               >
-                Catégorie *
-              </label>
-              <input
-                type="text"
-                name="category"
-                required
-                defaultValue={product?.category}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "8px",
-                  background: "var(--color-surface)",
-                  color: "var(--color-text-primary)",
-                }}
-              />
-            </div>
-
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "500",
-                }}
-              >
-                Code-barres
-              </label>
-              <input
-                type="text"
-                name="barcode"
-                defaultValue={product?.barcode}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "8px",
-                  background: "var(--color-surface)",
-                  color: "var(--color-text-primary)",
-                }}
-              />
-            </div>
-          </div>
-
-          {/* NOUVEAU - Composant d'upload d'image */}
-          <ImageUpload value={imageData} onChange={setImageData} />
-
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "15px",
-              marginBottom: "15px",
-            }}
-          >
-            <div>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "5px",
-                  fontWeight: "500",
-                }}
-              >
-                Prix d'achat (FCFA) *
+                Prix d'achat *
               </label>
               <input
                 type="number"
                 name="costPrice"
-                required
-                step="0.01"
                 defaultValue={product?.costPrice}
+                required
+                min="0"
+                step="0.01"
                 style={{
                   width: "100%",
-                  padding: "12px",
+                  padding: "10px",
                   border: "1px solid var(--color-border)",
                   borderRadius: "8px",
                   background: "var(--color-surface)",
@@ -721,17 +846,18 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                   fontWeight: "500",
                 }}
               >
-                Prix de vente (FCFA) *
+                Prix de vente *
               </label>
               <input
                 type="number"
                 name="sellingPrice"
-                required
-                step="0.01"
                 defaultValue={product?.sellingPrice}
+                required
+                min="0"
+                step="0.01"
                 style={{
                   width: "100%",
-                  padding: "12px",
+                  padding: "10px",
                   border: "1px solid var(--color-border)",
                   borderRadius: "8px",
                   background: "var(--color-surface)",
@@ -754,11 +880,12 @@ function ProductModal({ title, product, onClose, onSubmit }) {
             <input
               type="number"
               name="stock"
+              defaultValue={product?.stock || 0}
               required
-              defaultValue={product?.stock}
+              min="0"
               style={{
                 width: "100%",
-                padding: "12px",
+                padding: "10px",
                 border: "1px solid var(--color-border)",
                 borderRadius: "8px",
                 background: "var(--color-surface)",
@@ -766,9 +893,6 @@ function ProductModal({ title, product, onClose, onSubmit }) {
               }}
             />
           </div>
-
-          {/* Input caché pour l'image */}
-          <input type="hidden" name="image" value={imageData} />
 
           <div style={{ display: "flex", gap: "10px" }}>
             <button
@@ -797,9 +921,14 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 borderRadius: "8px",
                 cursor: "pointer",
                 fontWeight: "600",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "8px",
               }}
             >
-              {product ? "Modifier" : "Ajouter"}
+              <Save size={20} />
+              Enregistrer
             </button>
           </div>
         </form>

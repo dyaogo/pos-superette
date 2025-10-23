@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useApp } from '../src/contexts/AppContext';
+import { useApp } from '../../contexts/AppContext';
 import { 
   Package, 
   Search, 

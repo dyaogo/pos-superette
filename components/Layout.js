@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
-import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTEZ
+import { useAuth } from "../src/contexts/AuthContext";
 import {
   Home,
   ShoppingCart,
@@ -18,17 +18,18 @@ import {
   BarChart3,
   UserCog,
   LogOut,
-  User, // ✨ AJOUTEZ LogOut et User
+  User,
 } from "lucide-react";
 import StoreSelector from "./StoreSelector";
+import OnlineStatusBadge from "./OnlineStatusBadge";
 
 export default function Layout({ children }) {
   const router = useRouter();
-  const { currentUser, logout, hasPermission } = useAuth(); // ✨ AJOUTEZ
+  const { currentUser, logout, hasPermission } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
-  // ✨ Pages publiques (sans authentification requise)
-  const publicPages = ["/login", "/unauthorized"];
+  // Pages publiques (sans authentification requise)
+  const publicPages = ["/", "/login", "/unauthorized"];
   const isPublicPage = publicPages.includes(router.pathname);
 
   // Si page publique, pas de layout
@@ -59,6 +60,12 @@ export default function Layout({ children }) {
       path: "/inventory",
       icon: Package,
       label: "Inventaire",
+      permission: "manage_inventory",
+    },
+    {
+      path: "/reception",
+      icon: Package,
+      label: "Réception",
       permission: "manage_inventory",
     },
     {
@@ -117,7 +124,7 @@ export default function Layout({ children }) {
     },
   ];
 
-  // ✨ Filtrer les menus selon les permissions
+  // Filtrer les menus selon les permissions
   const visibleMenuItems = menuItems.filter(
     (item) => !item.permission || hasPermission(item.permission)
   );
@@ -218,7 +225,7 @@ export default function Layout({ children }) {
           })}
         </nav>
 
-        {/* ✨ Section utilisateur et déconnexion */}
+        {/* Section utilisateur et déconnexion */}
         {currentUser && (
           <div
             style={{
@@ -230,54 +237,51 @@ export default function Layout({ children }) {
               <>
                 <div
                   style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "10px",
-                    marginBottom: "10px",
-                    padding: "10px",
+                    marginBottom: "15px",
+                    padding: "12px",
                     background: "var(--color-bg)",
                     borderRadius: "8px",
                   }}
                 >
                   <div
                     style={{
-                      width: "40px",
-                      height: "40px",
-                      borderRadius: "50%",
-                      background: "var(--color-primary)",
                       display: "flex",
                       alignItems: "center",
-                      justifyContent: "center",
-                      color: "white",
-                      fontWeight: "bold",
-                      fontSize: "16px",
+                      gap: "10px",
                     }}
                   >
-                    {currentUser.fullName.charAt(0).toUpperCase()}
-                  </div>
-                  <div style={{ flex: 1, overflow: "hidden" }}>
                     <div
                       style={{
+                        width: "40px",
+                        height: "40px",
+                        borderRadius: "50%",
+                        background: "var(--color-primary)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "white",
                         fontWeight: "600",
-                        fontSize: "14px",
-                        whiteSpace: "nowrap",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
                       }}
                     >
-                      {currentUser.fullName}
+                      {currentUser.fullName.charAt(0).toUpperCase()}
                     </div>
-                    <div
-                      style={{
-                        fontSize: "12px",
-                        color: "var(--color-text-muted)",
-                      }}
-                    >
-                      {currentUser.role === "admin"
-                        ? "Administrateur"
-                        : currentUser.role === "manager"
-                        ? "Gérant"
-                        : "Caissier"}
+                    <div style={{ flex: 1 }}>
+                      <div
+                        style={{
+                          fontWeight: "600",
+                          fontSize: "14px",
+                          marginBottom: "2px",
+                        }}
+                      >
+                        {currentUser.fullName}
+                      </div>
+                      <div style={{ fontSize: "12px", color: "#6b7280" }}>
+                        {currentUser.role === "admin"
+                          ? "Administrateur"
+                          : currentUser.role === "manager"
+                          ? "Gérant"
+                          : "Caissier"}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -367,7 +371,7 @@ export default function Layout({ children }) {
           minHeight: "100vh",
         }}
       >
-        {/* Store Selector */}
+        {/* Store Selector & Online Status */}
         <div
           style={{
             padding: "15px 30px",
@@ -376,9 +380,13 @@ export default function Layout({ children }) {
             position: "sticky",
             top: 0,
             zIndex: 50,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
           }}
         >
           <StoreSelector />
+          <OnlineStatusBadge />
         </div>
 
         {/* Page content */}
