@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+//import { useOnline } from "../src/contexts/OnlineContext"; // ✨ AJOUTÉ
+import { useState, useEffect, useMemo } from "react";
 import { useApp } from "../src/contexts/AppContext";
 import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTÉ
 import PermissionGate from "../components/PermissionGate"; // ✨ AJOUTÉ
@@ -34,6 +35,7 @@ export default function POSPage() {
     salesHistory: currentStoreSales,
   } = useApp();
   const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
+  const { isOnline, saveSaleOffline } = useOnline(); // ✨ AJOUTÉ
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Toutes");
@@ -225,103 +227,118 @@ export default function POSPage() {
   const itemsCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
   const completeSale = async () => {
-    if (cart.length === 0) {
-      showToast("Le panier est vide", "error");
+    if (cart.length === 0 || !cashSession) return;
+
+    if (
+      paymentMethod === "cash" &&
+      cashReceived &&
+      parseFloat(cashReceived) < total
+    ) {
       return;
-    }
-
-    if (paymentMethod === "credit") {
-      if (!selectedCustomer || selectedCustomer.id === "") {
-        showToast("Sélectionnez un client pour vente à crédit", "error");
-        return;
-      }
-      if (!creditDueDate) {
-        showToast("Date d'échéance requise pour vente à crédit", "error");
-        return;
-      }
-    }
-
-    if (paymentMethod === "cash" && cashReceived) {
-      const received = parseFloat(cashReceived);
-      if (received < total) {
-        showToast(
-          `Montant insuffisant. Manque ${(
-            total - received
-          ).toLocaleString()} FCFA`,
-          "error"
-        );
-        return;
-      }
     }
 
     setIsProcessingSale(true);
 
-    const saleData = {
-      customerId: selectedCustomer?.id || null,
-      total,
-      paymentMethod,
-      cashReceived:
-        paymentMethod === "cash" ? parseFloat(cashReceived) || total : null,
-      change: paymentMethod === "cash" ? calculateChange() : null,
-      items: cart.map((item) => ({
-        productId: item.id,
-        name: item.name,
-        quantity: item.quantity,
-        unitPrice: item.sellingPrice,
-      })),
-    };
+    try {
+      const saleData = {
+        receiptNumber: `REC${Date.now()}`,
+        items: cart.map((item) => ({
+          productId: item.id,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.sellingPrice,
+          total: item.sellingPrice * item.quantity,
+        })),
+        total,
+        paymentMethod,
+        customerId: selectedCustomer?.id || null,
+        cashReceived:
+          paymentMethod === "cash" ? parseFloat(cashReceived) || 0 : null,
+        change: paymentMethod === "cash" ? calculateChange() : 0,
+        storeId: currentStore?.id,
+        cashSessionId: cashSession.id,
+        userId: currentUser?.id,
+      };
 
-    const result = await recordSale(saleData);
+      // Essayer d'enregistrer en ligne
+      let savedOnline = false;
+      let newSale = null;
 
-    if (result.success && paymentMethod === "credit") {
       try {
-        await fetch("/api/credits", {
+        const response = await fetch("/api/sales", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            customerId: selectedCustomer.id,
-            amount: total,
-            description: `Vente ${result.sale.receiptNumber}`,
-            dueDate: creditDueDate,
-          }),
+          body: JSON.stringify(saleData),
         });
+
+        if (response.ok) {
+          newSale = await response.json();
+          savedOnline = true;
+          console.log("✅ Vente enregistrée en ligne");
+        } else {
+          console.error("Erreur API, passage en mode hors ligne");
+        }
       } catch (error) {
-        console.error("Erreur création crédit:", error);
-      }
-    }
-
-    setIsProcessingSale(false);
-
-    if (result.success) {
-      setLastSale(result.sale);
-
-      if (paymentMethod === "credit") {
-        showToast(
-          `Vente à crédit enregistrée ! Échéance: ${new Date(
-            creditDueDate
-          ).toLocaleDateString("fr-FR")}`,
-          "success"
-        );
-      } else if (result.offline) {
-        showToast(
-          "Vente enregistrée hors ligne ! Synchronisation en attente.",
-          "info"
-        );
-      } else {
-        showToast(
-          `Vente enregistrée ! Total: ${total.toLocaleString()} FCFA`,
-          "success"
-        );
+        console.error("Erreur réseau, passage en mode hors ligne:", error);
       }
 
+      // Si échec en ligne, sauvegarder hors ligne
+      if (!savedOnline) {
+        try {
+          const { offlineDB } = await import("../src/utils/offlineDB");
+          const offlineId = await offlineDB.addPendingSale(saleData);
+          newSale = { ...saleData, id: offlineId };
+          console.log("💾 Vente enregistrée hors ligne");
+          showToast(
+            "Vente enregistrée hors ligne - Sera synchronisée plus tard",
+            "success"
+          );
+        } catch (offlineError) {
+          console.error("Erreur sauvegarde hors ligne:", offlineError);
+          throw new Error("Impossible d'enregistrer la vente");
+        }
+      }
+
+      // Créer un crédit si nécessaire
+      if (paymentMethod === "credit" && selectedCustomer && savedOnline) {
+        const creditData = {
+          customerId: selectedCustomer.id,
+          amount: total,
+          remainingAmount: total,
+          description: `Vente ${saleData.receiptNumber}`,
+          dueDate: creditDueDate,
+          status: "pending",
+        };
+
+        try {
+          await fetch("/api/credits", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(creditData),
+          });
+        } catch (error) {
+          console.error("Erreur création crédit:", error);
+        }
+      }
+
+      // Afficher le reçu
+      setLastSale(newSale);
       setShowReceipt(true);
+
+      // Réinitialiser le panier
       setCart([]);
-      setSearchTerm("");
       setSelectedCustomer(null);
       setCashReceived("");
-      setCreditDueDate("");
-    } else {
+      setPaymentMethod("cash");
+
+      if (savedOnline) {
+        showToast("Vente enregistrée avec succès !", "success");
+      }
+    } catch (error) {
+      console.error("Erreur lors de la vente:", error);
       showToast("Erreur lors de l'enregistrement de la vente", "error");
+    } finally {
+      setIsProcessingSale(false);
     }
   };
 
