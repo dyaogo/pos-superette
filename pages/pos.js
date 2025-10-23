@@ -310,6 +310,9 @@ export default function POSPage() {
       setCashReceived("");
       setPaymentMethod("cash");
 
+      // ✨ AJOUTÉ - Recharger les données pour mettre à jour l'historique
+      await reloadData();
+
       // Afficher le toast
       setToast({ message: "Vente enregistrée avec succès !", type: "success" });
       setTimeout(() => setToast(null), 3000);
