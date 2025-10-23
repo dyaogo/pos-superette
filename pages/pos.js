@@ -35,7 +35,6 @@ export default function POSPage() {
     salesHistory: currentStoreSales,
   } = useApp();
   const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
-  const { isOnline, saveSaleOffline } = useOnline(); // ✨ AJOUTÉ
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("Toutes");
@@ -240,6 +239,7 @@ export default function POSPage() {
     setIsProcessingSale(true);
 
     try {
+      // Préparer les données de vente
       const saleData = {
         receiptNumber: `REC${Date.now()}`,
         items: cart.map((item) => ({
@@ -260,47 +260,26 @@ export default function POSPage() {
         userId: currentUser?.id,
       };
 
-      // Essayer d'enregistrer en ligne
-      let savedOnline = false;
-      let newSale = null;
+      console.log("📤 Envoi de la vente:", saleData);
 
-      try {
-        const response = await fetch("/api/sales", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(saleData),
-        });
+      // Envoyer à l'API
+      const response = await fetch("/api/sales", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(saleData),
+      });
 
-        if (response.ok) {
-          newSale = await response.json();
-          savedOnline = true;
-          console.log("✅ Vente enregistrée en ligne");
-        } else {
-          console.error("Erreur API, passage en mode hors ligne");
-        }
-      } catch (error) {
-        console.error("Erreur réseau, passage en mode hors ligne:", error);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("❌ Erreur API:", errorData);
+        throw new Error(errorData.error || "Erreur serveur");
       }
 
-      // Si échec en ligne, sauvegarder hors ligne
-      if (!savedOnline) {
-        try {
-          const { offlineDB } = await import("../src/utils/offlineDB");
-          const offlineId = await offlineDB.addPendingSale(saleData);
-          newSale = { ...saleData, id: offlineId };
-          console.log("💾 Vente enregistrée hors ligne");
-          showToast(
-            "Vente enregistrée hors ligne - Sera synchronisée plus tard",
-            "success"
-          );
-        } catch (offlineError) {
-          console.error("Erreur sauvegarde hors ligne:", offlineError);
-          throw new Error("Impossible d'enregistrer la vente");
-        }
-      }
+      const newSale = await response.json();
+      console.log("✅ Vente enregistrée:", newSale);
 
       // Créer un crédit si nécessaire
-      if (paymentMethod === "credit" && selectedCustomer && savedOnline) {
+      if (paymentMethod === "credit" && selectedCustomer) {
         const creditData = {
           customerId: selectedCustomer.id,
           amount: total,
@@ -331,12 +310,16 @@ export default function POSPage() {
       setCashReceived("");
       setPaymentMethod("cash");
 
-      if (savedOnline) {
-        showToast("Vente enregistrée avec succès !", "success");
-      }
+      // Afficher le toast
+      setToast({ message: "Vente enregistrée avec succès !", type: "success" });
+      setTimeout(() => setToast(null), 3000);
     } catch (error) {
-      console.error("Erreur lors de la vente:", error);
-      showToast("Erreur lors de l'enregistrement de la vente", "error");
+      console.error("❌ Erreur lors de la vente:", error);
+      setToast({
+        message: error.message || "Erreur lors de l'enregistrement de la vente",
+        type: "error",
+      });
+      setTimeout(() => setToast(null), 5000);
     } finally {
       setIsProcessingSale(false);
     }
