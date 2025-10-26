@@ -91,9 +91,27 @@ export default function ReceptionModule() {
   // Mettre à jour un item de réception
   const updateReceptionItem = useCallback((index, field, value) => {
     const updated = [...receptionItems];
-    updated[index][field] = field === 'quantity' || field === 'costPrice' 
-      ? parseFloat(value) || 0 
-      : value;
+    
+    if (field === 'quantity' || field === 'costPrice') {
+      const numValue = parseFloat(value) || 0;
+      
+      // ✅ Validation: empêcher les valeurs négatives
+      if (numValue < 0) {
+        alert('⚠️ La valeur ne peut pas être négative');
+        return;
+      }
+      
+      // ✅ Validation: quantité minimum de 1
+      if (field === 'quantity' && numValue < 1) {
+        alert('⚠️ La quantité doit être au moins 1');
+        return;
+      }
+      
+      updated[index][field] = numValue;
+    } else {
+      updated[index][field] = value;
+    }
+    
     setReceptionItems(updated);
   }, [receptionItems]);
 
@@ -192,12 +210,29 @@ export default function ReceptionModule() {
       return;
     }
 
+    const costPrice = parseFloat(newProductData.costPrice);
+    const sellingPrice = parseFloat(newProductData.sellingPrice);
+
+    // ✅ Validation: prix de vente doit être >= prix d'achat
+    if (sellingPrice < costPrice) {
+      const confirm = window.confirm(
+        `⚠️ ATTENTION\n\n` +
+        `Prix de vente: ${sellingPrice} FCFA\n` +
+        `Prix d'achat: ${costPrice} FCFA\n\n` +
+        `Le prix de vente est inférieur au prix d'achat.\n` +
+        `Cela entraînera une perte sur chaque vente.\n\n` +
+        `Voulez-vous continuer quand même ?`
+      );
+      
+      if (!confirm) return;
+    }
+
     const productData = {
       name: newProductData.name,
       category: newProductData.category,
       barcode: newProductData.barcode || `BAR${Date.now()}`,
-      costPrice: parseFloat(newProductData.costPrice),
-      sellingPrice: parseFloat(newProductData.sellingPrice),
+      costPrice: costPrice,
+      sellingPrice: sellingPrice,
       stock: 0
     };
 

@@ -5,8 +5,10 @@
       "static/chunks/_pages-dir-browser_node_modules_xlsx_xlsx_mjs.js"
     ]
   },
-  "src/contexts/AppContext.jsx -> ../utils/offlineDB": {
-    "id": "src/contexts/AppContext.jsx -> ../utils/offlineDB",
-    "files": []
+  "pages/reception.js -> ../src/modules/reception/ReceptionModule": {
+    "id": "pages/reception.js -> ../src/modules/reception/ReceptionModule",
+    "files": [
+      "static/chunks/_pages-dir-browser_src_modules_reception_ReceptionModule_jsx.js"
+    ]
   }
 }

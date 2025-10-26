@@ -59,78 +59,92 @@ export function AppProvider({ children }) {
   };
 
   // ✅ Fonction loadData - OFFLINE FIRST
- const loadData = async () => {
-  if (loading) return;
-  setLoading(true);
-  
-  try {
-    // ✅ NOUVEAU: Toujours charger depuis le cache d'abord
-    const cachedProducts = await offlineDB.getProducts();
-    const cachedCustomers = await offlineDB.getCustomers();
-    const cachedCredits = await offlineDB.getCredits();
-    
-    // Afficher les données du cache immédiatement
-    if (cachedProducts.length > 0) {
-      setProductCatalog(cachedProducts);
-      setCustomers(cachedCustomers);
-      setCredits(cachedCredits);
-      console.log('✅ Données chargées depuis le cache');
-    }
-    
-    // ✅ NOUVEAU: Si online, mettre à jour depuis l'API
-    if (isOnline) {
-      const [productsRes, salesRes, customersRes, creditsRes, storesRes] = await Promise.all([
-        fetch('/api/products'),
-        fetch('/api/sales'),
-        fetch('/api/customers'),
-        fetch('/api/credits'),
-        fetch('/api/stores')
-      ]);
-
-      if (productsRes.ok && salesRes.ok && customersRes.ok) {
-        const products = await productsRes.json();
-        const sales = await salesRes.json();
-        const customers = await customersRes.json();
-        const credits = creditsRes.ok ? await creditsRes.json() : [];
-        const stores = storesRes.ok ? await storesRes.json() : [];
-
-        setProductCatalog(products);
-        setSalesHistory(sales);
-        setCustomers(customers);
-        setCredits(credits);
-        setStores(stores);
-
-        // Mettre à jour le cache
-        await offlineDB.saveProducts(products);
-        await offlineDB.saveCustomers(customers);
-        await offlineDB.saveCredits(credits);
-        console.log('✅ Données mises à jour depuis l\'API et sauvegardées en cache');
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      // ÉTAPE 1: Toujours charger depuis le cache d'abord
+      const cachedProducts = await offlineDB.getProducts();
+      const cachedCustomers = await offlineDB.getCustomers();
+      const cachedCredits = await offlineDB.getCredits();
+      
+      // Afficher les données du cache immédiatement si disponibles
+      if (cachedProducts.length > 0) {
+        setProductCatalog(cachedProducts);
+        setCustomers(cachedCustomers);
+        setCredits(cachedCredits);
+        console.log('✅ Données chargées depuis le cache');
       }
+      
+      // ÉTAPE 2: Si online, mettre à jour depuis l'API
+      if (isOnline) {
+        const [productsRes, salesRes, customersRes, creditsRes, storesRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/sales'),
+          fetch('/api/customers'),
+          fetch('/api/credits'),
+          fetch('/api/stores')
+        ]);
+
+        if (productsRes.ok && salesRes.ok && customersRes.ok) {
+          const products = await productsRes.json();
+          const sales = await salesRes.json();
+          const customers = await customersRes.json();
+          const credits = creditsRes.ok ? await creditsRes.json() : [];
+          const stores = storesRes.ok ? await storesRes.json() : [];
+
+          setProductCatalog(products);
+          setSalesHistory(sales);
+          setCustomers(customers);
+          setCredits(credits);
+          setStores(stores);
+
+          // Sauvegarder dans le cache
+          await cacheData({ products, customers, credits });
+          console.log('✅ Données mises à jour depuis l\'API et sauvegardées en cache');
+        }
+      } else {
+        console.log('📂 Mode offline - utilisation du cache uniquement');
+      }
+    } catch (error) {
+      console.error('Erreur chargement données:', error);
+      
+      // En cas d'erreur, essayer de charger depuis le cache
+      try {
+        const products = await offlineDB.getProducts();
+        const customers = await offlineDB.getCustomers();
+        const credits = await offlineDB.getCredits();
+        
+        if (products.length > 0) {
+          setProductCatalog(products);
+          setCustomers(customers);
+          setCredits(credits);
+          console.log('✅ Données chargées depuis le cache de secours');
+        }
+      } catch (cacheError) {
+        console.error('Erreur chargement cache:', cacheError);
+      }
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    console.error('Erreur chargement données:', error);
-    // En cas d'erreur, on garde les données du cache déjà chargées
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   // ✅ Changer de magasin - OFFLINE COMPATIBLE
-const changeStore = async (store) => {
-  if (currentStore?.id === store.id) return;
-  setCurrentStore(store);
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('currentStoreId', store.id);
-  }
-  
-  // ✅ Ne pas recharger si offline
-  if (!isOnline) {
-    console.log('📍 Changement de magasin en mode offline');
-    return;
-  }
-  
-  await loadData();
-};
+  const changeStore = async (store) => {
+    if (currentStore?.id === store.id) return;
+    
+    setCurrentStore(store);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('currentStoreId', store.id);
+    }
+    
+    // Ne pas recharger si offline - les données filtrées se mettront à jour automatiquement
+    if (!isOnline) {
+      console.log('📍 Changement de magasin en mode offline - utilisation du cache');
+      return;
+    }
+    
+    await loadData();
+  };
 
   // ✨ NOUVELLES FONCTIONS DE MISE À JOUR OPTIMISTE
 

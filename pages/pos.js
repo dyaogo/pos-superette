@@ -373,6 +373,26 @@ export default function POSPage() {
   const loadActiveSession = async () => {
     if (!currentStore) return;
 
+    // ✅ NOUVEAU: Ne pas charger si offline
+    if (!isOnline) {
+      console.log(
+        "📍 Mode offline - session de caisse non chargée depuis l'API"
+      );
+      // Charger depuis localStorage si disponible
+      try {
+        const storedSession = localStorage.getItem(
+          `cash_session_${currentStore.id}`
+        );
+        if (storedSession) {
+          setCashSession(JSON.parse(storedSession));
+        }
+      } catch (error) {
+        console.log("Aucune session de caisse locale");
+      }
+      return;
+    }
+
+    // Si online, charger depuis l'API
     try {
       const res = await fetch(
         `/api/cash-sessions?storeId=${currentStore.id}&status=open`
@@ -380,9 +400,25 @@ export default function POSPage() {
       const sessions = await res.json();
       if (sessions.length > 0) {
         setCashSession(sessions[0]);
+        // Sauvegarder en local pour usage offline
+        localStorage.setItem(
+          `cash_session_${currentStore.id}`,
+          JSON.stringify(sessions[0])
+        );
       }
     } catch (error) {
       console.error("Erreur chargement session:", error);
+      // En cas d'erreur, essayer de charger depuis localStorage
+      try {
+        const storedSession = localStorage.getItem(
+          `cash_session_${currentStore.id}`
+        );
+        if (storedSession) {
+          setCashSession(JSON.parse(storedSession));
+        }
+      } catch (localError) {
+        console.log("Aucune session de caisse disponible");
+      }
     }
   };
 
@@ -392,28 +428,52 @@ export default function POSPage() {
       return;
     }
 
-    try {
-      const res = await fetch("/api/cash-sessions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          storeId: currentStore.id,
-          openingAmount: parseFloat(openingAmount),
-          openedBy: "Admin",
-        }),
-      });
+    const newSession = {
+      id: Date.now(),
+      storeId: currentStore.id,
+      openingAmount: parseFloat(openingAmount),
+      openedBy: currentUser?.fullName || "Admin",
+      openedAt: new Date().toISOString(),
+      status: "open",
+    };
 
-      if (res.ok) {
-        const session = await res.json();
-        setCashSession(session);
-        setShowSessionModal(false);
-        showToast("Session de caisse ouverte !", "success");
-      } else {
-        const error = await res.json();
-        showToast(error.error, "error");
+    // Sauvegarder en local immédiatement
+    localStorage.setItem(
+      `cash_session_${currentStore.id}`,
+      JSON.stringify(newSession)
+    );
+    setCashSession(newSession);
+    setShowSessionModal(false);
+    showToast("Session de caisse ouverte !", "success");
+
+    // ✅ NOUVEAU: Sauvegarder dans l'API seulement si online
+    if (isOnline) {
+      try {
+        const res = await fetch("/api/cash-sessions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            storeId: currentStore.id,
+            openingAmount: parseFloat(openingAmount),
+            openedBy: currentUser?.fullName || "Admin",
+          }),
+        });
+
+        if (res.ok) {
+          const session = await res.json();
+          setCashSession(session);
+          localStorage.setItem(
+            `cash_session_${currentStore.id}`,
+            JSON.stringify(session)
+          );
+        }
+      } catch (error) {
+        console.log(
+          "Session créée en mode offline, sera synchronisée plus tard"
+        );
       }
-    } catch (error) {
-      showToast("Erreur: " + error.message, "error");
+    } else {
+      console.log("📍 Session créée en mode offline");
     }
   };
 
@@ -423,35 +483,41 @@ export default function POSPage() {
       return;
     }
 
-    try {
-      const res = await fetch(`/api/cash-sessions/${cashSession.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          closingAmount: parseFloat(closingAmount),
-          closedBy: "Admin",
-        }),
-      });
+    const closedSessionData = {
+      ...cashSession,
+      closingAmount: parseFloat(closingAmount),
+      closedBy: currentUser?.fullName || "Admin",
+      closedAt: new Date().toISOString(),
+      status: "closed",
+    };
 
-      if (res.ok) {
-        const closedSession = await res.json();
-        const diff = closedSession.difference;
+    // Fermer localement
+    setCashSession(null);
+    localStorage.removeItem(`cash_session_${currentStore.id}`);
+    setShowCloseModal(false);
+    setClosingAmount("");
 
-        const message =
-          `Session fermée !\n` +
-          `Attendu: ${closedSession.expectedAmount.toLocaleString()} FCFA\n` +
-          `Réel: ${closedSession.closingAmount.toLocaleString()} FCFA\n` +
-          `Écart: ${diff > 0 ? "+" : ""}${diff.toLocaleString()} FCFA\n` +
-          (diff === 0 ? "✅ Parfait !" : diff > 0 ? "💰 Surplus" : "⚠️ Manque");
+    showToast(
+      `Session fermée !\nMontant final: ${parseFloat(
+        closingAmount
+      ).toLocaleString()} FCFA`,
+      "success"
+    );
 
-        showToast(message, diff === 0 ? "success" : "info");
-
-        setCashSession(null);
-        setShowCloseModal(false);
-        setClosingAmount("");
+    // ✅ NOUVEAU: Synchroniser avec l'API seulement si online
+    if (isOnline && cashSession.id && typeof cashSession.id === "string") {
+      try {
+        await fetch(`/api/cash-sessions/${cashSession.id}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            closingAmount: parseFloat(closingAmount),
+            closedBy: currentUser?.fullName || "Admin",
+          }),
+        });
+      } catch (error) {
+        console.log("Session fermée en mode offline");
       }
-    } catch (error) {
-      showToast("Erreur: " + error.message, "error");
     }
   };
 
