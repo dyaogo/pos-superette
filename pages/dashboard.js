@@ -1,4 +1,4 @@
-// pages/dashboard.js - Version Complète et Moderne
+// pages/dashboard.js - Version Complète et Moderne (SSR forcé)
 import ProtectedRoute from "../components/ProtectedRoute";
 import PermissionGate from "../components/PermissionGate";
 import { useState, useMemo } from "react";
@@ -20,7 +20,18 @@ import {
   Activity,
 } from "lucide-react";
 
-function DashboardPage() {
+// ✅ CRITIQUE : Forcer le rendu dynamique (SSR) au lieu du pré-rendu statique
+export async function getServerSideProps(context) {
+  // Cette fonction force Next.js à rendre la page côté serveur à chaque requête
+  // au lieu de la pré-rendre de façon statique
+  return {
+    props: {
+      timestamp: new Date().toISOString(), // Timestamp pour garantir que c'est dynamique
+    },
+  };
+}
+
+function DashboardPage({ timestamp }) {
   const { salesHistory, productCatalog, customers, credits, loading } =
     useApp();
   const { currentUser, hasRole } = useAuth();
@@ -370,6 +381,25 @@ function DashboardPage() {
 
   return (
     <div style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}>
+      {/* Badge de mise à jour dynamique (pour debug - à retirer après test) */}
+      <div
+        style={{
+          position: "fixed",
+          top: "10px",
+          right: "10px",
+          background: "#10b981",
+          color: "white",
+          padding: "8px 12px",
+          borderRadius: "8px",
+          fontSize: "12px",
+          fontWeight: "600",
+          zIndex: 9999,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
+        }}
+      >
+        🔄 Dynamique - {new Date(timestamp).toLocaleTimeString()}
+      </div>
+
       {/* En-tête avec sélecteur de période moderne */}
       <div
         style={{
@@ -1078,10 +1108,10 @@ function DashboardPage() {
   );
 }
 
-function DashboardPageProtected() {
+function DashboardPageProtected({ timestamp }) {
   return (
     <ProtectedRoute>
-      <DashboardPage />
+      <DashboardPage timestamp={timestamp} />
     </ProtectedRoute>
   );
 }
