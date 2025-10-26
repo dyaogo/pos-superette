@@ -21,8 +21,13 @@ import {
 } from "lucide-react";
 
 // ✅ CRITIQUE : Forcer le rendu dynamique avec Next.js 15
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
+export async function getServerSideProps() {
+  return {
+    props: {
+      timestamp: Date.now(), // Force le rendu dynamique
+    },
+  };
+}
 
 function DashboardPage() {
   const { salesHistory, productCatalog, customers, credits, loading } =
