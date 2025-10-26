@@ -1,4 +1,4 @@
-// pages/dashboard.js - Version Complète et Moderne (SSR forcé)
+// pages/dashboard.js - Version Next.js 15 (Dynamic Rendering)
 import ProtectedRoute from "../components/ProtectedRoute";
 import PermissionGate from "../components/PermissionGate";
 import { useState, useMemo } from "react";
@@ -20,18 +20,11 @@ import {
   Activity,
 } from "lucide-react";
 
-// ✅ CRITIQUE : Forcer le rendu dynamique (SSR) au lieu du pré-rendu statique
-export async function getServerSideProps(context) {
-  // Cette fonction force Next.js à rendre la page côté serveur à chaque requête
-  // au lieu de la pré-rendre de façon statique
-  return {
-    props: {
-      timestamp: new Date().toISOString(), // Timestamp pour garantir que c'est dynamique
-    },
-  };
-}
+// ✅ CRITIQUE : Forcer le rendu dynamique avec Next.js 15
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-function DashboardPage({ timestamp }) {
+function DashboardPage() {
   const { salesHistory, productCatalog, customers, credits, loading } =
     useApp();
   const { currentUser, hasRole } = useAuth();
@@ -381,7 +374,7 @@ function DashboardPage({ timestamp }) {
 
   return (
     <div style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}>
-      {/* Badge de mise à jour dynamique (pour debug - à retirer après test) */}
+      {/* Badge de vérification dynamique */}
       <div
         style={{
           position: "fixed",
@@ -397,7 +390,7 @@ function DashboardPage({ timestamp }) {
           boxShadow: "0 2px 8px rgba(0,0,0,0.2)",
         }}
       >
-        🔄 Dynamique - {new Date(timestamp).toLocaleTimeString()}
+        🔄 Rendu Dynamique - {new Date().toLocaleTimeString()}
       </div>
 
       {/* En-tête avec sélecteur de période moderne */}
@@ -1108,10 +1101,10 @@ function DashboardPage({ timestamp }) {
   );
 }
 
-function DashboardPageProtected({ timestamp }) {
+function DashboardPageProtected() {
   return (
     <ProtectedRoute>
-      <DashboardPage timestamp={timestamp} />
+      <DashboardPage />
     </ProtectedRoute>
   );
 }
