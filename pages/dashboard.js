@@ -1,125 +1,136 @@
+// pages/dashboard.js - Version Complète et Moderne
 import ProtectedRoute from "../components/ProtectedRoute";
-import PermissionGate from "../components/PermissionGate"; // ✨ AJOUTÉ
+import PermissionGate from "../components/PermissionGate";
 import { useState, useMemo } from "react";
 import { useApp } from "../src/contexts/AppContext";
-import { useAuth } from "../src/contexts/AuthContext"; // ✨ AJOUTÉ
-import SalesChart from "../components/SalesChart";
+import { useAuth } from "../src/contexts/AuthContext";
 import {
   TrendingUp,
+  TrendingDown,
   DollarSign,
   ShoppingBag,
   Users,
   Package,
-  Calendar,
-  Award,
-  AlertCircle,
-  Download,
-  FileText,
-  Table,
+  AlertTriangle,
+  ArrowUp,
+  ArrowDown,
   Eye,
-  EyeOff,
+  Calendar,
+  Target,
+  Activity,
 } from "lucide-react";
-import {
-  exportToCSV,
-  exportToExcel,
-  exportToPDF,
-  prepareSalesData,
-  prepareProductsData,
-  prepareCreditsData,
-} from "../utils/exportData";
 
 function DashboardPage() {
   const { salesHistory, productCatalog, customers, credits, loading } =
     useApp();
-  const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
-  const [period, setPeriod] = useState("week");
+  const { currentUser, hasRole } = useAuth();
+  const [selectedPeriod, setSelectedPeriod] = useState("week");
 
+  // Fonction pour obtenir les dates de début et fin selon la période
   const getDateRange = () => {
     const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let startDate, endDate;
 
-    switch (period) {
+    switch (selectedPeriod) {
       case "today":
-        return { start: today, end: new Date() };
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
+        break;
       case "week":
-        const weekStart = new Date(today);
-        weekStart.setDate(today.getDate() - 7);
-        return { start: weekStart, end: new Date() };
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
+        break;
       case "month":
-        const monthStart = new Date(today);
-        monthStart.setDate(today.getDate() - 30);
-        return { start: monthStart, end: new Date() };
+        startDate = new Date(now);
+        startDate.setDate(now.getDate() - 30);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
+        break;
       case "year":
-        const yearStart = new Date(today);
-        yearStart.setDate(today.getDate() - 365);
-        return { start: yearStart, end: new Date() };
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+        endDate.setHours(23, 59, 59, 999);
+        break;
       default:
-        return { start: today, end: new Date() };
+        startDate = new Date(now);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(now);
+        endDate.setHours(23, 59, 59, 999);
     }
+
+    return { start: startDate, end: endDate };
   };
 
   const { start, end } = getDateRange();
 
+  // Filtrer les ventes de la période actuelle
   const periodSales = useMemo(() => {
     return salesHistory.filter((sale) => {
-      const saleDate = new Date(sale.createdAt);
+      const saleDate = new Date(sale.createdAt || sale.date);
       return saleDate >= start && saleDate <= end;
     });
   }, [salesHistory, start, end]);
 
+  // Obtenir les ventes de la période précédente pour comparaison
+  const previousPeriodSales = useMemo(() => {
+    const periodDuration = end.getTime() - start.getTime();
+    const previousStart = new Date(start.getTime() - periodDuration);
+    const previousEnd = new Date(start.getTime() - 1);
+
+    return salesHistory.filter((sale) => {
+      const saleDate = new Date(sale.createdAt || sale.date);
+      return saleDate >= previousStart && saleDate <= previousEnd;
+    });
+  }, [salesHistory, start, end]);
+
+  // Calcul des statistiques avec tendances
   const stats = useMemo(() => {
+    // Période actuelle
     const totalRevenue = periodSales.reduce((sum, sale) => sum + sale.total, 0);
     const totalSales = periodSales.length;
     const averageTicket = totalSales > 0 ? totalRevenue / totalSales : 0;
+    const grossMargin = totalRevenue * 0.37; // 37% de marge brute estimée
 
-    const totalStock = productCatalog.reduce((sum, p) => sum + p.stock, 0);
-    const stockValue = productCatalog.reduce(
-      (sum, p) => sum + p.sellingPrice * p.stock,
+    // Période précédente
+    const previousRevenue = previousPeriodSales.reduce(
+      (sum, sale) => sum + sale.total,
       0
     );
-    const lowStock = productCatalog.filter((p) => p.stock < 10).length;
+    const previousSales = previousPeriodSales.length;
+    const previousTicket =
+      previousSales > 0 ? previousRevenue / previousSales : 0;
+    const previousMargin = previousRevenue * 0.37;
 
-    const activeCredits = credits.filter((c) => c.status !== "paid");
-    const totalCreditsAmount = activeCredits.reduce(
-      (sum, c) => sum + c.remainingAmount,
-      0
-    );
+    // Calcul des tendances (pourcentage de variation)
+    const calculateTrend = (current, previous) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return ((current - previous) / previous) * 100;
+    };
 
     return {
       totalRevenue,
       totalSales,
       averageTicket,
+      grossMargin,
       totalCustomers: customers.length,
-      totalStock,
-      stockValue,
-      lowStock,
-      totalCreditsAmount,
-      activeCreditsCount: activeCredits.length,
+      lowStock: productCatalog.filter((p) => p.stock < 10).length,
+      activeCredits: credits.filter((c) => c.status !== "paid").length,
+      trends: {
+        revenue: calculateTrend(totalRevenue, previousRevenue),
+        sales: calculateTrend(totalSales, previousSales),
+        ticket: calculateTrend(averageTicket, previousTicket),
+        margin: calculateTrend(grossMargin, previousMargin),
+      },
     };
-  }, [periodSales, productCatalog, customers, credits]);
+  }, [periodSales, previousPeriodSales, productCatalog, customers, credits]);
 
-  const salesByDay = useMemo(() => {
-    const days = {};
-
-    periodSales.forEach((sale) => {
-      const date = new Date(sale.createdAt);
-      const dayKey = date.toLocaleDateString("fr-FR", {
-        day: "2-digit",
-        month: "2-digit",
-      });
-
-      if (days[dayKey]) {
-        days[dayKey] += sale.total;
-      } else {
-        days[dayKey] = sale.total;
-      }
-    });
-
-    return Object.entries(days)
-      .sort((a, b) => new Date(a[0]) - new Date(b[0]))
-      .map(([label, value]) => ({ label, value: Math.round(value) }));
-  }, [periodSales]);
-
+  // Top produits vendus
   const topProducts = useMemo(() => {
     const productSales = {};
 
@@ -145,42 +156,221 @@ function DashboardPage() {
       .slice(0, 5);
   }, [periodSales]);
 
+  // Données pour le graphique
+  const chartData = useMemo(() => {
+    const data = [];
+    const now = new Date();
+
+    if (selectedPeriod === "today") {
+      // Données par heure pour aujourd'hui
+      for (let hour = 0; hour < 24; hour++) {
+        const hourSales = periodSales.filter((sale) => {
+          const saleDate = new Date(sale.createdAt || sale.date);
+          return saleDate.getHours() === hour;
+        });
+        const sales = hourSales.reduce((sum, sale) => sum + sale.total, 0);
+        const margin = sales * 0.37;
+
+        data.push({
+          label: `${hour}h`,
+          ventes: Math.round(sales),
+          marges: Math.round(margin),
+        });
+      }
+    } else if (selectedPeriod === "week") {
+      // Données par jour pour la semaine
+      const days = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+      for (let i = 6; i >= 0; i--) {
+        const day = new Date(now);
+        day.setDate(now.getDate() - i);
+        day.setHours(0, 0, 0, 0);
+
+        const daySales = periodSales.filter((sale) => {
+          const saleDate = new Date(sale.createdAt || sale.date);
+          return saleDate.toDateString() === day.toDateString();
+        });
+
+        const sales = daySales.reduce((sum, sale) => sum + sale.total, 0);
+        const margin = sales * 0.37;
+
+        data.push({
+          label: days[day.getDay()],
+          ventes: Math.round(sales),
+          marges: Math.round(margin),
+        });
+      }
+    } else if (selectedPeriod === "month") {
+      // Données par semaine pour le mois
+      for (let week = 1; week <= 4; week++) {
+        const weekStart = new Date(start);
+        weekStart.setDate(start.getDate() + (week - 1) * 7);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+
+        const weekSales = periodSales.filter((sale) => {
+          const saleDate = new Date(sale.createdAt || sale.date);
+          return saleDate >= weekStart && saleDate <= weekEnd;
+        });
+
+        const sales = weekSales.reduce((sum, sale) => sum + sale.total, 0);
+        const margin = sales * 0.37;
+
+        data.push({
+          label: `S${week}`,
+          ventes: Math.round(sales),
+          marges: Math.round(margin),
+        });
+      }
+    } else {
+      // Données par mois pour l'année
+      const months = [
+        "Jan",
+        "Fév",
+        "Mar",
+        "Avr",
+        "Mai",
+        "Jun",
+        "Jul",
+        "Aoû",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Déc",
+      ];
+      for (let month = 0; month < 12; month++) {
+        const monthSales = periodSales.filter((sale) => {
+          const saleDate = new Date(sale.createdAt || sale.date);
+          return saleDate.getMonth() === month;
+        });
+
+        const sales = monthSales.reduce((sum, sale) => sum + sale.total, 0);
+        const margin = sales * 0.37;
+
+        data.push({
+          label: months[month],
+          ventes: Math.round(sales),
+          marges: Math.round(margin),
+        });
+      }
+    }
+
+    return data;
+  }, [periodSales, selectedPeriod, start]);
+
+  // Composant StatCard avec tendance
+  const StatCard = ({
+    title,
+    value,
+    icon: Icon,
+    trend,
+    color,
+    suffix = "",
+  }) => (
+    <div
+      style={{
+        background: "var(--color-surface)",
+        padding: "25px",
+        borderRadius: "16px",
+        border: "1px solid var(--color-border)",
+        boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        transition: "all 0.3s ease",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.1)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.05)";
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: "15px",
+        }}
+      >
+        <div style={{ flex: 1 }}>
+          <div
+            style={{
+              fontSize: "14px",
+              color: "var(--color-text-secondary)",
+              marginBottom: "8px",
+              fontWeight: "500",
+            }}
+          >
+            {title}
+          </div>
+          <div
+            style={{
+              fontSize: "28px",
+              fontWeight: "bold",
+              color: "var(--color-text-primary)",
+              marginBottom: "8px",
+            }}
+          >
+            {typeof value === "number" ? value.toLocaleString() : value}{" "}
+            {suffix}
+          </div>
+          {trend !== undefined && (
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              {trend > 0 ? (
+                <ArrowUp size={16} color="#10b981" />
+              ) : trend < 0 ? (
+                <ArrowDown size={16} color="#ef4444" />
+              ) : null}
+              <span
+                style={{
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  color:
+                    trend > 0 ? "#10b981" : trend < 0 ? "#ef4444" : "#6b7280",
+                }}
+              >
+                {Math.abs(trend).toFixed(1)}%
+              </span>
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "var(--color-text-secondary)",
+                }}
+              >
+                vs période précédente
+              </span>
+            </div>
+          )}
+        </div>
+        <div
+          style={{
+            background: `${color}15`,
+            padding: "12px",
+            borderRadius: "12px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon size={28} color={color} />
+        </div>
+      </div>
+    </div>
+  );
+
   if (loading) {
-    return <div style={{ padding: "20px" }}>Chargement...</div>;
+    return (
+      <div style={{ padding: "20px", textAlign: "center" }}>
+        <div style={{ fontSize: "18px", color: "var(--color-text-secondary)" }}>
+          Chargement...
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div
-      id="dashboard-content"
-      style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}
-    >
-      {/* En-tête */}
-      <div className="print-header" style={{ display: "none" }}>
-        <div style={{ textAlign: "center", marginBottom: "30px" }}>
-          <h1
-            style={{ fontSize: "28px", color: "#1f2937", marginBottom: "10px" }}
-          >
-            📊 Rapport d'Activité - Superette
-          </h1>
-          <div className="header-info">
-            <p style={{ margin: "5px 0", fontSize: "14px" }}>
-              <strong>Période:</strong>{" "}
-              {period === "today"
-                ? "Aujourd'hui"
-                : period === "week"
-                ? "7 derniers jours"
-                : period === "month"
-                ? "30 derniers jours"
-                : "Année"}
-            </p>
-            <p style={{ margin: "5px 0", fontSize: "14px" }}>
-              <strong>Date d'impression:</strong>{" "}
-              {new Date().toLocaleDateString("fr-FR")}
-            </p>
-          </div>
-        </div>
-      </div>
-
+    <div style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}>
+      {/* En-tête avec sélecteur de période moderne */}
       <div
         style={{
           display: "flex",
@@ -188,442 +378,296 @@ function DashboardPage() {
           alignItems: "center",
           marginBottom: "30px",
           flexWrap: "wrap",
-          gap: "15px",
+          gap: "20px",
         }}
       >
         <div>
           <h1
             style={{
               margin: 0,
-              fontSize: "28px",
+              fontSize: "32px",
               fontWeight: "bold",
               display: "flex",
               alignItems: "center",
-              gap: "10px",
+              gap: "12px",
             }}
           >
-            <TrendingUp size={32} />
+            <Activity size={36} color="#6366f1" />
             Tableau de bord
           </h1>
           <p
             style={{
-              margin: "5px 0 0 0",
+              margin: "8px 0 0 0",
               color: "var(--color-text-secondary)",
+              fontSize: "16px",
             }}
           >
             Vue d'ensemble de votre activité
           </p>
         </div>
 
-        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-          <select
-            value={period}
-            onChange={(e) => setPeriod(e.target.value)}
-            style={{
-              padding: "10px 15px",
-              border: "2px solid var(--color-border)",
-              borderRadius: "8px",
-              background: "var(--color-surface)",
-              color: "var(--color-text-primary)",
-              fontWeight: "600",
-              cursor: "pointer",
-            }}
-          >
-            <option value="today">Aujourd'hui</option>
-            <option value="week">7 derniers jours</option>
-            <option value="month">30 derniers jours</option>
-            <option value="year">Année</option>
-          </select>
+        {/* Sélecteur de période moderne avec boutons */}
+        <div
+          style={{
+            display: "flex",
+            gap: "8px",
+            background: "var(--color-surface)",
+            padding: "6px",
+            borderRadius: "12px",
+            border: "1px solid var(--color-border)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+          }}
+        >
+          {[
+            { value: "today", label: "Aujourd'hui" },
+            { value: "week", label: "Semaine" },
+            { value: "month", label: "Mois" },
+            { value: "year", label: "Année" },
+          ].map((period) => (
+            <button
+              key={period.value}
+              onClick={() => setSelectedPeriod(period.value)}
+              style={{
+                padding: "10px 20px",
+                border: "none",
+                borderRadius: "8px",
+                cursor: "pointer",
+                fontSize: "14px",
+                fontWeight: "600",
+                transition: "all 0.2s ease",
+                background:
+                  selectedPeriod === period.value ? "#6366f1" : "transparent",
+                color:
+                  selectedPeriod === period.value
+                    ? "white"
+                    : "var(--color-text-secondary)",
+              }}
+              onMouseEnter={(e) => {
+                if (selectedPeriod !== period.value) {
+                  e.currentTarget.style.background = "var(--color-bg)";
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedPeriod !== period.value) {
+                  e.currentTarget.style.background = "transparent";
+                }
+              }}
+            >
+              {period.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Cartes statistiques principales */}
+      {/* Cartes statistiques principales avec tendances */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: "20px",
           marginBottom: "30px",
         }}
       >
-        {/* Chiffre d'affaires - Visible par tous */}
-        <div
-          style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "15px",
-            }}
-          >
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                background: "linear-gradient(135deg, #3b82f6, #1d4ed8)",
-                borderRadius: "12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <DollarSign size={24} color="white" />
-            </div>
-            <div>
-              <div
-                style={{
-                  color: "var(--color-text-secondary)",
-                  fontSize: "14px",
-                }}
-              >
-                Chiffre d'affaires
-              </div>
-              <div
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "bold",
-                  color: "#3b82f6",
-                }}
-              >
-                {stats.totalRevenue.toLocaleString()} FCFA
-              </div>
-            </div>
-          </div>
-        </div>
+        <StatCard
+          title="Chiffre d'affaires"
+          value={stats.totalRevenue}
+          icon={DollarSign}
+          trend={stats.trends.revenue}
+          color="#10b981"
+          suffix="FCFA"
+        />
+        <StatCard
+          title="Nombre de ventes"
+          value={stats.totalSales}
+          icon={ShoppingBag}
+          trend={stats.trends.sales}
+          color="#3b82f6"
+        />
+        <StatCard
+          title="Panier moyen"
+          value={Math.round(stats.averageTicket)}
+          icon={Target}
+          trend={stats.trends.ticket}
+          color="#f59e0b"
+          suffix="FCFA"
+        />
+        <PermissionGate roles={["admin", "manager"]}>
+          <StatCard
+            title="Marge brute"
+            value={Math.round(stats.grossMargin)}
+            icon={TrendingUp}
+            trend={stats.trends.margin}
+            color="#8b5cf6"
+            suffix="FCFA"
+          />
+        </PermissionGate>
+      </div>
 
-        {/* Nombre de ventes - Visible par tous */}
-        <div
+      {/* Graphique des ventes et marges */}
+      <div
+        style={{
+          background: "var(--color-surface)",
+          padding: "25px",
+          borderRadius: "16px",
+          border: "1px solid var(--color-border)",
+          marginBottom: "30px",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        }}
+      >
+        <h3
           style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
+            margin: "0 0 20px 0",
+            fontSize: "18px",
+            fontWeight: "600",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "15px",
-            }}
-          >
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                background: "linear-gradient(135deg, #10b981, #059669)",
-                borderRadius: "12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <ShoppingBag size={24} color="white" />
-            </div>
-            <div>
-              <div
-                style={{
-                  color: "var(--color-text-secondary)",
-                  fontSize: "14px",
-                }}
-              >
-                Nombre de ventes
-              </div>
-              <div
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "bold",
-                  color: "#10b981",
-                }}
-              >
-                {stats.totalSales}
-              </div>
-            </div>
-          </div>
-        </div>
+          <Calendar size={20} color="#6366f1" />
+          Évolution des ventes et marges
+        </h3>
 
-        {/* Ticket moyen - Visible par tous */}
-        <div
-          style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
+        <div style={{ overflowX: "auto" }}>
           <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "15px",
-            }}
+            style={{ minWidth: "600px", height: "300px", position: "relative" }}
           >
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                background: "linear-gradient(135deg, #f59e0b, #d97706)",
-                borderRadius: "12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Award size={24} color="white" />
-            </div>
-            <div>
-              <div
-                style={{
-                  color: "var(--color-text-secondary)",
-                  fontSize: "14px",
-                }}
+            {chartData.length > 0 ? (
+              <svg
+                width="100%"
+                height="100%"
+                viewBox="0 0 800 300"
+                preserveAspectRatio="xMidYMid meet"
               >
-                Ticket moyen
-              </div>
-              <div
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "bold",
-                  color: "#f59e0b",
-                }}
-              >
-                {Math.round(stats.averageTicket).toLocaleString()} FCFA
-              </div>
-            </div>
-          </div>
-        </div>
+                {/* Grille de fond */}
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <line
+                    key={i}
+                    x1="50"
+                    y1={50 + i * 50}
+                    x2="750"
+                    y2={50 + i * 50}
+                    stroke="var(--color-border)"
+                    strokeWidth="1"
+                    strokeDasharray="4"
+                  />
+                ))}
 
-        {/* Clients - Visible par tous */}
-        <div
-          style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              marginBottom: "15px",
-            }}
-          >
-            <div
-              style={{
-                width: "48px",
-                height: "48px",
-                background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-                borderRadius: "12px",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Users size={24} color="white" />
-            </div>
-            <div>
+                {/* Barres */}
+                {chartData.map((item, index) => {
+                  const maxValue = Math.max(
+                    ...chartData.map((d) => Math.max(d.ventes, d.marges))
+                  );
+                  const barWidth = 600 / chartData.length / 2.5;
+                  const spacing = 600 / chartData.length;
+                  const x = 80 + index * spacing;
+
+                  const ventesHeight = (item.ventes / maxValue) * 200;
+                  const margesHeight = (item.marges / maxValue) * 200;
+
+                  return (
+                    <g key={index}>
+                      {/* Barre ventes (bleue) */}
+                      <rect
+                        x={x - barWidth / 2 - 5}
+                        y={250 - ventesHeight}
+                        width={barWidth}
+                        height={ventesHeight}
+                        fill="#3b82f6"
+                        rx="4"
+                      />
+                      {/* Barre marges (violette) */}
+                      <rect
+                        x={x + barWidth / 2 + 5}
+                        y={250 - margesHeight}
+                        width={barWidth}
+                        height={margesHeight}
+                        fill="#8b5cf6"
+                        rx="4"
+                      />
+                      {/* Label */}
+                      <text
+                        x={x}
+                        y="280"
+                        textAnchor="middle"
+                        fontSize="12"
+                        fill="var(--color-text-secondary)"
+                      >
+                        {item.label}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* Légende */}
+                <g transform="translate(650, 20)">
+                  <rect
+                    x="0"
+                    y="0"
+                    width="12"
+                    height="12"
+                    fill="#3b82f6"
+                    rx="2"
+                  />
+                  <text
+                    x="18"
+                    y="10"
+                    fontSize="12"
+                    fill="var(--color-text-primary)"
+                  >
+                    Ventes
+                  </text>
+                  <rect
+                    x="0"
+                    y="20"
+                    width="12"
+                    height="12"
+                    fill="#8b5cf6"
+                    rx="2"
+                  />
+                  <text
+                    x="18"
+                    y="30"
+                    fontSize="12"
+                    fill="var(--color-text-primary)"
+                  >
+                    Marges
+                  </text>
+                </g>
+              </svg>
+            ) : (
               <div
                 style={{
+                  height: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                   color: "var(--color-text-secondary)",
-                  fontSize: "14px",
                 }}
               >
-                Clients
+                Aucune donnée disponible pour cette période
               </div>
-              <div
-                style={{
-                  fontSize: "28px",
-                  fontWeight: "bold",
-                  color: "#8b5cf6",
-                }}
-              >
-                {stats.totalCustomers}
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ✨ Section Profit - Visible seulement pour Admin et Manager */}
-      <PermissionGate roles={["admin", "manager"]}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
-            gap: "20px",
-            marginBottom: "30px",
-            padding: "20px",
-            background:
-              "linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(6, 95, 70, 0.05))",
-            borderRadius: "12px",
-            border: "2px solid rgba(16, 185, 129, 0.3)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "15px",
-            }}
-          >
-            <div
-              style={{
-                width: "60px",
-                height: "60px",
-                background: "linear-gradient(135deg, #10b981, #059669)",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(16, 185, 129, 0.3)",
-              }}
-            >
-              <Eye size={28} color="white" />
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "var(--color-text-secondary)",
-                  fontWeight: "600",
-                  marginBottom: "5px",
-                }}
-              >
-                💰 Profit total
-              </div>
-              <div
-                style={{
-                  fontSize: "32px",
-                  fontWeight: "bold",
-                  color: "#10b981",
-                }}
-              >
-                {(() => {
-                  const totalProfit = periodSales.reduce((sum, sale) => {
-                    return (
-                      sum +
-                      (sale.items?.reduce((itemSum, item) => {
-                        const product = productCatalog.find(
-                          (p) => p.id === item.productId
-                        );
-                        if (product) {
-                          const profit =
-                            (item.unitPrice - product.costPrice) *
-                            item.quantity;
-                          return itemSum + profit;
-                        }
-                        return itemSum;
-                      }, 0) || 0)
-                    );
-                  }, 0);
-                  return totalProfit.toLocaleString();
-                })()}{" "}
-                FCFA
-              </div>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "15px",
-            }}
-          >
-            <div
-              style={{
-                width: "60px",
-                height: "60px",
-                background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
-                borderRadius: "50%",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                boxShadow: "0 4px 12px rgba(139, 92, 246, 0.3)",
-              }}
-            >
-              <TrendingUp size={28} color="white" />
-            </div>
-            <div>
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "var(--color-text-secondary)",
-                  fontWeight: "600",
-                  marginBottom: "5px",
-                }}
-              >
-                📊 Marge moyenne
-              </div>
-              <div
-                style={{
-                  fontSize: "32px",
-                  fontWeight: "bold",
-                  color: "#8b5cf6",
-                }}
-              >
-                {(() => {
-                  const totalRevenue = stats.totalRevenue;
-                  const totalProfit = periodSales.reduce((sum, sale) => {
-                    return (
-                      sum +
-                      (sale.items?.reduce((itemSum, item) => {
-                        const product = productCatalog.find(
-                          (p) => p.id === item.productId
-                        );
-                        if (product) {
-                          const profit =
-                            (item.unitPrice - product.costPrice) *
-                            item.quantity;
-                          return itemSum + profit;
-                        }
-                        return itemSum;
-                      }, 0) || 0)
-                    );
-                  }, 0);
-                  const marginPercent =
-                    totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
-                  return marginPercent.toFixed(1);
-                })()}
-                %
-              </div>
-            </div>
-          </div>
-        </div>
-      </PermissionGate>
-
-      {/* Graphique des ventes */}
-      <div style={{ marginBottom: "30px" }}>
-        <SalesChart data={salesByDay} />
-      </div>
-
-      {/* Section inférieure - 2 colonnes */}
+      {/* Grille à 2 colonnes : Top produits et Alertes */}
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "1fr 1fr",
+          gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))",
           gap: "20px",
-          marginBottom: "30px",
         }}
       >
-        {/* Top 5 produits */}
+        {/* Top produits */}
         <div
           style={{
             background: "var(--color-surface)",
             padding: "25px",
-            borderRadius: "12px",
+            borderRadius: "16px",
             border: "1px solid var(--color-border)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
           }}
         >
           <h3
@@ -636,150 +680,135 @@ function DashboardPage() {
               gap: "10px",
             }}
           >
-            <Award size={20} />
-            Top 5 Produits
+            <Package size={20} color="#10b981" />
+            Top Produits
           </h3>
 
-          {topProducts.length === 0 ? (
-            <p
-              style={{
-                color: "var(--color-text-secondary)",
-                textAlign: "center",
-              }}
-            >
-              Aucune vente sur cette période
-            </p>
-          ) : (
-            <div
-              style={{ display: "flex", flexDirection: "column", gap: "12px" }}
-            >
-              {topProducts.map((product, index) => (
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "12px" }}
+          >
+            {topProducts.length > 0 ? (
+              topProducts.map((product, index) => (
                 <div
-                  key={product.name}
+                  key={index}
                   style={{
-                    padding: "15px",
-                    background: "var(--color-bg)",
-                    borderRadius: "8px",
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "center",
+                    padding: "15px",
+                    background: "var(--color-bg)",
+                    borderRadius: "8px",
+                    border: "1px solid var(--color-border)",
                   }}
                 >
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                    }}
-                  >
+                  <div style={{ flex: 1 }}>
                     <div
                       style={{
-                        width: "32px",
-                        height: "32px",
-                        borderRadius: "50%",
-                        background:
-                          index === 0
-                            ? "linear-gradient(135deg, #f59e0b, #d97706)"
-                            : index === 1
-                            ? "linear-gradient(135deg, #94a3b8, #64748b)"
-                            : index === 2
-                            ? "linear-gradient(135deg, #cd7f32, #b8732d)"
-                            : "var(--color-border)",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "white",
-                        fontWeight: "bold",
                         fontSize: "14px",
+                        fontWeight: "600",
+                        color: "var(--color-text-primary)",
+                        marginBottom: "4px",
                       }}
                     >
-                      {index + 1}
+                      {product.name}
                     </div>
-                    <div>
-                      <div style={{ fontWeight: "600" }}>{product.name}</div>
-                      <div
-                        style={{
-                          fontSize: "13px",
-                          color: "var(--color-text-secondary)",
-                        }}
-                      >
-                        {product.quantity} vendus
-                      </div>
+                    <div
+                      style={{
+                        fontSize: "13px",
+                        color: "var(--color-text-secondary)",
+                      }}
+                    >
+                      {product.quantity} unités vendues
                     </div>
                   </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: "bold", color: "#10b981" }}>
-                      {product.revenue.toLocaleString()} FCFA
-                    </div>
+                  <div
+                    style={{
+                      fontSize: "16px",
+                      fontWeight: "bold",
+                      color: "#10b981",
+                    }}
+                  >
+                    {product.revenue.toLocaleString()} FCFA
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            ) : (
+              <div
+                style={{
+                  textAlign: "center",
+                  padding: "40px",
+                  color: "var(--color-text-secondary)",
+                }}
+              >
+                Aucun produit vendu
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Stock & Alertes */}
-        <div
-          style={{
-            background: "var(--color-surface)",
-            padding: "25px",
-            borderRadius: "12px",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <h3
-            style={{
-              margin: "0 0 20px 0",
-              fontSize: "18px",
-              fontWeight: "600",
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-            }}
-          >
-            <Package size={20} />
-            Inventaire
-          </h3>
-
-          <div
-            style={{ display: "flex", flexDirection: "column", gap: "15px" }}
-          >
+        {/* Alertes et infos */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* Stock faible */}
+          {stats.lowStock > 0 && (
             <div
               style={{
-                padding: "15px",
-                background: "var(--color-bg)",
-                borderRadius: "8px",
+                background: "linear-gradient(135deg, #fef3c7, #fed7aa)",
+                padding: "20px",
+                borderRadius: "16px",
+                border: "2px solid #f59e0b",
+                display: "flex",
+                alignItems: "center",
+                gap: "15px",
               }}
             >
-              <div
-                style={{
-                  fontSize: "14px",
-                  color: "var(--color-text-secondary)",
-                  marginBottom: "5px",
-                }}
-              >
-                Total produits
-              </div>
-              <div style={{ fontSize: "24px", fontWeight: "bold" }}>
-                {stats.totalStock} unités
+              <AlertTriangle size={28} color="#d97706" />
+              <div>
+                <div
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    color: "#92400e",
+                    marginBottom: "4px",
+                  }}
+                >
+                  Attention : Stock Faible
+                </div>
+                <div style={{ fontSize: "14px", color: "#d97706" }}>
+                  {stats.lowStock} produit(s) nécessitent un réapprovisionnement
+                </div>
               </div>
             </div>
+          )}
 
+          {/* Crédits actifs */}
+          {stats.activeCredits > 0 && (
             <div
               style={{
-                padding: "15px",
-                background: "var(--color-bg)",
-                borderRadius: "8px",
+                background: "var(--color-surface)",
+                padding: "20px",
+                borderRadius: "16px",
+                border: "1px solid var(--color-border)",
+                boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
               }}
             >
               <div
                 style={{
-                  fontSize: "14px",
-                  color: "var(--color-text-secondary)",
-                  marginBottom: "5px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  marginBottom: "12px",
                 }}
               >
-                Valeur du stock
+                <Users size={20} color="#3b82f6" />
+                <div
+                  style={{
+                    fontSize: "16px",
+                    fontWeight: "600",
+                    color: "var(--color-text-primary)",
+                  }}
+                >
+                  Crédits actifs
+                </div>
               </div>
               <div
                 style={{
@@ -788,86 +817,77 @@ function DashboardPage() {
                   color: "#3b82f6",
                 }}
               >
-                {stats.stockValue.toLocaleString()} FCFA
+                {stats.activeCredits}
+              </div>
+              <div
+                style={{
+                  fontSize: "13px",
+                  color: "var(--color-text-secondary)",
+                  marginTop: "4px",
+                }}
+              >
+                client(s) avec crédit en cours
               </div>
             </div>
+          )}
 
-            {stats.lowStock > 0 && (
+          {/* Info clients */}
+          <div
+            style={{
+              background: "var(--color-surface)",
+              padding: "20px",
+              borderRadius: "16px",
+              border: "1px solid var(--color-border)",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                marginBottom: "12px",
+              }}
+            >
+              <Users size={20} color="#10b981" />
               <div
                 style={{
-                  padding: "15px",
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "2px solid #ef4444",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "12px",
+                  fontSize: "16px",
+                  fontWeight: "600",
+                  color: "var(--color-text-primary)",
                 }}
               >
-                <AlertCircle size={24} color="#ef4444" />
-                <div>
-                  <div style={{ fontWeight: "600", color: "#ef4444" }}>
-                    {stats.lowStock} produit(s) en stock faible
-                  </div>
-                  <div style={{ fontSize: "13px", color: "#991b1b" }}>
-                    Réapprovisionnement nécessaire
-                  </div>
-                </div>
+                Base clients
               </div>
-            )}
-
-            {stats.activeCreditsCount > 0 && (
-              <div
-                style={{
-                  padding: "15px",
-                  background: "rgba(245, 158, 11, 0.1)",
-                  border: "2px solid #f59e0b",
-                  borderRadius: "8px",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "#d97706",
-                    marginBottom: "5px",
-                    fontWeight: "600",
-                  }}
-                >
-                  Crédits actifs
-                </div>
-                <div
-                  style={{
-                    fontSize: "24px",
-                    fontWeight: "bold",
-                    color: "#f59e0b",
-                  }}
-                >
-                  {stats.totalCreditsAmount.toLocaleString()} FCFA
-                </div>
-                <div
-                  style={{
-                    fontSize: "13px",
-                    color: "#d97706",
-                    marginTop: "5px",
-                  }}
-                >
-                  {stats.activeCreditsCount} client(s)
-                </div>
-              </div>
-            )}
+            </div>
+            <div
+              style={{ fontSize: "24px", fontWeight: "bold", color: "#10b981" }}
+            >
+              {stats.totalCustomers}
+            </div>
+            <div
+              style={{
+                fontSize: "13px",
+                color: "var(--color-text-secondary)",
+                marginTop: "4px",
+              }}
+            >
+              clients enregistrés
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ✨ Tableau des profits par produit - Visible seulement pour Admin et Manager */}
+      {/* Tableau de rentabilité par produit (Admin/Manager uniquement) */}
       <PermissionGate roles={["admin", "manager"]}>
         <div
           style={{
             background: "var(--color-surface)",
             padding: "25px",
-            borderRadius: "12px",
+            borderRadius: "16px",
             border: "1px solid var(--color-border)",
-            marginBottom: "30px",
+            marginTop: "30px",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
           }}
         >
           <h3
@@ -954,7 +974,7 @@ function DashboardPage() {
                       const product = productCatalog.find(
                         (p) => p.id === item.productId
                       );
-                      if (product) {
+                      if (product && product.costPrice) {
                         const unitMargin = item.unitPrice - product.costPrice;
                         const totalProfit = unitMargin * item.quantity;
                         const marginPercent =
