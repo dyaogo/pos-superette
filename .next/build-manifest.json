@@ -23,20 +23,25 @@
       "static/chunks/main.js",
       "static/chunks/pages/_error.js"
     ],
+    "/dashboard": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/dashboard.js"
+    ],
     "/inventory": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/inventory.js"
     ],
+    "/login": [
+      "static/chunks/webpack.js",
+      "static/chunks/main.js",
+      "static/chunks/pages/login.js"
+    ],
     "/reception": [
       "static/chunks/webpack.js",
       "static/chunks/main.js",
       "static/chunks/pages/reception.js"
-    ],
-    "/sales": [
-      "static/chunks/webpack.js",
-      "static/chunks/main.js",
-      "static/chunks/pages/sales.js"
     ]
   },
   "ampFirstPages": []

@@ -3,12 +3,9 @@
   "/_error": "pages/_error.js",
   "/_document": "pages/_document.js",
   "/reception": "pages/reception.js",
-  "/pos": "pages/pos.js",
-  "/sales": "pages/sales.js",
-  "/api/stores": "pages/api/stores.js",
   "/inventory": "pages/inventory.js",
-  "/api/customers": "pages/api/customers.js",
-  "/api/credits": "pages/api/credits.js",
-  "/api/products": "pages/api/products.js",
-  "/api/sales": "pages/api/sales.js"
+  "/api/activity-logs": "pages/api/activity-logs.js",
+  "/login": "pages/login.js",
+  "/api/auth/login": "pages/api/auth/login.js",
+  "/dashboard": "pages/dashboard.js"
 }
