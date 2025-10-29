@@ -1,0 +1,1 @@
+self.__REACT_LOADABLE_MANIFEST="{\"pages/pos.js -> ../src/utils/offlineDB\":{\"id\":\"pages/pos.js -> ../src/utils/offlineDB\",\"files\":[]}}"
