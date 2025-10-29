@@ -4,6 +4,5 @@
   "/_document": "pages/_document.js",
   "/consolidated-dashboard": "pages/consolidated-dashboard.js",
   "/pos": "pages/pos.js",
-  "/dashboard": "pages/dashboard.js",
-  "/api/consolidated-stats": "pages/api/consolidated-stats.js"
+  "/dashboard": "pages/dashboard.js"
 }
