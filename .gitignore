@@ -39,3 +39,5 @@ archives/
 public/sw.js
 public/sw.js.map
 public/workbox-*.js
+.next
+/.next/
