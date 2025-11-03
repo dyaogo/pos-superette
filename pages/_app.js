@@ -5,9 +5,21 @@ import { OnlineProvider } from "../src/contexts/OnlineContext";
 import Layout from "../components/Layout";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { useRouter } from "next/router";
+import { useEffect, useState } from "react";
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  // Attendre que le composant soit monté côté client
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Ne rien rendre pendant le SSR pour éviter les erreurs de Context
+  if (!mounted) {
+    return null;
+  }
 
   const noLayout = ["/", "/login"];
   const shouldUseLayout = !noLayout.includes(router.pathname);
