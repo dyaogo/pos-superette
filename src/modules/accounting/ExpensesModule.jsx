@@ -44,11 +44,22 @@ const ExpensesModule = ({ currentStore, currentUser }) => {
   const loadCategories = async () => {
     try {
       const res = await fetch('/api/expense-categories?active=true');
+      if (!res.ok) {
+        throw new Error('Erreur lors du chargement des catégories');
+      }
       const data = await res.json();
-      setCategories(data);
+      // S'assurer que data est un tableau
+      if (Array.isArray(data)) {
+        setCategories(data);
+      } else {
+        console.error('Categories data is not an array:', data);
+        setCategories([]);
+        toast.error('Format de données invalide');
+      }
     } catch (error) {
       console.error('Error loading categories:', error);
       toast.error('Erreur lors du chargement des catégories');
+      setCategories([]); // Garder un tableau vide en cas d'erreur
     }
   };
 
@@ -70,11 +81,22 @@ const ExpensesModule = ({ currentStore, currentUser }) => {
       }
 
       const res = await fetch(`/api/expenses?${params.toString()}`);
+      if (!res.ok) {
+        throw new Error('Erreur lors du chargement des dépenses');
+      }
       const data = await res.json();
-      setExpenses(data);
+      // S'assurer que data est un tableau
+      if (Array.isArray(data)) {
+        setExpenses(data);
+      } else {
+        console.error('Expenses data is not an array:', data);
+        setExpenses([]);
+        toast.error('Format de données invalide');
+      }
     } catch (error) {
       console.error('Error loading expenses:', error);
       toast.error('Erreur lors du chargement des dépenses');
+      setExpenses([]); // Garder un tableau vide en cas d'erreur
     } finally {
       setLoading(false);
     }
@@ -282,7 +304,7 @@ const ExpensesModule = ({ currentStore, currentUser }) => {
           className="px-4 py-2 border rounded-lg"
         >
           <option value="all">Toutes les catégories</option>
-          {categories.map((cat) => (
+          {Array.isArray(categories) && categories.map((cat) => (
             <option key={cat.id} value={cat.id}>{cat.name}</option>
           ))}
         </select>
@@ -309,7 +331,7 @@ const ExpensesModule = ({ currentStore, currentUser }) => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {expenses.map((expense) => (
+              {Array.isArray(expenses) && expenses.map((expense) => (
                 <tr key={expense.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {new Date(expense.createdAt).toLocaleDateString()}
@@ -391,7 +413,7 @@ const ExpensesModule = ({ currentStore, currentUser }) => {
                     required
                   >
                     <option value="">Sélectionner...</option>
-                    {categories.map((cat) => (
+                    {Array.isArray(categories) && categories.map((cat) => (
                       <option key={cat.id} value={cat.id}>{cat.name}</option>
                     ))}
                   </select>
