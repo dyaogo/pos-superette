@@ -126,8 +126,18 @@ export default async function handler(req, res) {
     const netMarginPercent = revenue > 0 ? (netProfit / revenue) * 100 : 0;
 
     // 8. Récupérer les retours de la période
+    // Note: Return model n'a pas storeId, on doit filtrer par les saleIds
+    const saleIds = sales.map(s => s.id);
     const returns = await prisma.return.findMany({
-      where,
+      where: {
+        saleId: {
+          in: saleIds,
+        },
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+      },
     });
 
     const totalReturns = returns.reduce((sum, ret) => sum + ret.amount, 0);
