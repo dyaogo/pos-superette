@@ -1,7 +1,7 @@
 # 🔧 CORRECTIONS APPLIQUÉES - Module Comptabilité
 
-**Date**: 3 Novembre 2025
-**Version**: 1.0.1
+**Date**: 4 Novembre 2025
+**Version**: 1.0.2
 
 ---
 
@@ -54,7 +54,58 @@
 
 ---
 
-### 3. ✅ Compte de Résultat - Logs Ajoutés
+### 3. ✅ Compte de Résultat - Erreur Return.findMany() - RÉSOLU
+
+**Problème identifié** :
+- Erreur "Unknown argument `storeId`" sur le modèle Return
+- Le compte de résultat ne s'affichait pas et plantait l'API
+- L'erreur était : `prisma.return.findMany({ where })` où `where` contenait `storeId`
+
+**Cause** :
+- Le modèle `Return` n'a pas de champ `storeId` direct
+- Il a seulement un champ `saleId` qui pointe vers une vente
+- Le code réutilisait l'objet `where` (conçu pour Sales/Expenses) pour filtrer les Returns
+
+**Solution appliquée** :
+
+Dans `/pages/api/accounting/profit-loss.js` ligne 129-141 :
+
+**Avant** :
+```javascript
+const returns = await prisma.return.findMany({
+  where,  // ❌ Contient storeId qui n'existe pas sur Return
+});
+```
+
+**Après** :
+```javascript
+// Extraire les IDs des ventes déjà filtrées
+const saleIds = sales.map(s => s.id);
+
+// Filtrer les retours par ces IDs de ventes
+const returns = await prisma.return.findMany({
+  where: {
+    saleId: {
+      in: saleIds,  // ✅ Filtrer par les ventes du magasin
+    },
+    createdAt: {
+      gte: start,
+      lte: end,
+    },
+  },
+});
+```
+
+**Résultat** :
+- ✅ Plus d'erreur sur Return.findMany()
+- ✅ Les retours sont correctement filtrés par magasin (via les ventes)
+- ✅ Le compte de résultat fonctionne maintenant
+
+**Fichier modifié** : `pages/api/accounting/profit-loss.js`
+
+---
+
+### 4. ✅ Compte de Résultat - Logs de Débogage Ajoutés
 
 **Problème** :
 - Pas de données affichées après paiement d'une dépense
@@ -325,7 +376,7 @@ Le compte de résultat a aussi besoin d'améliorations :
 | Fichier | Modification | Statut |
 |---------|--------------|--------|
 | `src/modules/accounting/AccountingModule.jsx` | Design moderne, correction layout | ✅ Terminé |
-| `pages/api/accounting/profit-loss.js` | Ajout logs débogage | ✅ Terminé |
+| `pages/api/accounting/profit-loss.js` | Fix Return.findMany(), Ajout logs débogage | ✅ Terminé |
 | ExpensesModule.jsx | - | ⏳ À moderniser |
 | ProfitLossStatement.jsx | - | ⏳ À moderniser |
 
