@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Calculator, Receipt, TrendingUp, FileText } from 'lucide-react';
+import { Receipt, TrendingUp } from 'lucide-react';
 import ExpensesModule from './ExpensesModule';
 import ProfitLossStatement from './ProfitLossStatement';
 
@@ -12,25 +12,32 @@ const AccountingModule = ({ currentStore, currentUser }) => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Navigation à onglets */}
-      <div className="bg-white border-b">
-        <div className="px-6">
-          <div className="flex gap-4">
+    <div className="w-full">
+      {/* Navigation à onglets avec design moderne */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="flex gap-2">
             {tabs.map((tab) => {
               const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-4 border-b-2 font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
+                  className={`
+                    flex items-center gap-3 px-6 py-4 border-b-3 font-semibold
+                    transition-all duration-200 ease-in-out transform
+                    ${isActive
+                      ? 'border-blue-600 text-blue-700 bg-white shadow-md -mb-px scale-105'
+                      : 'border-transparent text-gray-600 hover:text-blue-600 hover:bg-white/50'
+                    }
+                  `}
+                  style={{
+                    borderBottomWidth: isActive ? '3px' : '0px',
+                  }}
                 >
-                  <Icon size={20} />
-                  {tab.name}
+                  <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
+                  <span className="text-sm">{tab.name}</span>
                 </button>
               );
             })}
@@ -38,8 +45,8 @@ const AccountingModule = ({ currentStore, currentUser }) => {
         </div>
       </div>
 
-      {/* Contenu */}
-      <div>
+      {/* Contenu avec transition */}
+      <div className="animate-fadeIn">
         {activeTab === 'expenses' && (
           <ExpensesModule currentStore={currentStore} currentUser={currentUser} />
         )}
@@ -47,6 +54,24 @@ const AccountingModule = ({ currentStore, currentUser }) => {
           <ProfitLossStatement currentStore={currentStore} />
         )}
       </div>
+
+      {/* Styles pour les animations */}
+      <style jsx>{`
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 };

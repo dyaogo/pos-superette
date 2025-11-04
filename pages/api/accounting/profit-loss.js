@@ -90,6 +90,12 @@ export default async function handler(req, res) {
       },
     });
 
+    // Log pour débogage
+    console.log('[Profit-Loss] Sales count:', sales.length);
+    console.log('[Profit-Loss] Expenses count:', expenses.length);
+    console.log('[Profit-Loss] Revenue:', revenue);
+    console.log('[Profit-Loss] COGS:', cogs);
+
     // 6. Calculer le total des dépenses par catégorie
     const expensesByCategory = {};
     let totalExpenses = 0;
@@ -111,6 +117,8 @@ export default async function handler(req, res) {
       expensesByCategory[catName].amount += expense.amount;
       expensesByCategory[catName].count += 1;
     }
+
+    console.log('[Profit-Loss] Total Expenses:', totalExpenses);
 
     // 7. Calculer le résultat opérationnel et net
     const operatingProfit = grossProfit - totalExpenses;
