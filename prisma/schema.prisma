@@ -20,7 +20,6 @@ model Store {
 
   products  Product[]
   sales     Sale[]
-  expenses  Expense[]
 }
 
 model Product {
@@ -226,42 +225,4 @@ model ActivityLog {
   createdAt   DateTime @default(now())
 
   user        User     @relation(fields: [userId], references: [id])
-}
-
-// === COMPTABILITÉ / ACCOUNTING ===
-
-model ExpenseCategory {
-  id          String    @id @default(cuid())
-  code        String    @unique
-  name        String
-  description String?
-  color       String?   @default("#6b7280")
-  icon        String?   @default("DollarSign")
-  isActive    Boolean   @default(true)
-  createdAt   DateTime  @default(now())
-
-  expenses    Expense[]
-}
-
-model Expense {
-  id              String    @id @default(cuid())
-  storeId         String
-  categoryId      String
-  amount          Float
-  description     String
-  invoiceNumber   String?
-  supplier        String?
-  paymentMethod   String    @default("cash") // cash, bank_transfer, check, card
-  status          String    @default("pending") // pending, approved, paid, rejected
-  dueDate         DateTime?
-  paidDate        DateTime?
-  receipt         String?   @db.Text
-  notes           String?
-  createdBy       String
-  approvedBy      String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  store           Store              @relation(fields: [storeId], references: [id])
-  category        ExpenseCategory    @relation(fields: [categoryId], references: [id])
 }
