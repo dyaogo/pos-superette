@@ -8,7 +8,10 @@ import {
   Receipt,
   Download,
   Calendar,
-  ArrowRight
+  ArrowRight,
+  BarChart3,
+  AlertCircle,
+  Info
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -62,7 +65,10 @@ const ProfitLossStatement = ({ currentStore }) => {
   if (loading) {
     return (
       <div className="p-6">
-        <div className="text-center py-12">Chargement du compte de résultat...</div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="inline-block animate-spin rounded-full h-16 w-16 border-4 border-blue-500 border-t-transparent"></div>
+          <p className="mt-6 text-gray-600 font-semibold text-lg">Chargement du compte de résultat...</p>
+        </div>
       </div>
     );
   }
@@ -70,7 +76,11 @@ const ProfitLossStatement = ({ currentStore }) => {
   if (!data) {
     return (
       <div className="p-6">
-        <div className="text-center py-12 text-gray-500">Aucune donnée disponible</div>
+        <div className="flex flex-col items-center justify-center py-20">
+          <AlertCircle size={64} className="text-gray-400 mb-4" />
+          <p className="text-center text-xl font-semibold text-gray-500">Aucune donnée disponible</p>
+          <p className="text-center text-sm text-gray-400 mt-2">Vérifiez la période sélectionnée</p>
+        </div>
       </div>
     );
   }
@@ -81,149 +91,185 @@ const ProfitLossStatement = ({ currentStore }) => {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header avec sélection de dates */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Compte de Résultat</h1>
-          <p className="text-gray-600">{currentStore?.name || 'Tous les magasins'}</p>
-        </div>
+      {/* Header avec sélection de dates moderne */}
+      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-200">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-extrabold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+              Compte de Résultat
+            </h1>
+            <p className="text-gray-600 mt-1 font-medium">{currentStore?.name || 'Tous les magasins'}</p>
+          </div>
 
-        <div className="flex gap-4">
-          <div className="flex items-center gap-2">
-            <Calendar size={20} />
+          <div className="flex items-center gap-3 bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200">
+            <Calendar size={22} className="text-blue-600" />
             <input
               type="date"
               value={dateRange.startDate}
               onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
-              className="px-3 py-2 border rounded-lg"
+              className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
             />
-            <ArrowRight size={20} />
+            <ArrowRight size={22} className="text-gray-400" />
             <input
               type="date"
               value={dateRange.endDate}
               onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
-              className="px-3 py-2 border rounded-lg"
+              className="px-3 py-2 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
             />
           </div>
         </div>
       </div>
 
-      {/* KPIs principaux */}
+      {/* KPIs principaux avec gradients ultra-modernes */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <ShoppingCart size={24} className="text-blue-600" />
+        {/* Revenus */}
+        <div className="bg-gradient-to-br from-blue-500 via-blue-600 to-indigo-600 p-6 rounded-2xl shadow-2xl text-white transform hover:scale-105 hover:shadow-3xl transition-all duration-300">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+              <ShoppingCart size={28} strokeWidth={2.5} />
             </div>
-            <p className="text-sm text-gray-600">Revenus</p>
+            <div>
+              <p className="text-white/90 text-sm font-semibold">Revenus</p>
+              <p className="text-xs text-white/70">{data.metrics.transactionCount} transactions</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(data.revenue.total)}</p>
-          <p className="text-xs text-gray-500 mt-1">{data.metrics.transactionCount} transactions</p>
+          <p className="text-3xl font-black mb-1">{formatCurrency(data.revenue.total)}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <TrendingUp size={24} className="text-green-600" />
+        {/* Marge Brute */}
+        <div className="bg-gradient-to-br from-emerald-500 via-green-600 to-teal-600 p-6 rounded-2xl shadow-2xl text-white transform hover:scale-105 hover:shadow-3xl transition-all duration-300">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+              <TrendingUp size={28} strokeWidth={2.5} />
             </div>
-            <p className="text-sm text-gray-600">Marge Brute</p>
+            <div>
+              <p className="text-white/90 text-sm font-semibold">Marge Brute</p>
+              <p className="text-xs text-white/70">{formatPercent(data.grossProfit.margin)}</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-green-600">{formatCurrency(data.grossProfit.amount)}</p>
-          <p className="text-xs text-gray-500 mt-1">{formatPercent(data.grossProfit.margin)}</p>
+          <p className="text-3xl font-black mb-1">{formatCurrency(data.grossProfit.amount)}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-red-100 rounded-lg">
-              <Receipt size={24} className="text-red-600" />
+        {/* Dépenses */}
+        <div className="bg-gradient-to-br from-orange-500 via-red-500 to-pink-600 p-6 rounded-2xl shadow-2xl text-white transform hover:scale-105 hover:shadow-3xl transition-all duration-300">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+              <Receipt size={28} strokeWidth={2.5} />
             </div>
-            <p className="text-sm text-gray-600">Dépenses</p>
+            <div>
+              <p className="text-white/90 text-sm font-semibold">Dépenses</p>
+              <p className="text-xs text-white/70">{formatPercent(data.metrics.expenseRatio)} du CA</p>
+            </div>
           </div>
-          <p className="text-2xl font-bold text-red-600">{formatCurrency(data.expenses.total)}</p>
-          <p className="text-xs text-gray-500 mt-1">{formatPercent(data.metrics.expenseRatio)} du CA</p>
+          <p className="text-3xl font-black mb-1">{formatCurrency(data.expenses.total)}</p>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow">
-          <div className="flex items-center gap-3 mb-2">
-            <div className={`p-2 rounded-lg ${data.netProfit.amount >= 0 ? 'bg-green-100' : 'bg-red-100'}`}>
-              <ProfitIcon size={24} className={profitColor} />
+        {/* Résultat Net */}
+        <div className={`bg-gradient-to-br ${data.netProfit.amount >= 0 ? 'from-green-500 via-emerald-600 to-teal-600' : 'from-red-500 via-pink-600 to-rose-600'} p-6 rounded-2xl shadow-2xl text-white transform hover:scale-105 hover:shadow-3xl transition-all duration-300`}>
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
+              <ProfitIcon size={28} strokeWidth={2.5} />
             </div>
-            <p className="text-sm text-gray-600">Résultat Net</p>
+            <div>
+              <p className="text-white/90 text-sm font-semibold">Résultat Net</p>
+              <p className="text-xs text-white/70">{formatPercent(data.netProfit.margin)}</p>
+            </div>
           </div>
-          <p className={`text-2xl font-bold ${profitColor}`}>{formatCurrency(data.netProfit.amount)}</p>
-          <p className="text-xs text-gray-500 mt-1">{formatPercent(data.netProfit.margin)}</p>
+          <p className="text-3xl font-black mb-1">{formatCurrency(data.netProfit.amount)}</p>
         </div>
       </div>
 
-      {/* Compte de résultat détaillé */}
-      <div className="bg-white rounded-lg shadow overflow-hidden">
-        <div className="p-6">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Détail du Compte de Résultat</h2>
-
-          <div className="space-y-4">
-            {/* REVENUS */}
+      {/* Message informatif si pas de ventes */}
+      {data.revenue.total === 0 && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-l-4 border-blue-500 p-6 rounded-xl shadow-md">
+          <div className="flex items-start gap-4">
+            <Info size={28} className="text-blue-600 flex-shrink-0 mt-1" />
             <div>
-              <div className="flex justify-between items-center py-2 border-b-2 border-blue-600">
-                <span className="font-bold text-gray-900">REVENUS</span>
-                <span className="font-bold text-gray-900">{formatCurrency(data.revenue.total)}</span>
+              <p className="font-bold text-blue-900 text-lg mb-2">Aucune vente trouvée</p>
+              <p className="text-sm text-blue-700 leading-relaxed">
+                Créez des ventes via la page Caisse pour voir le compte de résultat complet avec revenus et rentabilité.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compte de résultat détaillé avec design moderne */}
+      <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+        <div className="bg-gradient-to-r from-gray-50 to-gray-100 px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <BarChart3 size={24} className="text-blue-600" />
+            <h2 className="text-xl font-bold text-gray-900">Détail du Compte de Résultat</h2>
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="space-y-6">
+            {/* REVENUS */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-5 rounded-xl border-l-4 border-blue-500 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <span className="font-extrabold text-lg text-blue-900">REVENUS</span>
+                <span className="font-extrabold text-lg text-blue-900">{formatCurrency(data.revenue.total)}</span>
               </div>
-              <div className="pl-4 space-y-2 mt-2">
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-gray-600">Chiffre d'affaires HT</span>
-                  <span className="text-gray-900">{formatCurrency(data.revenue.subtotal)}</span>
+              <div className="pl-4 space-y-3">
+                <div className="flex justify-between items-center py-2 bg-white/50 px-3 rounded-lg">
+                  <span className="text-gray-700 font-medium">Chiffre d'affaires HT</span>
+                  <span className="text-gray-900 font-semibold">{formatCurrency(data.revenue.subtotal)}</span>
                 </div>
-                <div className="flex justify-between items-center py-1">
-                  <span className="text-gray-600">TVA collectée</span>
-                  <span className="text-gray-900">{formatCurrency(data.revenue.taxCollected)}</span>
+                <div className="flex justify-between items-center py-2 bg-white/50 px-3 rounded-lg">
+                  <span className="text-gray-700 font-medium">TVA collectée</span>
+                  <span className="text-gray-900 font-semibold">{formatCurrency(data.revenue.taxCollected)}</span>
                 </div>
                 {data.revenue.returns > 0 && (
-                  <div className="flex justify-between items-center py-1 text-red-600">
-                    <span>Retours</span>
-                    <span>- {formatCurrency(data.revenue.returns)}</span>
+                  <div className="flex justify-between items-center py-2 bg-red-50 px-3 rounded-lg border border-red-200">
+                    <span className="text-red-700 font-medium">Retours</span>
+                    <span className="text-red-900 font-semibold">- {formatCurrency(data.revenue.returns)}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* COÛT DES MARCHANDISES VENDUES */}
-            <div>
-              <div className="flex justify-between items-center py-2 border-b-2 border-orange-600">
-                <span className="font-bold text-gray-900">COÛT DES MARCHANDISES VENDUES</span>
-                <span className="font-bold text-red-600">({formatCurrency(data.cogs.total)})</span>
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 p-5 rounded-xl border-l-4 border-orange-500 shadow-sm">
+              <div className="flex justify-between items-center">
+                <span className="font-extrabold text-lg text-orange-900">COÛT DES MARCHANDISES VENDUES</span>
+                <span className="font-extrabold text-lg text-red-700">({formatCurrency(data.cogs.total)})</span>
               </div>
             </div>
 
             {/* MARGE BRUTE */}
-            <div className="bg-green-50 p-3 rounded-lg">
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-6 rounded-xl border-2 border-green-300 shadow-lg">
               <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-900">MARGE BRUTE</span>
+                <span className="font-extrabold text-xl text-green-900">MARGE BRUTE</span>
                 <div className="text-right">
-                  <p className="font-bold text-green-600">{formatCurrency(data.grossProfit.amount)}</p>
-                  <p className="text-xs text-gray-600">{formatPercent(data.grossProfit.margin)}</p>
+                  <p className="font-extrabold text-2xl text-green-600">{formatCurrency(data.grossProfit.amount)}</p>
+                  <p className="text-sm font-semibold text-green-700 mt-1">{formatPercent(data.grossProfit.margin)}</p>
                 </div>
               </div>
             </div>
 
             {/* DÉPENSES OPÉRATIONNELLES */}
-            <div>
-              <div className="flex justify-between items-center py-2 border-b-2 border-red-600">
-                <span className="font-bold text-gray-900">DÉPENSES OPÉRATIONNELLES</span>
-                <span className="font-bold text-red-600">({formatCurrency(data.expenses.total)})</span>
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-5 rounded-xl border-l-4 border-purple-500 shadow-sm">
+              <div className="flex justify-between items-center mb-4">
+                <span className="font-extrabold text-lg text-purple-900">DÉPENSES OPÉRATIONNELLES</span>
+                <span className="font-extrabold text-lg text-red-700">({formatCurrency(data.expenses.total)})</span>
               </div>
-              <div className="pl-4 space-y-2 mt-2">
+              <div className="pl-4 space-y-3">
                 {data.expenses.byCategory.map((cat) => (
-                  <div key={cat.categoryId} className="flex justify-between items-center py-1">
-                    <div className="flex items-center gap-2">
+                  <div key={cat.categoryId} className="flex justify-between items-center py-2 bg-white/50 px-3 rounded-lg">
+                    <div className="flex items-center gap-3">
                       <span
-                        className="w-3 h-3 rounded-full"
+                        className="w-4 h-4 rounded-full shadow-sm"
                         style={{ backgroundColor: cat.color }}
                       />
-                      <span className="text-gray-600">{cat.name}</span>
-                      <span className="text-xs text-gray-400">({cat.count})</span>
+                      <span className="text-gray-700 font-medium">{cat.name}</span>
+                      <span className="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+                        {cat.count} dépense{cat.count > 1 ? 's' : ''}
+                      </span>
                     </div>
                     <div className="text-right">
-                      <span className="text-gray-900">{formatCurrency(cat.amount)}</span>
-                      <span className="text-xs text-gray-500 ml-2">({formatPercent(cat.percentage)})</span>
+                      <span className="text-gray-900 font-semibold">{formatCurrency(cat.amount)}</span>
+                      <span className="text-xs font-medium text-gray-500 ml-3">({formatPercent(cat.percentage)})</span>
                     </div>
                   </div>
                 ))}
@@ -231,14 +277,17 @@ const ProfitLossStatement = ({ currentStore }) => {
             </div>
 
             {/* RÉSULTAT NET */}
-            <div className={`p-4 rounded-lg ${data.netProfit.amount >= 0 ? 'bg-green-50' : 'bg-red-50'}`}>
+            <div className={`p-6 rounded-xl border-2 shadow-xl ${data.netProfit.amount >= 0 ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-400' : 'bg-gradient-to-br from-red-50 to-pink-50 border-red-400'}`}>
               <div className="flex justify-between items-center">
-                <span className="font-bold text-gray-900 text-lg">RÉSULTAT NET</span>
+                <div className="flex items-center gap-3">
+                  <ProfitIcon size={32} className={profitColor} />
+                  <span className="font-extrabold text-2xl text-gray-900">RÉSULTAT NET</span>
+                </div>
                 <div className="text-right">
-                  <p className={`font-bold text-2xl ${profitColor}`}>
+                  <p className={`font-extrabold text-3xl ${profitColor}`}>
                     {formatCurrency(data.netProfit.amount)}
                   </p>
-                  <p className="text-sm text-gray-600">Marge nette: {formatPercent(data.netProfit.margin)}</p>
+                  <p className="text-sm font-semibold text-gray-600 mt-1">Marge nette: {formatPercent(data.netProfit.margin)}</p>
                 </div>
               </div>
             </div>
@@ -246,37 +295,50 @@ const ProfitLossStatement = ({ currentStore }) => {
         </div>
       </div>
 
-      {/* Détails des produits vendus */}
+      {/* Détails des produits vendus avec design moderne */}
       {data.cogs.byProduct.length > 0 && (
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-200">
+          <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200">
+            <div className="flex items-center gap-3">
+              <Package size={24} className="text-purple-600" />
+              <h2 className="text-xl font-bold text-gray-900">Top Produits par Profit</h2>
+            </div>
+          </div>
+
           <div className="p-6">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">Top Produits par Profit</h2>
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Produit</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Qté</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Coût</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Revenu</th>
-                    <th className="px-4 py-2 text-right text-xs font-medium text-gray-500">Profit</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">Produit</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Qté</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Coût</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Revenu</th>
+                    <th className="px-6 py-4 text-right text-xs font-bold text-gray-700 uppercase tracking-wider">Profit</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {data.cogs.byProduct
                     .sort((a, b) => b.profit - a.profit)
                     .slice(0, 10)
-                    .map((product) => (
-                      <tr key={product.productId}>
-                        <td className="px-4 py-2 text-sm text-gray-900">{product.name}</td>
-                        <td className="px-4 py-2 text-sm text-right text-gray-600">{product.quantity}</td>
-                        <td className="px-4 py-2 text-sm text-right text-gray-600">
+                    .map((product, index) => (
+                      <tr
+                        key={product.productId}
+                        className={`hover:bg-gradient-to-r hover:from-purple-50 hover:to-pink-50 transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}`}
+                      >
+                        <td className="px-6 py-4 text-sm font-semibold text-gray-900">{product.name}</td>
+                        <td className="px-6 py-4 text-sm text-right">
+                          <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full font-bold text-xs">
+                            {product.quantity}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-right text-gray-700 font-medium">
                           {formatCurrency(product.totalCost)}
                         </td>
-                        <td className="px-4 py-2 text-sm text-right text-gray-900">
+                        <td className="px-6 py-4 text-sm text-right text-gray-900 font-semibold">
                           {formatCurrency(product.revenue)}
                         </td>
-                        <td className={`px-4 py-2 text-sm text-right font-medium ${product.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <td className={`px-6 py-4 text-sm text-right font-bold ${product.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {formatCurrency(product.profit)}
                         </td>
                       </tr>
