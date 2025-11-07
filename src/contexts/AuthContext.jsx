@@ -99,7 +99,8 @@ export function AuthProvider({ children }) {
         'manage_customers',
         'manage_credits',
         'view_returns',
-        'view_reports'
+        'view_reports',
+        'view_accounting'
       ],
       cashier: [
         'view_dashboard',

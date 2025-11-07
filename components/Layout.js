@@ -19,6 +19,7 @@ import {
   UserCog,
   LogOut,
   User,
+  Calculator,
 } from "lucide-react";
 import StoreSelector from "./StoreSelector";
 import OnlineStatusBadge from "./OnlineStatusBadge";
@@ -115,6 +116,12 @@ export default function Layout({ children }) {
       icon: Package,
       label: "Retours",
       permission: "view_returns",
+    },
+    {
+      path: "/accounting",
+      icon: Calculator,
+      label: "Comptabilité",
+      permission: "view_accounting",
     },
     {
       path: "/settings",
