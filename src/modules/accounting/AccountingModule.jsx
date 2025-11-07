@@ -12,11 +12,11 @@ const AccountingModule = ({ currentStore, currentUser }) => {
   ];
 
   return (
-    <div className="w-full">
-      {/* Navigation à onglets avec design moderne */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-b border-gray-200 sticky top-0 z-10 shadow-sm">
+    <div className="w-full min-h-screen bg-gradient-to-br from-gray-50 via-blue-50/30 to-indigo-50/30">
+      {/* Navigation à onglets avec design ultra-moderne */}
+      <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 shadow-xl">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="flex gap-2">
+          <div className="flex gap-1">
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
@@ -25,19 +25,17 @@ const AccountingModule = ({ currentStore, currentUser }) => {
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    flex items-center gap-3 px-6 py-4 border-b-3 font-semibold
-                    transition-all duration-200 ease-in-out transform
+                    flex items-center gap-3 px-8 py-4 font-bold
+                    transition-all duration-300 ease-out transform
                     ${isActive
-                      ? 'border-blue-600 text-blue-700 bg-white shadow-md -mb-px scale-105'
-                      : 'border-transparent text-gray-600 hover:text-blue-600 hover:bg-white/50'
+                      ? 'bg-white text-blue-700 shadow-2xl -mb-px scale-105 border-b-4 border-blue-600'
+                      : 'text-white/80 hover:text-white hover:bg-white/20 hover:scale-102'
                     }
+                    rounded-t-xl
                   `}
-                  style={{
-                    borderBottomWidth: isActive ? '3px' : '0px',
-                  }}
                 >
-                  <Icon size={22} strokeWidth={isActive ? 2.5 : 2} />
-                  <span className="text-sm">{tab.name}</span>
+                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} className={isActive ? '' : ''} />
+                  <span className="text-base">{tab.name}</span>
                 </button>
               );
             })}
@@ -45,7 +43,7 @@ const AccountingModule = ({ currentStore, currentUser }) => {
         </div>
       </div>
 
-      {/* Contenu avec transition */}
+      {/* Contenu avec transition animée */}
       <div className="animate-fadeIn">
         {activeTab === 'expenses' && (
           <ExpensesModule currentStore={currentStore} currentUser={currentUser} />
@@ -58,17 +56,30 @@ const AccountingModule = ({ currentStore, currentUser }) => {
       {/* Styles pour les animations */}
       <style jsx>{`
         .animate-fadeIn {
-          animation: fadeIn 0.3s ease-in;
+          animation: fadeIn 0.4s ease-in;
+        }
+
+        .hover\\:scale-102:hover {
+          transform: scale(1.02);
         }
 
         @keyframes fadeIn {
           from {
             opacity: 0;
-            transform: translateY(10px);
+            transform: translateY(20px);
           }
           to {
             opacity: 1;
             transform: translateY(0);
+          }
+        }
+
+        @keyframes pulse {
+          0%, 100% {
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.7;
           }
         }
       `}</style>
