@@ -4,46 +4,52 @@ const prisma = new PrismaClient();
 
 const expenseCategories = [
   {
-    code: 'SAL',
     name: 'Salaires',
     description: 'Salaires et rémunérations du personnel',
     color: '#10b981',
     icon: 'Users',
   },
   {
-    code: 'RNT',
     name: 'Loyer',
     description: 'Loyer des locaux commerciaux',
     color: '#3b82f6',
     icon: 'Home',
   },
   {
-    code: 'FRN',
     name: 'Fournitures',
     description: 'Fournitures et consommables',
     color: '#8b5cf6',
     icon: 'Package',
   },
   {
-    code: 'GRD',
     name: 'Gardiennage',
     description: 'Services de sécurité et gardiennage',
     color: '#f59e0b',
     icon: 'Shield',
   },
   {
-    code: 'ELEC',
-    name: 'Facture Électricité',
+    name: 'Électricité',
     description: 'Consommation électrique',
     color: '#eab308',
     icon: 'Zap',
   },
   {
-    code: 'NET',
-    name: 'Facture Internet',
+    name: 'Internet',
     description: 'Abonnement internet et télécommunications',
     color: '#06b6d4',
     icon: 'Wifi',
+  },
+  {
+    name: 'Transport',
+    description: 'Frais de déplacement et transport',
+    color: '#ef4444',
+    icon: 'Truck',
+  },
+  {
+    name: 'Autres',
+    description: 'Autres dépenses diverses',
+    color: '#6b7280',
+    icon: 'Receipt',
   },
 ];
 
@@ -52,8 +58,8 @@ async function seedExpenseCategories() {
 
   try {
     for (const category of expenseCategories) {
-      const existingCategory = await prisma.expenseCategory.findUnique({
-        where: { code: category.code },
+      const existingCategory = await prisma.expenseCategory.findFirst({
+        where: { name: category.name },
       });
 
       if (existingCategory) {
