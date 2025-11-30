@@ -4,13 +4,37 @@ const prisma = new PrismaClient();
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
+      // 🔥 PAGINATION : Récupération des paramètres
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 100;
+      const skip = (page - 1) * limit;
+
+      // Compter le total pour la pagination
+      const total = await prisma.customer.count();
+
       const customers = await prisma.customer.findMany({
+        skip,
+        take: limit,
         orderBy: { name: 'asc' }
       });
-      res.status(200).json(customers);
+
+      // 🔥 PAGINATION : Métadonnées
+      const totalPages = Math.ceil(total / limit);
+
+      res.status(200).json({
+        data: customers,
+        pagination: {
+          total,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      });
     } catch (error) {
       console.error('Erreur GET customers:', error);
-      res.status(200).json([]);
+      res.status(200).json({ data: [], pagination: null });
     }
   } else if (req.method === 'POST') {
     try {

@@ -9,7 +9,8 @@ export default function TestProducts() {
     fetch('/api/products')
       .then(res => res.json())
       .then(data => {
-        setProducts(data);
+        // 🔥 PAGINATION: Extraire .data si présent
+        setProducts(data.data || data);
         setLoading(false);
       })
       .catch(err => {
