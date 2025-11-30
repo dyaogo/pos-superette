@@ -1,6 +1,8 @@
 import prisma from '../../../lib/prisma';
+import { ExpenseSchema, validate } from '../../../lib/validations';
+import { withRateLimit, RATE_LIMITS } from '../../../lib/rateLimit';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { storeId, page: pageQuery, limit: limitQuery } = req.query;
@@ -50,17 +52,26 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const { storeId, categoryId, amount, description, expenseDate, createdBy } = req.body;
+      // 🛡️ VALIDATION ZOD : Valider les données avant traitement
+      const validation = validate(ExpenseSchema, {
+        ...req.body,
+        amount: parseFloat(req.body.amount)
+      });
 
-      if (!storeId || !categoryId || !amount || !description || !createdBy) {
-        return res.status(400).json({ error: 'Missing required fields' });
+      if (!validation.success) {
+        return res.status(400).json({
+          error: 'Données invalides',
+          details: validation.errors
+        });
       }
+
+      const { storeId, categoryId, amount, description, expenseDate, createdBy } = validation.data;
 
       const expense = await prisma.expense.create({
         data: {
           storeId,
           categoryId,
-          amount: parseFloat(amount),
+          amount,
           description,
           expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
           createdBy,
@@ -96,3 +107,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
+
+// 🚦 RATE LIMITING : 100 lectures / 30 écritures par minute
+export default withRateLimit(handler, RATE_LIMITS.read);

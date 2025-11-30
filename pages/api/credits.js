@@ -1,7 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+import { CreditSchema, validate } from '../../lib/validations';
+import { withRateLimit, RATE_LIMITS } from '../../lib/rateLimit';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const credits = await prisma.credit.findMany({
@@ -14,18 +16,29 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const { customerId, amount, description, dueDate } = req.body;
-      
-      if (!customerId || !amount || !dueDate) {
-        return res.status(400).json({ error: 'Données manquantes' });
+      // 🛡️ VALIDATION ZOD : Valider les données avant traitement
+      const validation = validate(CreditSchema, {
+        customerId: req.body.customerId,
+        amount: parseFloat(req.body.amount),
+        dueDate: req.body.dueDate,
+        notes: req.body.description || req.body.notes // Accepter les deux
+      });
+
+      if (!validation.success) {
+        return res.status(400).json({
+          error: 'Données invalides',
+          details: validation.errors
+        });
       }
-      
+
+      const { customerId, amount, dueDate, notes } = validation.data;
+
       const credit = await prisma.credit.create({
         data: {
-          customerId: customerId,
-          amount: parseFloat(amount),
-          remainingAmount: parseFloat(amount),
-          description: description || null,
+          customerId,
+          amount,
+          remainingAmount: amount,
+          description: notes,
           dueDate: new Date(dueDate),
           status: 'pending'
         }
@@ -40,3 +53,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
+
+// 🚦 RATE LIMITING : 30 créations de crédit par minute
+export default withRateLimit(handler, RATE_LIMITS.write);

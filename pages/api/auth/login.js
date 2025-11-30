@@ -1,8 +1,9 @@
 const { PrismaClient } = require("@prisma/client");
 const bcrypt = require("bcryptjs");
 const prisma = new PrismaClient();
+import { withRateLimit, RATE_LIMITS } from '../../../lib/rateLimit';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === "POST") {
     try {
       const { username, password } = req.body;
@@ -62,3 +63,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: "Method not allowed" });
   }
 }
+
+// 🚦 RATE LIMITING : 5 tentatives par 15 minutes (protection brute force)
+export default withRateLimit(handler, RATE_LIMITS.auth);
