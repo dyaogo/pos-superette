@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+import { ProductSchema, validate } from '../../lib/validations';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -45,13 +46,26 @@ export default async function handler(req, res) {
 } else if (req.method === 'POST') {
   try {
     console.log('Données reçues:', req.body);
-    
-    const { name, category, barcode, costPrice, sellingPrice, stock, image } = req.body;
-    
-    // Validation
-    if (!name || !category || !costPrice || !sellingPrice) {
-      return res.status(400).json({ error: 'Champs requis manquants' });
+
+    // 🛡️ VALIDATION ZOD : Valider les données avant traitement
+    const validation = validate(ProductSchema, {
+      name: req.body.name,
+      category: req.body.category,
+      barcode: req.body.barcode || null,
+      costPrice: parseFloat(req.body.costPrice),
+      sellingPrice: parseFloat(req.body.sellingPrice),
+      stock: parseInt(req.body.stock) || 0,
+      image: req.body.image || null
+    });
+
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Données invalides',
+        details: validation.errors
+      });
     }
+
+    const { name, category, barcode, costPrice, sellingPrice, stock, image } = validation.data;
     
     // Récupérer le premier magasin
     let store = await prisma.store.findFirst();
@@ -68,17 +82,17 @@ export default async function handler(req, res) {
       });
     }
     
-    // Créer le produit avec l'image
+    // Créer le produit avec l'image (données déjà validées par Zod)
     const product = await prisma.product.create({
       data: {
         storeId: store.id,
-        name: name,
-        category: category,
-        barcode: barcode || null,
-        costPrice: parseFloat(costPrice),
-        sellingPrice: parseFloat(sellingPrice),
-        stock: parseInt(stock) || 0,
-        image: image || null  // NOUVEAU
+        name,
+        category,
+        barcode,
+        costPrice,
+        sellingPrice,
+        stock,
+        image
       }
     });
     

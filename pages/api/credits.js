@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+import { CreditSchema, validate } from '../../lib/validations';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -14,18 +15,29 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const { customerId, amount, description, dueDate } = req.body;
-      
-      if (!customerId || !amount || !dueDate) {
-        return res.status(400).json({ error: 'Données manquantes' });
+      // 🛡️ VALIDATION ZOD : Valider les données avant traitement
+      const validation = validate(CreditSchema, {
+        customerId: req.body.customerId,
+        amount: parseFloat(req.body.amount),
+        dueDate: req.body.dueDate,
+        notes: req.body.description || req.body.notes // Accepter les deux
+      });
+
+      if (!validation.success) {
+        return res.status(400).json({
+          error: 'Données invalides',
+          details: validation.errors
+        });
       }
-      
+
+      const { customerId, amount, dueDate, notes } = validation.data;
+
       const credit = await prisma.credit.create({
         data: {
-          customerId: customerId,
-          amount: parseFloat(amount),
-          remainingAmount: parseFloat(amount),
-          description: description || null,
+          customerId,
+          amount,
+          remainingAmount: amount,
+          description: notes,
           dueDate: new Date(dueDate),
           status: 'pending'
         }

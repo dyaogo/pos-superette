@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+import { CustomerSchema, validate } from '../../lib/validations';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -38,8 +39,18 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const { name, phone, email } = req.body;
-      
+      // 🛡️ VALIDATION ZOD : Valider les données avant traitement
+      const validation = validate(CustomerSchema, req.body);
+
+      if (!validation.success) {
+        return res.status(400).json({
+          error: 'Données invalides',
+          details: validation.errors
+        });
+      }
+
+      const { name, phone, email } = validation.data;
+
       const customer = await prisma.customer.create({
         data: {
           name,

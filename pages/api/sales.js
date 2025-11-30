@@ -1,5 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
+import { SaleSchema, validate } from '../../lib/validations';
 
 export default async function handler(req, res) {
   if (req.method === 'GET') {
@@ -68,14 +69,24 @@ export default async function handler(req, res) {
     
   } else if (req.method === 'POST') {
   try {
-    const { storeId, customerId, total, paymentMethod, items, cashReceived, change } = req.body;
-    
+    // 🛡️ VALIDATION ZOD : Valider les données avant traitement
+    const validation = validate(SaleSchema, req.body);
+
+    if (!validation.success) {
+      return res.status(400).json({
+        error: 'Données invalides',
+        details: validation.errors
+      });
+    }
+
+    const { storeId, customerId, total, paymentMethod, items, cashReceived, change } = validation.data;
+
     // CORRECTION : Utiliser le storeId fourni, sinon chercher/créer un magasin
     let finalStoreId = storeId;
-    
+
     if (!finalStoreId) {
       let store = await prisma.store.findFirst();
-      
+
       if (!store) {
         store = await prisma.store.create({
           data: {
@@ -86,13 +97,8 @@ export default async function handler(req, res) {
           }
         });
       }
-      
+
       finalStoreId = store.id;
-    }
-    
-    // Vérifier que les items sont valides
-    if (!items || items.length === 0) {
-      return res.status(400).json({ error: 'Aucun article dans la vente' });
     }
     
     // Calculer les montants
