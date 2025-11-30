@@ -71,7 +71,8 @@ export default function AccountingPage() {
       // Load expenses
       const expensesRes = await fetch(`/api/accounting/expenses?storeId=${storeId}`);
       const expensesData = await expensesRes.json();
-      setExpenses(expensesData);
+      // 🔥 PAGINATION: Extraire le tableau .data si présent
+      setExpenses(expensesData.data || expensesData);
 
       // Load categories
       const categoriesRes = await fetch('/api/accounting/categories');

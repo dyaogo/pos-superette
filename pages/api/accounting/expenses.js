@@ -3,25 +3,47 @@ import prisma from '../../../lib/prisma';
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
-      const { storeId } = req.query;
+      const { storeId, page: pageQuery, limit: limitQuery } = req.query;
+
+      // 🔥 PAGINATION : Récupération des paramètres
+      const page = parseInt(pageQuery) || 1;
+      const limit = parseInt(limitQuery) || 50;
+      const skip = (page - 1) * limit;
 
       const where = {};
       if (storeId && storeId !== 'all') {
         where.storeId = storeId;
       }
 
+      // Compter le total pour la pagination
+      const total = await prisma.expense.count({ where });
+
       const expenses = await prisma.expense.findMany({
         where,
+        skip,
+        take: limit,
         include: {
           category: true,
         },
         orderBy: {
           expenseDate: 'desc',
         },
-        take: 50, // Limite à 50 dépenses récentes
       });
 
-      res.status(200).json(expenses);
+      // 🔥 PAGINATION : Métadonnées
+      const totalPages = Math.ceil(total / limit);
+
+      res.status(200).json({
+        data: expenses,
+        pagination: {
+          total,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      });
     } catch (error) {
       console.error('Error fetching expenses:', error);
       res.status(500).json({ error: 'Failed to fetch expenses', details: error.message });

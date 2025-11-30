@@ -4,14 +4,23 @@ const prisma = new PrismaClient();
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
+      // 🔥 PAGINATION : Récupération des paramètres
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 50;
+      const skip = (page - 1) * limit;
+
+      // Compter le total pour la pagination
+      const total = await prisma.sale.count();
+
       const sales = await prisma.sale.findMany({
+        skip,
+        take: limit,
         include: {
           items: true  // ⚠️ Ceci ne charge que les SaleItem, pas les Product
         },
         orderBy: {
           createdAt: 'desc'
-        },
-        take: 100
+        }
       });
       
       // Enrichir chaque vente avec les infos produits
@@ -38,10 +47,23 @@ export default async function handler(req, res) {
         })
       );
       
-      res.status(200).json(enrichedSales);
+      // 🔥 PAGINATION : Métadonnées
+      const totalPages = Math.ceil(total / limit);
+
+      res.status(200).json({
+        data: enrichedSales,
+        pagination: {
+          total,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      });
     } catch (error) {
       console.error('Erreur GET sales:', error);
-      res.status(200).json([]);
+      res.status(200).json({ data: [], pagination: null });
     }
     
   } else if (req.method === 'POST') {

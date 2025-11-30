@@ -78,19 +78,27 @@ export function AppProvider({ children }) {
       // ÉTAPE 2: Si online, mettre à jour depuis l'API
       if (isOnline) {
         const [productsRes, salesRes, customersRes, creditsRes, storesRes] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/sales'),
-          fetch('/api/customers'),
+          fetch('/api/products?limit=1000'), // 🔥 PAGINATION: Charger tous les produits (max 1000)
+          fetch('/api/sales?limit=500'),     // 🔥 PAGINATION: Charger 500 dernières ventes
+          fetch('/api/customers?limit=1000'), // 🔥 PAGINATION: Charger tous les clients
           fetch('/api/credits'),
           fetch('/api/stores')
         ]);
 
         if (productsRes.ok && salesRes.ok && customersRes.ok) {
-          const products = await productsRes.json();
-          const sales = await salesRes.json();
-          const customers = await customersRes.json();
-          const credits = creditsRes.ok ? await creditsRes.json() : [];
-          const stores = storesRes.ok ? await storesRes.json() : [];
+          // 🔥 PAGINATION: Extraire les données de la nouvelle structure
+          const productsData = await productsRes.json();
+          const salesData = await salesRes.json();
+          const customersData = await customersRes.json();
+          const creditsData = creditsRes.ok ? await creditsRes.json() : [];
+          const storesData = storesRes.ok ? await storesRes.json() : [];
+
+          // Extraire le tableau .data si présent, sinon utiliser la réponse complète
+          const products = productsData.data || productsData;
+          const sales = salesData.data || salesData;
+          const customers = customersData.data || customersData;
+          const credits = creditsData.data || creditsData;
+          const stores = storesData.data || storesData;
 
           setProductCatalog(products);
           setSalesHistory(sales);

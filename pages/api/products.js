@@ -4,15 +4,42 @@ const prisma = new PrismaClient();
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
+      // 🔥 PAGINATION : Récupération des paramètres
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 100;
+      const skip = (page - 1) * limit;
+
+      // Compter le total pour la pagination
+      const total = await prisma.product.count();
+
       const products = await prisma.product.findMany({
+        skip,
+        take: limit,
         include: {
           store: true
+        },
+        orderBy: {
+          name: 'asc'
         }
       });
-      res.status(200).json(products || []);
+
+      // 🔥 PAGINATION : Métadonnées
+      const totalPages = Math.ceil(total / limit);
+
+      res.status(200).json({
+        data: products || [],
+        pagination: {
+          total,
+          totalPages,
+          currentPage: page,
+          limit,
+          hasNext: page < totalPages,
+          hasPrev: page > 1
+        }
+      });
     } catch (error) {
       console.error('Erreur API products:', error);
-      res.status(200).json([]);
+      res.status(200).json({ data: [], pagination: null });
     }
     
 } else if (req.method === 'POST') {
