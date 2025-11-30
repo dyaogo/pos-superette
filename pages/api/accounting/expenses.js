@@ -1,7 +1,8 @@
 import prisma from '../../../lib/prisma';
 import { ExpenseSchema, validate } from '../../../lib/validations';
+import { withRateLimit, RATE_LIMITS } from '../../../lib/rateLimit';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const { storeId, page: pageQuery, limit: limitQuery } = req.query;
@@ -106,3 +107,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
+
+// 🚦 RATE LIMITING : 100 lectures / 30 écritures par minute
+export default withRateLimit(handler, RATE_LIMITS.read);

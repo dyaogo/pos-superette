@@ -1,8 +1,9 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 import { SaleSchema, validate } from '../../lib/validations';
+import { withRateLimit, RATE_LIMITS } from '../../lib/rateLimit';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       // 🔥 PAGINATION : Récupération des paramètres
@@ -165,3 +166,6 @@ export default async function handler(req, res) {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
+
+// 🚦 RATE LIMITING : 30 ventes par minute
+export default withRateLimit(handler, RATE_LIMITS.write);
