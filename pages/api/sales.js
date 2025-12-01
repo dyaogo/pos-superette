@@ -71,17 +71,30 @@ async function handler(req, res) {
     
   } else if (req.method === 'POST') {
   try {
+    // Log pour debug
+    console.log('📥 req.body reçu:', JSON.stringify(req.body, null, 2));
+
     // 🛡️ VALIDATION ZOD : Valider les données avant traitement
     const validation = validate(SaleSchema, req.body);
 
     if (!validation.success) {
+      console.error('❌ Validation échouée:', validation.errors);
       return res.status(400).json({
         error: 'Données invalides',
         details: validation.errors
       });
     }
 
-    const { storeId, customerId, total, paymentMethod, items, cashReceived, change } = validation.data;
+    console.log('✅ Validation réussie:', JSON.stringify(validation.data, null, 2));
+
+    // Utiliser req.body.items directement car Zod peut ne pas le copier dans .data
+    const { storeId, customerId, total, paymentMethod, cashReceived, change } = validation.data;
+    const items = req.body.items; // ✅ FIX: Utiliser req.body.items
+
+    // Vérification de sécurité
+    if (!items || !Array.isArray(items) || items.length === 0) {
+      return res.status(400).json({ error: 'Aucun article dans la vente' });
+    }
 
     // CORRECTION : Utiliser le storeId fourni, sinon chercher/créer un magasin
     let finalStoreId = storeId;
