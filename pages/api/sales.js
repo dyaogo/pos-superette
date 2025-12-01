@@ -1,7 +1,8 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+import { PrismaClient } from '@prisma/client';
 import { SaleSchema, validate } from '../../lib/validations';
 import { withRateLimit, RATE_LIMITS } from '../../lib/rateLimit';
+
+const prisma = new PrismaClient();
 
 async function handler(req, res) {
   if (req.method === 'GET') {

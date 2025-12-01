@@ -1,7 +1,8 @@
-const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcryptjs");
-const prisma = new PrismaClient();
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 import { withRateLimit, RATE_LIMITS } from '../../../lib/rateLimit';
+
+const prisma = new PrismaClient();
 
 async function handler(req, res) {
   if (req.method === "POST") {
