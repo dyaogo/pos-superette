@@ -1,15 +1,16 @@
 import { useState } from 'react';
-import { Upload, X, Camera } from 'lucide-react';
+import { Upload, X, Camera, Loader2 } from 'lucide-react';
 
 export default function ImageUpload({ value, onChange, label = "Image du produit" }) {
   const [preview, setPreview] = useState(value || '');
+  const [uploading, setUploading] = useState(false);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = async (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Vérifier la taille (max 2MB)
-      if (file.size > 2 * 1024 * 1024) {
-        alert('L\'image est trop grande. Maximum 2MB.');
+      // Vérifier la taille (max 5MB pour Vercel Blob)
+      if (file.size > 5 * 1024 * 1024) {
+        alert('L\'image est trop grande. Maximum 5MB.');
         return;
       }
 
@@ -19,14 +20,52 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
         return;
       }
 
-      // Convertir en base64
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64String = reader.result;
-        setPreview(base64String);
-        onChange(base64String);
-      };
-      reader.readAsDataURL(file);
+      setUploading(true);
+
+      try {
+        // Convertir en base64 pour l'aperçu ET l'upload
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+          const base64String = reader.result;
+          setPreview(base64String); // Aperçu immédiat
+
+          try {
+            // Upload vers Vercel Blob
+            const response = await fetch('/api/upload', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                file: base64String,
+                filename: file.name
+              })
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.details || 'Erreur lors de l\'upload');
+            }
+
+            const data = await response.json();
+
+            // Retourner l'URL Vercel Blob au lieu du base64
+            onChange(data.url);
+            console.log('✅ Image uploadée:', data.url);
+
+          } catch (error) {
+            console.error('❌ Erreur upload:', error);
+            alert(`Erreur lors de l'upload: ${error.message}`);
+            setPreview('');
+          } finally {
+            setUploading(false);
+          }
+        };
+        reader.readAsDataURL(file);
+
+      } catch (error) {
+        console.error('❌ Erreur lecture fichier:', error);
+        alert('Erreur lors de la lecture du fichier');
+        setUploading(false);
+      }
     }
   };
 
@@ -37,6 +76,12 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
 
   return (
     <div style={{ marginBottom: '15px' }}>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
       <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
         {label}
       </label>
@@ -51,31 +96,52 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
               height: '200px',
               objectFit: 'cover',
               borderRadius: '12px',
-              border: '2px solid var(--color-border)'
+              border: '2px solid var(--color-border)',
+              opacity: uploading ? 0.5 : 1
             }}
           />
-          <button
-            onClick={handleRemove}
-            type="button"
-            style={{
+          {uploading && (
+            <div style={{
               position: 'absolute',
-              top: '8px',
-              right: '8px',
-              background: '#ef4444',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              background: 'rgba(0,0,0,0.7)',
               color: 'white',
-              border: 'none',
-              borderRadius: '50%',
-              width: '32px',
-              height: '32px',
-              cursor: 'pointer',
+              padding: '12px',
+              borderRadius: '8px',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-            }}
-          >
-            <X size={20} />
-          </button>
+              gap: '8px'
+            }}>
+              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
+              <span style={{ fontSize: '14px' }}>Upload...</span>
+            </div>
+          )}
+          {!uploading && (
+            <button
+              onClick={handleRemove}
+              type="button"
+              style={{
+                position: 'absolute',
+                top: '8px',
+                right: '8px',
+                background: '#ef4444',
+                color: 'white',
+                border: 'none',
+                borderRadius: '50%',
+                width: '32px',
+                height: '32px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+              }}
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
       ) : (
         <label
