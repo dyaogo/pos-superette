@@ -41,8 +41,21 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
             });
 
             if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.details || 'Erreur lors de l\'upload');
+              let errorMessage = `Erreur ${response.status}`;
+              try {
+                const error = await response.json();
+                errorMessage = error.details || error.error || errorMessage;
+              } catch (e) {
+                // Si la réponse n'est pas du JSON, lire le texte brut
+                try {
+                  const text = await response.text();
+                  errorMessage = text.substring(0, 200); // Limiter à 200 caractères
+                } catch (e2) {
+                  errorMessage = `Erreur HTTP ${response.status}`;
+                }
+              }
+              console.error('❌ Erreur upload API:', errorMessage);
+              throw new Error(errorMessage);
             }
 
             const data = await response.json();
