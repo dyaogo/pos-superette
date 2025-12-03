@@ -1,16 +1,17 @@
 import { useState } from 'react';
-import { Upload, X, Camera, Loader2 } from 'lucide-react';
+import { Upload, X, Camera } from 'lucide-react';
 
+// Component for uploading product images (uses base64 storage)
+// TODO: Migrate to Vercel Blob Storage for better performance
 export default function ImageUpload({ value, onChange, label = "Image du produit" }) {
   const [preview, setPreview] = useState(value || '');
-  const [uploading, setUploading] = useState(false);
 
-  const handleFileChange = async (e) => {
+  const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      // Vérifier la taille (max 5MB pour Vercel Blob)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('L\'image est trop grande. Maximum 5MB.');
+      // Vérifier la taille (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        alert('L\'image est trop grande. Maximum 2MB.');
         return;
       }
 
@@ -20,65 +21,14 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
         return;
       }
 
-      setUploading(true);
-
-      try {
-        // Convertir en base64 pour l'aperçu ET l'upload
-        const reader = new FileReader();
-        reader.onloadend = async () => {
-          const base64String = reader.result;
-          setPreview(base64String); // Aperçu immédiat
-
-          try {
-            // Upload vers Vercel Blob
-            const response = await fetch('/api/upload', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                file: base64String,
-                filename: file.name
-              })
-            });
-
-            if (!response.ok) {
-              // Lire le corps comme texte d'abord
-              const text = await response.text();
-              let errorMessage = `Erreur ${response.status}`;
-
-              try {
-                // Essayer de parser comme JSON
-                const error = JSON.parse(text);
-                errorMessage = error.details || error.error || errorMessage;
-              } catch (e) {
-                // Si ce n'est pas du JSON, utiliser le texte brut
-                errorMessage = text.substring(0, 200) || errorMessage;
-              }
-
-              console.error('❌ Erreur upload API:', errorMessage);
-              throw new Error(errorMessage);
-            }
-
-            const data = await response.json();
-
-            // Retourner l'URL Vercel Blob au lieu du base64
-            onChange(data.url);
-            console.log('✅ Image uploadée:', data.url);
-
-          } catch (error) {
-            console.error('❌ Erreur upload:', error);
-            alert(`Erreur lors de l'upload: ${error.message}`);
-            setPreview('');
-          } finally {
-            setUploading(false);
-          }
-        };
-        reader.readAsDataURL(file);
-
-      } catch (error) {
-        console.error('❌ Erreur lecture fichier:', error);
-        alert('Erreur lors de la lecture du fichier');
-        setUploading(false);
-      }
+      // Convertir en base64
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64String = reader.result;
+        setPreview(base64String);
+        onChange(base64String);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -89,12 +39,6 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
 
   return (
     <div style={{ marginBottom: '15px' }}>
-      <style>{`
-        @keyframes spin {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
       <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', fontSize: '14px' }}>
         {label}
       </label>
@@ -109,52 +53,31 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
               height: '200px',
               objectFit: 'cover',
               borderRadius: '12px',
-              border: '2px solid var(--color-border)',
-              opacity: uploading ? 0.5 : 1
+              border: '2px solid var(--color-border)'
             }}
           />
-          {uploading && (
-            <div style={{
+          <button
+            onClick={handleRemove}
+            type="button"
+            style={{
               position: 'absolute',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              background: 'rgba(0,0,0,0.7)',
+              top: '8px',
+              right: '8px',
+              background: '#ef4444',
               color: 'white',
-              padding: '12px',
-              borderRadius: '8px',
+              border: 'none',
+              borderRadius: '50%',
+              width: '32px',
+              height: '32px',
+              cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
-              gap: '8px'
-            }}>
-              <Loader2 size={20} style={{ animation: 'spin 1s linear infinite' }} />
-              <span style={{ fontSize: '14px' }}>Upload...</span>
-            </div>
-          )}
-          {!uploading && (
-            <button
-              onClick={handleRemove}
-              type="button"
-              style={{
-                position: 'absolute',
-                top: '8px',
-                right: '8px',
-                background: '#ef4444',
-                color: 'white',
-                border: 'none',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-              }}
-            >
-              <X size={20} />
-            </button>
-          )}
+              justifyContent: 'center',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            }}
+          >
+            <X size={20} />
+          </button>
         </div>
       ) : (
         <label
