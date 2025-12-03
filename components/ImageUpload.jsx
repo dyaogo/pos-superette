@@ -3,8 +3,18 @@ import { Upload, X, Camera } from 'lucide-react';
 
 // Component for uploading product images (uses base64 storage)
 // TODO: Migrate to Vercel Blob Storage for better performance
-export default function ImageUpload({ value, onChange, label = "Image du produit" }) {
-  const [preview, setPreview] = useState(value || '');
+export default function ImageUpload({
+  value,
+  onChange,
+  currentImage,  // Alias pour value
+  onImageChange, // Alias pour onChange
+  label = "Image du produit"
+}) {
+  // Support des deux variantes de props
+  const imageValue = value || currentImage || '';
+  const handleChange = onChange || onImageChange || (() => {});
+
+  const [preview, setPreview] = useState(imageValue);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -26,7 +36,7 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
       reader.onloadend = () => {
         const base64String = reader.result;
         setPreview(base64String);
-        onChange(base64String);
+        handleChange(base64String);
       };
       reader.readAsDataURL(file);
     }
@@ -34,7 +44,7 @@ export default function ImageUpload({ value, onChange, label = "Image du produit
 
   const handleRemove = () => {
     setPreview('');
-    onChange('');
+    handleChange('');
   };
 
   return (
