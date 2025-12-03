@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Upload, X, Camera, Loader2 } from 'lucide-react';
 
+// Component for uploading images to Vercel Blob Storage
 export default function ImageUpload({ value, onChange, label = "Image du produit" }) {
   const [preview, setPreview] = useState(value || '');
   const [uploading, setUploading] = useState(false);
