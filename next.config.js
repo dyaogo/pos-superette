@@ -1,4 +1,5 @@
 /** @type {import('next').NextConfig} */
+const { withSentryConfig } = require("@sentry/nextjs");
 const withPWA = require("next-pwa")({
   dest: "public",
   disable: true, // ✅ PWA DÉSACTIVÉ TEMPORAIREMENT POUR TESTS
@@ -136,6 +137,31 @@ const withPWA = require("next-pwa")({
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+
+  // Configuration Sentry
+  sentry: {
+    // Désactiver le téléchargement automatique des source maps en dev
+    disableServerWebpackPlugin: process.env.NODE_ENV === 'development',
+    disableClientWebpackPlugin: process.env.NODE_ENV === 'development',
+
+    // Cacher les source maps du public
+    hideSourceMaps: true,
+
+    // Désactiver les logs Sentry pendant le build
+    silent: true,
+  },
 };
 
-module.exports = withPWA(nextConfig);
+// Combiner PWA et Sentry
+const configWithPWA = withPWA(nextConfig);
+
+// Options de configuration Sentry
+const sentryWebpackPluginOptions = {
+  // Pour plus d'options: https://github.com/getsentry/sentry-webpack-plugin#options
+  silent: true,
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+};
+
+// Exporter avec Sentry wrapper
+module.exports = withSentryConfig(configWithPWA, sentryWebpackPluginOptions);
