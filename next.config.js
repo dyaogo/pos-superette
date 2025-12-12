@@ -208,4 +208,7 @@ module.exports = withSentryConfig(
     automaticVercelMonitors: true,
   }
 );
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
