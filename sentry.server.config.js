@@ -7,6 +7,7 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
 <<<<<<< Updated upstream
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
   dsn: process.env.SENTRY_DSN,
 
   // Adjust this value in production, or use tracesSampler for greater control
@@ -40,6 +41,8 @@ Sentry.init({
 =======
 =======
 >>>>>>> Stashed changes
+=======
+>>>>>>> Stashed changes
   dsn: "https://d73c3e24a1652c084f4376cecbcba450@o4510472792834048.ingest.de.sentry.io/4510472809021520",
 
   // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
@@ -52,6 +55,9 @@ Sentry.init({
   // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
   sendDefaultPii: true,
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes

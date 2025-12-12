@@ -209,6 +209,9 @@ module.exports = withSentryConfig(
   }
 );
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
+>>>>>>> Stashed changes
+=======
 >>>>>>> Stashed changes
 =======
 >>>>>>> Stashed changes
