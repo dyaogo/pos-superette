@@ -5,10 +5,7 @@
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-  dsn: process.env.SENTRY_DSN,
+  dsn: process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN,
 
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 1.0,
@@ -38,27 +35,4 @@ Sentry.init({
   },
 
   environment: process.env.VERCEL_ENV || process.env.NODE_ENV || 'development',
-=======
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-  dsn: "https://d73c3e24a1652c084f4376cecbcba450@o4510472792834048.ingest.de.sentry.io/4510472809021520",
-
-  // Define how likely traces are sampled. Adjust this value in production, or use tracesSampler for greater control.
-  tracesSampleRate: 1,
-
-  // Enable logs to be sent to Sentry
-  enableLogs: true,
-
-  // Enable sending user PII (Personally Identifiable Information)
-  // https://docs.sentry.io/platforms/javascript/guides/nextjs/configuration/options/#sendDefaultPii
-  sendDefaultPii: true,
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
-=======
->>>>>>> Stashed changes
 });
