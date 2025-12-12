@@ -13,20 +13,8 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.2",
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-<<<<<<< Updated upstream
-    "@sentry/nextjs": "^10.28.0",
+    "@sentry/nextjs": "^10.30.0",
     "@vercel/blob": "^2.0.0",
-=======
-    "@sentry/nextjs": "^10.30.0",
->>>>>>> Stashed changes
-=======
-    "@sentry/nextjs": "^10.30.0",
->>>>>>> Stashed changes
-=======
-    "@sentry/nextjs": "^10.30.0",
->>>>>>> Stashed changes
     "bcryptjs": "^3.0.2",
     "dexie": "^4.2.1",
     "idb-keyval": "^6.2.2",
