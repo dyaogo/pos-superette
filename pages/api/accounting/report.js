@@ -1,4 +1,6 @@
-import prisma from '../../../lib/prisma';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -81,20 +83,38 @@ export default async function handler(req, res) {
       return acc;
     }, {});
 
-    const netProfit = revenue.total - totalExpenses;
-    const profitMargin = revenue.total > 0 ? (netProfit / revenue.total) * 100 : 0;
+    const totalRevenue = revenue.total;
+    const netProfit = totalRevenue - totalExpenses;
+    const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+
+    // Format pour le frontend
+    const expensesByCategory = expenses.reduce((acc, expense) => {
+      const existing = acc.find(item => item.categoryId === expense.categoryId);
+      if (existing) {
+        existing.total += expense.amount;
+      } else {
+        acc.push({
+          categoryId: expense.categoryId,
+          total: expense.amount
+        });
+      }
+      return acc;
+    }, []);
 
     res.status(200).json({
       period,
-      revenue,
-      expenses: {
-        total: totalExpenses,
-        byCategory: Object.values(byCategory),
-        count: expenses.length,
-      },
+      revenue: totalRevenue,
+      expenses: totalExpenses,
       netProfit,
       profitMargin,
       salesCount: sales.length,
+      expensesByCategory,
+      // Données détaillées supplémentaires
+      revenueDetails: revenue,
+      expensesDetails: {
+        byCategory: Object.values(byCategory),
+        count: expenses.length,
+      },
     });
   } catch (error) {
     console.error('Error generating report:', error);
