@@ -38,29 +38,20 @@ export default async function handler(req, res) {
         categoryId,
         amount,
         description,
-        invoiceNumber,
-        supplier,
-        paymentMethod,
-        status,
-        dueDate,
-        paidDate,
-        notes,
-        approvedBy,
+        expenseDate
       } = req.body;
+
+      // Validation des champs requis
+      if (!categoryId && !amount && !description && !expenseDate) {
+        return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
+      }
 
       const updateData = {};
 
       if (categoryId) updateData.categoryId = categoryId;
       if (amount !== undefined) updateData.amount = parseFloat(amount);
       if (description) updateData.description = description;
-      if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;
-      if (supplier !== undefined) updateData.supplier = supplier;
-      if (paymentMethod) updateData.paymentMethod = paymentMethod;
-      if (status) updateData.status = status;
-      if (dueDate !== undefined) updateData.dueDate = dueDate ? new Date(dueDate) : null;
-      if (paidDate !== undefined) updateData.paidDate = paidDate ? new Date(paidDate) : null;
-      if (notes !== undefined) updateData.notes = notes;
-      if (approvedBy !== undefined) updateData.approvedBy = approvedBy;
+      if (expenseDate) updateData.expenseDate = new Date(expenseDate);
 
       const expense = await prisma.expense.update({
         where: { id },
@@ -80,7 +71,7 @@ export default async function handler(req, res) {
       return res.status(200).json(expense);
     } catch (error) {
       console.error('Error updating expense:', error);
-      return res.status(500).json({ error: 'Erreur lors de la mise à jour de la dépense' });
+      return res.status(500).json({ error: 'Erreur lors de la mise à jour de la dépense', details: error.message });
     }
   }
 
