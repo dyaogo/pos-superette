@@ -1,6 +1,8 @@
-import prisma from '../../../lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { ExpenseSchema, validate } from '../../../lib/validations';
 import { withRateLimit, RATE_LIMITS } from '../../../lib/rateLimit';
+
+const prisma = new PrismaClient();
 
 async function handler(req, res) {
   if (req.method === 'GET') {
