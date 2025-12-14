@@ -510,7 +510,7 @@ function ExpensesView({
                   return (
                     <tr key={expense.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#374151' }}>
-                        {new Date(expense.expenseDate).toLocaleDateString('fr-FR')}
+                        {new Date(expense.createdAt).toLocaleDateString('fr-FR')}
                       </td>
                       <td style={{ padding: '16px', fontSize: '14px', color: '#374151' }}>
                         {expense.description}
@@ -636,8 +636,7 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
   const [formData, setFormData] = useState({
     categoryId: expense?.categoryId || '',
     amount: expense?.amount || '',
-    description: expense?.description || '',
-    expenseDate: expense?.expenseDate ? new Date(expense.expenseDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]
+    description: expense?.description || ''
   });
 
   const handleSubmit = (e) => {
@@ -743,24 +742,6 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
                 borderRadius: '8px',
                 fontSize: '14px',
                 resize: 'vertical'
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
-              Date
-            </label>
-            <input
-              type="date"
-              value={formData.expenseDate}
-              onChange={(e) => setFormData({ ...formData, expenseDate: e.target.value })}
-              style={{
-                width: '100%',
-                padding: '10px 12px',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
-                fontSize: '14px'
               }}
             />
           </div>

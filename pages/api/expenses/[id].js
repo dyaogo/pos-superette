@@ -37,12 +37,11 @@ export default async function handler(req, res) {
       const {
         categoryId,
         amount,
-        description,
-        expenseDate
+        description
       } = req.body;
 
       // Validation des champs requis
-      if (!categoryId && !amount && !description && !expenseDate) {
+      if (!categoryId && !amount && !description) {
         return res.status(400).json({ error: 'Aucun champ à mettre à jour' });
       }
 
@@ -51,7 +50,6 @@ export default async function handler(req, res) {
       if (categoryId) updateData.categoryId = categoryId;
       if (amount !== undefined) updateData.amount = parseFloat(amount);
       if (description) updateData.description = description;
-      if (expenseDate) updateData.expenseDate = new Date(expenseDate);
 
       const expense = await prisma.expense.update({
         where: { id },
