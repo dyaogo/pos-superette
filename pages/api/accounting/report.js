@@ -48,7 +48,7 @@ export default async function handler(req, res) {
     const expenses = await prisma.expense.findMany({
       where: {
         ...whereStore,
-        expenseDate: {
+        createdAt: {
           gte: startDate,
           lte: now,
         },
