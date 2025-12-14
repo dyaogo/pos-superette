@@ -248,7 +248,6 @@ model Expense {
   categoryId    String
   amount        Float
   description   String
-  expenseDate   DateTime         @default(now())
   createdBy     String
   createdAt     DateTime         @default(now())
 
