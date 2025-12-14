@@ -30,7 +30,7 @@ async function handler(req, res) {
           category: true,
         },
         orderBy: {
-          expenseDate: 'desc',
+          createdAt: 'desc', // Utiliser createdAt au lieu de expenseDate
         },
       });
 
@@ -67,7 +67,7 @@ async function handler(req, res) {
         });
       }
 
-      const { storeId, categoryId, amount, description, expenseDate, createdBy } = validation.data;
+      const { storeId, categoryId, amount, description, createdBy } = validation.data;
 
       const expense = await prisma.expense.create({
         data: {
@@ -75,8 +75,8 @@ async function handler(req, res) {
           categoryId,
           amount,
           description,
-          expenseDate: expenseDate ? new Date(expenseDate) : new Date(),
           createdBy,
+          // createdAt est auto-généré par Prisma
         },
         include: {
           category: true,
