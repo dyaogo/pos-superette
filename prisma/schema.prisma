@@ -250,6 +250,7 @@ model Expense {
   description   String
   createdBy     String
   createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
 
   store         Store            @relation(fields: [storeId], references: [id])
   category      ExpenseCategory  @relation(fields: [categoryId], references: [id])
