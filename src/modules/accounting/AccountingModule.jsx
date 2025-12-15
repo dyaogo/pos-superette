@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Calculator, TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Edit2, Trash2, Download, Filter, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuth } from '../../contexts/AuthContext';
 
 export default function AccountingModule() {
+  const { currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [expenses, setExpenses] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -116,6 +118,13 @@ export default function AccountingModule() {
 
   const handleSaveExpense = async (expenseData) => {
     try {
+      // Ajouter les informations de l'utilisateur et du magasin
+      const dataToSend = {
+        ...expenseData,
+        storeId: currentUser?.storeId || expenseData.storeId,
+        createdBy: currentUser?.fullName || currentUser?.email || 'Utilisateur'
+      };
+
       const url = selectedExpense
         ? `/api/expenses/${selectedExpense.id}`
         : '/api/accounting/expenses';
@@ -125,7 +134,7 @@ export default function AccountingModule() {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(expenseData)
+        body: JSON.stringify(dataToSend)
       });
 
       if (res.ok) {
@@ -136,10 +145,11 @@ export default function AccountingModule() {
         if (activeTab === 'dashboard') loadReport();
       } else {
         const error = await res.json();
-        throw new Error(error.error || 'Erreur');
+        throw new Error(error.error || error.details || 'Erreur');
       }
     } catch (error) {
-      toast.error(error.message);
+      console.error('Error saving expense:', error);
+      toast.error(error.message || 'Erreur lors de la sauvegarde');
     }
   };
 
@@ -677,9 +687,7 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
 
     onSave({
       ...formData,
-      amount: parseFloat(formData.amount),
-      storeId: 'default', // À ajuster selon votre logique
-      createdBy: 'current-user' // À ajuster selon votre logique
+      amount: parseFloat(formData.amount)
     });
   };
 
