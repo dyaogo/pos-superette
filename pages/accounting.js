@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import Layout from '../components/Layout';
 import AccountingModule from '../src/modules/accounting/AccountingModule';
 import { useAuth } from '../src/contexts/AuthContext';
 
@@ -26,9 +25,6 @@ export default function AccountingPage() {
     return null;
   }
 
-  return (
-    <Layout>
-      <AccountingModule />
-    </Layout>
-  );
+  // Pas besoin de <Layout> car _app.js l'ajoute déjà automatiquement
+  return <AccountingModule />;
 }
