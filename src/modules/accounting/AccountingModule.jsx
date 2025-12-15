@@ -13,12 +13,28 @@ export default function AccountingModule() {
   const [period, setPeriod] = useState('month');
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [stores, setStores] = useState([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+
+  // Charger les magasins pour avoir un storeId valide
+  useEffect(() => {
+    loadStores();
+  }, []);
+
+  const loadStores = async () => {
+    try {
+      const res = await fetch('/api/stores');
+      const data = await res.json();
+      setStores(data);
+    } catch (error) {
+      console.error('Error loading stores:', error);
+    }
+  };
 
   // Charger les données initiales
   useEffect(() => {
@@ -118,12 +134,22 @@ export default function AccountingModule() {
 
   const handleSaveExpense = async (expenseData) => {
     try {
+      // Déterminer le storeId valide
+      const storeId = currentUser?.storeId || stores[0]?.id;
+
+      if (!storeId) {
+        toast.error('Aucun magasin disponible. Veuillez contacter l\'administrateur.');
+        return;
+      }
+
       // Ajouter les informations de l'utilisateur et du magasin
       const dataToSend = {
         ...expenseData,
-        storeId: currentUser?.storeId || expenseData.storeId,
+        storeId,
         createdBy: currentUser?.fullName || currentUser?.email || 'Utilisateur'
       };
+
+      console.log('Données envoyées:', dataToSend); // Debug
 
       const url = selectedExpense
         ? `/api/expenses/${selectedExpense.id}`
