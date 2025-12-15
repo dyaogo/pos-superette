@@ -44,10 +44,20 @@ export default function AccountingModule() {
     try {
       const res = await fetch(`/api/accounting/report?period=${period}`);
       const data = await res.json();
+
+      // Vérifier si l'API a retourné une erreur
+      if (data.error) {
+        console.error('Erreur API:', data.error, data.details);
+        toast.error('Erreur lors du chargement du rapport: ' + (data.details || data.error));
+        setReportData(null);
+        return;
+      }
+
       setReportData(data);
     } catch (error) {
       console.error('Erreur chargement rapport:', error);
       toast.error('Erreur lors du chargement du rapport');
+      setReportData(null);
     } finally {
       setLoading(false);
     }
@@ -66,13 +76,22 @@ export default function AccountingModule() {
       const res = await fetch(`/api/accounting/expenses?${params}`);
       const data = await res.json();
 
-      setExpenses(data.data || data);
+      // Vérifier si l'API a retourné une erreur
+      if (data.error) {
+        console.error('Erreur API:', data.error, data.details);
+        toast.error('Erreur lors du chargement des dépenses: ' + (data.details || data.error));
+        setExpenses([]);
+        return;
+      }
+
+      setExpenses(data.data || data || []);
       if (data.pagination) {
         setTotalPages(data.pagination.totalPages);
       }
     } catch (error) {
       console.error('Erreur chargement dépenses:', error);
       toast.error('Erreur lors du chargement des dépenses');
+      setExpenses([]);
     } finally {
       setLoading(false);
     }
@@ -251,11 +270,20 @@ function DashboardView({ reportData, loading, period, setPeriod, categories }) {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Chargement...</div>;
   }
 
-  if (!reportData) {
-    return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Aucune donnée disponible</div>;
+  if (!reportData || reportData.error) {
+    return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
+      Aucune donnée disponible{reportData?.error ? ': ' + reportData.error : ''}
+    </div>;
   }
 
-  const { revenue, expenses, netProfit, profitMargin, salesCount, expensesByCategory } = reportData;
+  const {
+    revenue = 0,
+    expenses = 0,
+    netProfit = 0,
+    profitMargin = 0,
+    salesCount = 0,
+    expensesByCategory = []
+  } = reportData;
 
   return (
     <div>
