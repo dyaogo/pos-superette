@@ -6,6 +6,9 @@ import Layout from "../components/Layout";
 import ErrorBoundary from "../components/ErrorBoundary";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { queryClient } from "../src/lib/queryClient";
 
 function MyApp({ Component, pageProps }) {
   const router = useRouter();
@@ -25,21 +28,25 @@ function MyApp({ Component, pageProps }) {
   const shouldUseLayout = !noLayout.includes(router.pathname);
 
   return (
-    <ErrorBoundary>
-      <AuthProvider>
-        <OnlineProvider>
-          <AppProvider>
-            {shouldUseLayout ? (
-              <Layout>
+    <QueryClientProvider client={queryClient}>
+      <ErrorBoundary>
+        <AuthProvider>
+          <OnlineProvider>
+            <AppProvider>
+              {shouldUseLayout ? (
+                <Layout>
+                  <Component {...pageProps} />
+                </Layout>
+              ) : (
                 <Component {...pageProps} />
-              </Layout>
-            ) : (
-              <Component {...pageProps} />
-            )}
-          </AppProvider>
-        </OnlineProvider>
-      </AuthProvider>
-    </ErrorBoundary>
+              )}
+            </AppProvider>
+          </OnlineProvider>
+        </AuthProvider>
+      </ErrorBoundary>
+      {/* Devtools seulement en dev */}
+      {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+    </QueryClientProvider>
   );
 }
 

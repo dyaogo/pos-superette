@@ -2,18 +2,23 @@ import { useState, useEffect } from 'react';
 import { Calculator, TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Edit2, Trash2, Download, Filter, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useExpenseCategories } from '../../hooks/useExpenseCategories';
+import { useStores } from '../../hooks/useStores';
 
 export default function AccountingModule() {
   const { currentUser } = useAuth();
+
+  // React Query hooks pour caching
+  const { data: categories = [], isLoading: categoriesLoading } = useExpenseCategories();
+  const { data: stores = [], isLoading: storesLoading } = useStores();
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [expenses, setExpenses] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [period, setPeriod] = useState('month');
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [stores, setStores] = useState([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,25 +26,8 @@ export default function AccountingModule() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Charger les magasins pour avoir un storeId valide
+  // Charger les données selon l'onglet actif
   useEffect(() => {
-    loadStores();
-  }, []);
-
-  const loadStores = async () => {
-    try {
-      const res = await fetch('/api/stores');
-      const data = await res.json();
-      console.log('Magasins chargés:', data);
-      setStores(data);
-    } catch (error) {
-      console.error('Error loading stores:', error);
-    }
-  };
-
-  // Charger les données initiales
-  useEffect(() => {
-    loadCategories();
     if (activeTab === 'dashboard' || activeTab === 'reports') {
       loadReport();
     }
@@ -47,16 +35,6 @@ export default function AccountingModule() {
       loadExpenses();
     }
   }, [activeTab, period, currentPage, selectedCategory]);
-
-  const loadCategories = async () => {
-    try {
-      const res = await fetch('/api/accounting/categories');
-      const data = await res.json();
-      setCategories(data);
-    } catch (error) {
-      console.error('Erreur chargement catégories:', error);
-    }
-  };
 
   const loadReport = async () => {
     setLoading(true);
