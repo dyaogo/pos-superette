@@ -75,23 +75,23 @@ useEffect(() => {
   // Calculer les totaux de la session
 const getSessionTotals = () => {
   const sessionSales = getSessionSales();
-  
+
   console.log('🔍 Ventes de la session:', sessionSales.length);
-  
-  // ✅ FILTRE CORRECT : Ignorer les ventes avec paymentMethod numérique
-  const validSales = sessionSales.filter(s => 
-    s && 
-    s.paymentMethod && 
-    typeof s.paymentMethod === 'string' && // Seulement les strings !
-    s.total && 
-    s.total > 0
-  );
-  
+
+  // ✅ FILTRE AMÉLIORÉ : Normaliser paymentMethod et valider les ventes
+  const validSales = sessionSales
+    .filter(s => s && s.total && s.total > 0 && s.paymentMethod)
+    .map(s => ({
+      ...s,
+      // Normaliser paymentMethod en string (gère les anciennes valeurs numériques)
+      paymentMethod: String(s.paymentMethod).toLowerCase()
+    }));
+
   console.log('✅ Ventes valides:', validSales.length);
-  
-  const cashSales = validSales.filter(s => s.paymentMethod === 'cash');
-  const cardSales = validSales.filter(s => s.paymentMethod === 'card');
-  
+
+  const cashSales = validSales.filter(s => s.paymentMethod === 'cash' || s.paymentMethod === '0');
+  const cardSales = validSales.filter(s => s.paymentMethod === 'card' || s.paymentMethod === '1');
+
   console.log('💰 Ventes en espèces:', cashSales.length, 'Total:', cashSales.reduce((sum, s) => sum + s.total, 0));
   
   // Calcul des opérations de caisse
