@@ -26,25 +26,6 @@ const CashRegisterModule = () => {
   const { deviceType } = useResponsive();
   const sharedStyles = getResponsiveStyles(deviceType, isDark);
 
-  // 🔧 CODE TEMPORAIRE POUR DIAGNOSTIC
-useEffect(() => {
-  if (cashSession && salesHistory) {
-    console.log('=== DIAGNOSTIC CAISSE ===');
-    console.log('📅 Session ouverte à:', cashSession.openedAt);
-    console.log('📅 Session parsée:', new Date(cashSession.openedAt));
-    console.log('📊 Nombre total de ventes:', salesHistory.length);
-    
-    if (salesHistory.length > 0) {
-      console.log('📝 Première vente:', {
-        date: salesHistory[0].date,
-        dateParsée: new Date(salesHistory[0].date),
-        paymentMethod: salesHistory[0].paymentMethod,
-        total: salesHistory[0].total
-      });
-    }
-  }
-}, [cashSession, salesHistory]);
-
   // Charger la session de caisse actuelle
   useEffect(() => {
     const session = getCashSession();
@@ -75,24 +56,18 @@ useEffect(() => {
   // Calculer les totaux de la session
 const getSessionTotals = () => {
   const sessionSales = getSessionSales();
-  
-  console.log('🔍 Ventes de la session:', sessionSales.length);
-  
-  // ✅ FILTRE CORRECT : Ignorer les ventes avec paymentMethod numérique
-  const validSales = sessionSales.filter(s => 
-    s && 
-    s.paymentMethod && 
-    typeof s.paymentMethod === 'string' && // Seulement les strings !
-    s.total && 
-    s.total > 0
-  );
-  
-  console.log('✅ Ventes valides:', validSales.length);
-  
-  const cashSales = validSales.filter(s => s.paymentMethod === 'cash');
-  const cardSales = validSales.filter(s => s.paymentMethod === 'card');
-  
-  console.log('💰 Ventes en espèces:', cashSales.length, 'Total:', cashSales.reduce((sum, s) => sum + s.total, 0));
+
+  // ✅ FILTRE AMÉLIORÉ : Normaliser paymentMethod et valider les ventes
+  const validSales = sessionSales
+    .filter(s => s && s.total && s.total > 0 && s.paymentMethod)
+    .map(s => ({
+      ...s,
+      // Normaliser paymentMethod en string (gère les anciennes valeurs numériques)
+      paymentMethod: String(s.paymentMethod).toLowerCase()
+    }));
+
+  const cashSales = validSales.filter(s => s.paymentMethod === 'cash' || s.paymentMethod === '0');
+  const cardSales = validSales.filter(s => s.paymentMethod === 'card' || s.paymentMethod === '1');
   
   // Calcul des opérations de caisse
   const cashOperationsTotal = (cashOperations || []).reduce((total, op) => {

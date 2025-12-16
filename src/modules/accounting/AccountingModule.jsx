@@ -2,18 +2,23 @@ import { useState, useEffect } from 'react';
 import { Calculator, TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Edit2, Trash2, Download, Filter, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
+import { useExpenseCategories } from '../../hooks/useExpenseCategories';
+import { useStores } from '../../hooks/useStores';
 
 export default function AccountingModule() {
   const { currentUser } = useAuth();
+
+  // React Query hooks pour caching
+  const { data: categories = [], isLoading: categoriesLoading } = useExpenseCategories();
+  const { data: stores = [], isLoading: storesLoading } = useStores();
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [expenses, setExpenses] = useState([]);
-  const [categories, setCategories] = useState([]);
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [period, setPeriod] = useState('month');
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
-  const [stores, setStores] = useState([]);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -21,25 +26,8 @@ export default function AccountingModule() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
-  // Charger les magasins pour avoir un storeId valide
+  // Charger les données selon l'onglet actif
   useEffect(() => {
-    loadStores();
-  }, []);
-
-  const loadStores = async () => {
-    try {
-      const res = await fetch('/api/stores');
-      const data = await res.json();
-      console.log('Magasins chargés:', data);
-      setStores(data);
-    } catch (error) {
-      console.error('Error loading stores:', error);
-    }
-  };
-
-  // Charger les données initiales
-  useEffect(() => {
-    loadCategories();
     if (activeTab === 'dashboard' || activeTab === 'reports') {
       loadReport();
     }
@@ -47,16 +35,6 @@ export default function AccountingModule() {
       loadExpenses();
     }
   }, [activeTab, period, currentPage, selectedCategory]);
-
-  const loadCategories = async () => {
-    try {
-      const res = await fetch('/api/accounting/categories');
-      const data = await res.json();
-      setCategories(data);
-    } catch (error) {
-      console.error('Erreur chargement catégories:', error);
-    }
-  };
 
   const loadReport = async () => {
     setLoading(true);
@@ -135,31 +113,23 @@ export default function AccountingModule() {
 
   const handleSaveExpense = async (expenseData) => {
     try {
-      console.log('=== DEBUG CRÉATION DÉPENSE ===');
-      console.log('currentUser:', currentUser);
-      console.log('stores:', stores);
-      console.log('expenseData:', expenseData);
-
       // Trouver un storeId valide
       let storeId = null;
 
       // Option 1: Utiliser le storeId du currentUser s'il ressemble à un CUID
       if (currentUser?.storeId && currentUser.storeId.length > 10) {
         storeId = currentUser.storeId;
-        console.log('Option 1: Utilisation de currentUser.storeId:', storeId);
       }
 
       // Option 2: Si currentUser.storeId est un code, trouver le store correspondant
       if (!storeId && currentUser?.storeId) {
         const store = stores.find(s => s.code === currentUser.storeId || s.id === currentUser.storeId);
         storeId = store?.id;
-        console.log('Option 2: Recherche par code, store trouvé:', store, 'storeId:', storeId);
       }
 
       // Option 3: Utiliser le premier magasin disponible
       if (!storeId && stores.length > 0) {
         storeId = stores[0].id;
-        console.log('Option 3: Premier magasin, storeId:', storeId);
       }
 
       if (!storeId) {
@@ -174,8 +144,6 @@ export default function AccountingModule() {
         storeId,
         createdBy: currentUser?.fullName || currentUser?.email || 'Utilisateur'
       };
-
-      console.log('Données envoyées:', JSON.stringify(dataToSend, null, 2));
 
       const url = selectedExpense
         ? `/api/expenses/${selectedExpense.id}`

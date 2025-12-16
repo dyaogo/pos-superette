@@ -1,7 +1,22 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import AccountingModule from '../src/modules/accounting/AccountingModule';
+import dynamic from 'next/dynamic';
 import { useAuth } from '../src/contexts/AuthContext';
+
+// Code splitting: AccountingModule chargé uniquement quand nécessaire
+const AccountingModule = dynamic(
+  () => import('../src/modules/accounting/AccountingModule'),
+  {
+    loading: () => (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontSize: '18px', color: '#6b7280' }}>Chargement du module comptabilité...</div>
+        </div>
+      </div>
+    ),
+    ssr: false
+  }
+);
 
 export default function AccountingPage() {
   const router = useRouter();
