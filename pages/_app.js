@@ -4,6 +4,7 @@ import { AuthProvider } from "../src/contexts/AuthContext";
 import { OnlineProvider } from "../src/contexts/OnlineContext";
 import Layout from "../components/Layout";
 import ErrorBoundary from "../components/ErrorBoundary";
+import SentryProvider from "../src/components/SentryProvider";
 import { useRouter } from "next/router";
 import { useEffect, useState } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -31,17 +32,19 @@ function MyApp({ Component, pageProps }) {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <AuthProvider>
-          <OnlineProvider>
-            <AppProvider>
-              {shouldUseLayout ? (
-                <Layout>
+          <SentryProvider>
+            <OnlineProvider>
+              <AppProvider>
+                {shouldUseLayout ? (
+                  <Layout>
+                    <Component {...pageProps} />
+                  </Layout>
+                ) : (
                   <Component {...pageProps} />
-                </Layout>
-              ) : (
-                <Component {...pageProps} />
-              )}
-            </AppProvider>
-          </OnlineProvider>
+                )}
+              </AppProvider>
+            </OnlineProvider>
+          </SentryProvider>
         </AuthProvider>
       </ErrorBoundary>
       {/* Devtools seulement en dev */}

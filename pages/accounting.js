@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
 import { useAuth } from '../src/contexts/AuthContext';
+import ModuleErrorBoundary from '../src/components/ErrorBoundary/ModuleErrorBoundary';
 
 // Code splitting: AccountingModule chargé uniquement quand nécessaire
 const AccountingModule = dynamic(
@@ -41,5 +42,15 @@ export default function AccountingPage() {
   }
 
   // Pas besoin de <Layout> car _app.js l'ajoute déjà automatiquement
-  return <AccountingModule />;
+  return (
+    <ModuleErrorBoundary
+      moduleName="Comptabilité"
+      fallbackTitle="Erreur dans le module Comptabilité"
+      fallbackMessage="Une erreur est survenue lors du chargement du module de comptabilité. Nos équipes ont été notifiées."
+      onGoHome={() => router.push('/dashboard')}
+      onReset={() => router.reload()}
+    >
+      <AccountingModule />
+    </ModuleErrorBoundary>
+  );
 }
