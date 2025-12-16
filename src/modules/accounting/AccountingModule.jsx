@@ -113,31 +113,23 @@ export default function AccountingModule() {
 
   const handleSaveExpense = async (expenseData) => {
     try {
-      console.log('=== DEBUG CRÉATION DÉPENSE ===');
-      console.log('currentUser:', currentUser);
-      console.log('stores:', stores);
-      console.log('expenseData:', expenseData);
-
       // Trouver un storeId valide
       let storeId = null;
 
       // Option 1: Utiliser le storeId du currentUser s'il ressemble à un CUID
       if (currentUser?.storeId && currentUser.storeId.length > 10) {
         storeId = currentUser.storeId;
-        console.log('Option 1: Utilisation de currentUser.storeId:', storeId);
       }
 
       // Option 2: Si currentUser.storeId est un code, trouver le store correspondant
       if (!storeId && currentUser?.storeId) {
         const store = stores.find(s => s.code === currentUser.storeId || s.id === currentUser.storeId);
         storeId = store?.id;
-        console.log('Option 2: Recherche par code, store trouvé:', store, 'storeId:', storeId);
       }
 
       // Option 3: Utiliser le premier magasin disponible
       if (!storeId && stores.length > 0) {
         storeId = stores[0].id;
-        console.log('Option 3: Premier magasin, storeId:', storeId);
       }
 
       if (!storeId) {
@@ -152,8 +144,6 @@ export default function AccountingModule() {
         storeId,
         createdBy: currentUser?.fullName || currentUser?.email || 'Utilisateur'
       };
-
-      console.log('Données envoyées:', JSON.stringify(dataToSend, null, 2));
 
       const url = selectedExpense
         ? `/api/expenses/${selectedExpense.id}`
