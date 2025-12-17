@@ -10,7 +10,7 @@ import {
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -258,7 +258,7 @@ export default function AdvancedReportsModule() {
     doc.setFontSize(14);
     doc.text('Top 5 Produits', 14, 90);
 
-    doc.autoTable({
+    autoTable(doc, {
       startY: 95,
       head: [['Produit', 'Quantité', 'CA (FCFA)']],
       body: topProducts.map(p => [p.name, p.quantity, p.revenue.toLocaleString()]),
