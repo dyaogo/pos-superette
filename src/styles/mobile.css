@@ -1,0 +1,207 @@
+/* ===== MOBILE OPTIMIZATIONS ===== */
+
+/* Viewport and base settings */
+html {
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  touch-action: manipulation;
+}
+
+/* Improve touch targets */
+@media (max-width: 768px) {
+  /* Minimum touch target size (44x44px - Apple HIG, 48x48px - Material Design) */
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  .btn,
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px 16px;
+  }
+
+  /* Better spacing for forms */
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+    padding: 12px;
+  }
+
+  /* Improve table scrolling */
+  .table-container,
+  table {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Optimize images */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Card optimizations */
+  .card {
+    margin-bottom: var(--space-md);
+  }
+
+  /* Modal optimizations */
+  .modal {
+    max-width: 100%;
+    margin: var(--space-md);
+  }
+
+  /* Form improvements */
+  .form-group {
+    margin-bottom: var(--space-md);
+  }
+
+  label {
+    display: block;
+    margin-bottom: var(--space-sm);
+    font-weight: 600;
+  }
+
+  /* Better spacing for lists */
+  ul, ol {
+    padding-left: 20px;
+  }
+
+  /* Optimize spacing */
+  section {
+    padding: var(--space-md);
+  }
+
+  /* Hide scrollbars during momentum scrolling */
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Improve select dropdowns */
+  select {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+}
+
+/* Tablet specific (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Optimize for tablet landscape */
+  .container {
+    max-width: 100%;
+    padding: var(--space-lg);
+  }
+
+  /* Grid optimizations */
+  .grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Small mobile devices (max 480px) */
+@media (max-width: 480px) {
+  /* Reduce overall font size */
+  html {
+    font-size: 14px;
+  }
+
+  /* Stack everything */
+  .flex-row {
+    flex-direction: column !important;
+  }
+
+  /* Full width buttons */
+  .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Smaller headings */
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+  }
+
+  /* Reduce card padding */
+  .card {
+    padding: var(--space-sm);
+  }
+}
+
+/* PWA specific */
+@media (display-mode: standalone) {
+  /* Add safe area insets for iOS notch */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+}
+
+/* Landscape orientation on mobile */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Reduce vertical spacing */
+  section {
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  /* Make modals scrollable */
+  .modal {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* High DPI screens (Retina) */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  /* Sharper borders */
+  .border {
+    border-width: 0.5px;
+  }
+}
+
+/* Dark mode mobile optimizations */
+@media (prefers-color-scheme: dark) and (max-width: 768px) {
+  /* Reduce brightness for OLED screens */
+  body {
+    background: #000;
+  }
+
+  .card {
+    background: #111;
+  }
+}
+
+/* Accessibility - Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

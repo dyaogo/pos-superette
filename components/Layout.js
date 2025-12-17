@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useAuth } from "../src/contexts/AuthContext";
@@ -28,6 +28,30 @@ export default function Layout({ children }) {
   const router = useRouter();
   const { currentUser, logout, hasPermission } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile screen size
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      // Auto-close sidebar on mobile
+      if (mobile) {
+        setSidebarOpen(false);
+      }
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Close mobile sidebar when route changes
+  useEffect(() => {
+    if (isMobile) {
+      setSidebarOpen(false);
+    }
+  }, [router.pathname, isMobile]);
 
   // Pages publiques (sans authentification requise)
   const publicPages = ["/", "/login", "/unauthorized"];
@@ -150,19 +174,38 @@ export default function Layout({ children }) {
         background: "var(--color-bg)",
       }}
     >
+      {/* Mobile Overlay */}
+      {isMobile && sidebarOpen && (
+        <div
+          onClick={() => setSidebarOpen(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            zIndex: 99,
+            animation: "fadeIn 0.2s",
+          }}
+        />
+      )}
+
       {/* Sidebar */}
       <aside
         style={{
-          width: sidebarOpen ? "250px" : "70px",
+          width: isMobile ? "250px" : (sidebarOpen ? "250px" : "70px"),
           background: "var(--color-surface)",
           borderRight: "1px solid var(--color-border)",
-          transition: "width 0.3s",
+          transition: isMobile ? "transform 0.3s" : "width 0.3s",
           position: "fixed",
           height: "100vh",
           overflowY: "auto",
           zIndex: 100,
           display: "flex",
           flexDirection: "column",
+          transform: isMobile && !sidebarOpen ? "translateX(-100%)" : "translateX(0)",
+          left: 0,
         }}
       >
         {/* Logo */}
@@ -172,26 +215,44 @@ export default function Layout({ children }) {
             borderBottom: "1px solid var(--color-border)",
             display: "flex",
             alignItems: "center",
-            justifyContent: "space-between",
+            justifyContent: isMobile ? "space-between" : (sidebarOpen ? "space-between" : "center"),
           }}
         >
-          {sidebarOpen && (
-            <h2 style={{ margin: 0, color: "var(--color-primary)" }}>
+          {(isMobile || sidebarOpen) && (
+            <h2 style={{ margin: 0, color: "var(--color-primary)", fontSize: isMobile ? "18px" : "24px" }}>
               POS Superette
             </h2>
           )}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              background: "none",
-              border: "none",
-              cursor: "pointer",
-              padding: "8px",
-              color: "var(--color-text-primary)",
-            }}
-          >
-            {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
+          {!isMobile && (
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "8px",
+                color: "var(--color-text-primary)",
+              }}
+              aria-label={sidebarOpen ? "Réduire le menu" : "Ouvrir le menu"}
+            >
+              {sidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          )}
+          {isMobile && (
+            <button
+              onClick={() => setSidebarOpen(false)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "8px",
+                color: "var(--color-text-primary)",
+              }}
+              aria-label="Fermer le menu"
+            >
+              <X size={20} />
+            </button>
+          )}
         </div>
 
         {/* Menu */}
@@ -378,16 +439,17 @@ export default function Layout({ children }) {
       {/* Main content */}
       <main
         style={{
-          marginLeft: sidebarOpen ? "250px" : "70px",
+          marginLeft: isMobile ? "0" : (sidebarOpen ? "250px" : "70px"),
           flex: 1,
-          transition: "margin-left 0.3s",
+          transition: isMobile ? "none" : "margin-left 0.3s",
           minHeight: "100vh",
+          width: isMobile ? "100%" : "auto",
         }}
       >
         {/* Store Selector & Online Status */}
         <div
           style={{
-            padding: "15px 30px",
+            padding: isMobile ? "12px 15px" : "15px 30px",
             background: "var(--color-surface)",
             borderBottom: "1px solid var(--color-border)",
             position: "sticky",
@@ -396,8 +458,26 @@ export default function Layout({ children }) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
+            gap: "10px",
           }}
         >
+          {isMobile && (
+            <button
+              onClick={() => setSidebarOpen(true)}
+              style={{
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+                padding: "8px",
+                color: "var(--color-text-primary)",
+                display: "flex",
+                alignItems: "center",
+              }}
+              aria-label="Ouvrir le menu"
+            >
+              <Menu size={24} />
+            </button>
+          )}
           <StoreSelector />
           <OnlineStatusBadge />
         </div>

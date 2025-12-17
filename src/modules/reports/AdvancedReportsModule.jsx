@@ -277,23 +277,48 @@ export default function AdvancedReportsModule() {
   }
 
   return (
-    <div style={{ padding: 'var(--space-lg)', maxWidth: '1400px', margin: '0 auto' }}>
+    <div style={{
+      padding: window.innerWidth < 768 ? 'var(--space-md)' : 'var(--space-lg)',
+      maxWidth: '1400px',
+      margin: '0 auto'
+    }}>
       {/* Header */}
-      <div className="flex justify-between items-center mb-lg">
+      <div style={{
+        display: 'flex',
+        flexDirection: window.innerWidth < 768 ? 'column' : 'row',
+        justifyContent: 'space-between',
+        alignItems: window.innerWidth < 768 ? 'stretch' : 'center',
+        marginBottom: 'var(--space-lg)',
+        gap: 'var(--space-md)',
+      }}>
         <div>
-          <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: 'var(--space-sm)' }}>
+          <h1 style={{
+            fontSize: window.innerWidth < 768 ? '20px' : '28px',
+            fontWeight: '700',
+            marginBottom: 'var(--space-sm)'
+          }}>
             📊 Rapports Avancés
           </h1>
-          <p className="text-secondary">Analyses détaillées et visualisations</p>
+          <p className="text-secondary" style={{ fontSize: window.innerWidth < 768 ? '14px' : '16px' }}>
+            Analyses détaillées et visualisations
+          </p>
         </div>
 
-        <div className="flex gap-md">
+        <div style={{
+          display: 'flex',
+          flexDirection: window.innerWidth < 480 ? 'column' : 'row',
+          gap: 'var(--space-md)',
+          flexWrap: 'wrap',
+        }}>
           {/* Sélecteur période */}
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
             className="input-field"
-            style={{ width: 'auto' }}
+            style={{
+              width: window.innerWidth < 768 ? '100%' : 'auto',
+              minWidth: window.innerWidth < 768 ? '0' : '150px',
+            }}
           >
             <option value="today">Aujourd'hui</option>
             <option value="week">7 derniers jours</option>
@@ -302,11 +327,25 @@ export default function AdvancedReportsModule() {
           </select>
 
           {/* Boutons Export */}
-          <button onClick={exportToExcel} className="btn btn-success flex items-center gap-sm">
+          <button
+            onClick={exportToExcel}
+            className="btn btn-success flex items-center gap-sm"
+            style={{
+              justifyContent: 'center',
+              flex: window.innerWidth < 480 ? '1' : '0 1 auto',
+            }}
+          >
             <Download size={18} />
             Excel
           </button>
-          <button onClick={exportToPDF} className="btn btn-primary flex items-center gap-sm">
+          <button
+            onClick={exportToPDF}
+            className="btn btn-primary flex items-center gap-sm"
+            style={{
+              justifyContent: 'center',
+              flex: window.innerWidth < 480 ? '1' : '0 1 auto',
+            }}
+          >
             <FileText size={18} />
             PDF
           </button>
@@ -314,7 +353,16 @@ export default function AdvancedReportsModule() {
       </div>
 
       {/* Métriques KPI */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: 'var(--space-md)', marginBottom: 'var(--space-xl)' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: window.innerWidth < 480
+          ? '1fr'
+          : window.innerWidth < 768
+            ? 'repeat(2, 1fr)'
+            : 'repeat(auto-fit, minmax(250px, 1fr))',
+        gap: 'var(--space-md)',
+        marginBottom: 'var(--space-xl)'
+      }}>
         <div className="card">
           <div className="flex items-center gap-md mb-sm">
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -367,11 +415,16 @@ export default function AdvancedReportsModule() {
       </div>
 
       {/* Graphiques */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: 'var(--space-lg)', marginBottom: 'var(--space-xl)' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))',
+        gap: 'var(--space-lg)',
+        marginBottom: 'var(--space-xl)'
+      }}>
         {/* Évolution des ventes */}
         <div className="card">
           <h3 className="text-lg font-semibold mb-md">📈 Évolution des Ventes</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={window.innerWidth < 768 ? 250 : 300}>
             <LineChart data={salesByDay}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
@@ -386,7 +439,7 @@ export default function AdvancedReportsModule() {
         {/* Ventes par catégorie */}
         <div className="card">
           <h3 className="text-lg font-semibold mb-md">🎯 Ventes par Catégorie</h3>
-          <ResponsiveContainer width="100%" height={300}>
+          <ResponsiveContainer width="100%" height={window.innerWidth < 768 ? 250 : 300}>
             <PieChart>
               <Pie
                 data={salesByCategory}
@@ -394,8 +447,8 @@ export default function AdvancedReportsModule() {
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={100}
-                label={(entry) => `${entry.name}: ${((entry.value / metrics.totalRevenue) * 100).toFixed(1)}%`}
+                outerRadius={window.innerWidth < 768 ? 80 : 100}
+                label={window.innerWidth < 768 ? false : ((entry) => `${entry.name}: ${((entry.value / metrics.totalRevenue) * 100).toFixed(1)}%`)}
               >
                 {salesByCategory.map((entry, index) => (
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
@@ -408,7 +461,11 @@ export default function AdvancedReportsModule() {
       </div>
 
       {/* Top Produits & Clients */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 'var(--space-lg)' }}>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(350px, 1fr))',
+        gap: 'var(--space-lg)'
+      }}>
         {/* Top Produits */}
         <div className="card">
           <h3 className="text-lg font-semibold mb-md flex items-center gap-sm">
