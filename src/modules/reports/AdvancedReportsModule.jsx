@@ -43,10 +43,26 @@ export default function AdvancedReportsModule() {
         customersRes.json(),
       ]);
 
-      setSalesData(salesData.data || salesData || []);
-      setExpenses(expensesData.expenses || expensesData || []);
-      setProducts(productsData.data || productsData || []);
-      setCustomers(customersData.data || customersData || []);
+      // Ensure all data is properly normalized as arrays
+      const salesArray = Array.isArray(salesData?.data) ? salesData.data
+                        : Array.isArray(salesData) ? salesData
+                        : [];
+      setSalesData(salesArray);
+
+      const expensesArray = Array.isArray(expensesData?.expenses) ? expensesData.expenses
+                           : Array.isArray(expensesData) ? expensesData
+                           : [];
+      setExpenses(expensesArray);
+
+      const productsArray = Array.isArray(productsData?.data) ? productsData.data
+                           : Array.isArray(productsData) ? productsData
+                           : [];
+      setProducts(productsArray);
+
+      const customersArray = Array.isArray(customersData?.data) ? customersData.data
+                            : Array.isArray(customersData) ? customersData
+                            : [];
+      setCustomers(customersArray);
     } catch (error) {
       console.error('Error loading report data:', error);
       toast.error('Erreur lors du chargement des données');
