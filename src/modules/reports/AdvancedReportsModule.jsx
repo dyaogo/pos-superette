@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
 import {
-  TrendingUp, Download, Calendar, DollarSign, Package, Users,
+  TrendingUp, TrendingDown, Download, Calendar, DollarSign, Package, Users,
   FileText, ArrowUp, ArrowDown, Award
 } from 'lucide-react';
 import toast from 'react-hot-toast';
