@@ -174,3 +174,98 @@
   font-size: 14px;
   color: var(--color-text-primary);
 }
+
+/* ===== RESPONSIVE BREAKPOINTS ===== */
+/* Mobile-first approach */
+
+/* Responsive utilities for hiding/showing elements */
+.hide-mobile { display: block; }
+.show-mobile { display: none; }
+
+/* Tablet and up (768px+) */
+@media (max-width: 768px) {
+  .hide-mobile { display: none; }
+  .show-mobile { display: block; }
+
+  /* Reduce spacing on mobile */
+  .p-lg-responsive { padding: var(--space-md); }
+  .px-lg-responsive { padding-left: var(--space-md); padding-right: var(--space-md); }
+  .gap-lg-responsive { gap: var(--space-md); }
+
+  /* Stack grid items on mobile */
+  .grid-responsive {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Reduce font sizes on mobile */
+  .text-2xl { font-size: 1.5rem; }
+  .text-lg { font-size: 1rem; }
+
+  /* Make buttons full width on mobile */
+  .btn-mobile-full {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Improve touch targets (min 44px) */
+  button, .btn, a[role="button"], input[type="checkbox"], input[type="radio"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Table responsiveness - horizontal scroll */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  table {
+    min-width: 600px;
+  }
+
+  /* Card spacing on mobile */
+  .card {
+    padding: var(--space-md);
+  }
+}
+
+/* Mobile only (max 480px) */
+@media (max-width: 480px) {
+  /* Further reduce spacing */
+  .p-md-responsive { padding: var(--space-sm); }
+  .px-md-responsive { padding-left: var(--space-sm); padding-right: var(--space-sm); }
+
+  /* Stack flex items on small mobile */
+  .flex-mobile-col {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+
+  /* Font size adjustments */
+  body {
+    font-size: 14px;
+  }
+
+  h1, .text-3xl { font-size: 1.5rem; }
+  h2, .text-2xl { font-size: 1.25rem; }
+  h3, .text-xl { font-size: 1.125rem; }
+}
+
+/* Tablet (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .grid-tablet-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Desktop (1024px+) - Default styles */
+@media (min-width: 1024px) {
+  .grid-desktop-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .grid-desktop-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
