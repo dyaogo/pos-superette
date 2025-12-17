@@ -124,6 +124,12 @@ export default function Layout({ children }) {
       permission: "view_accounting",
     },
     {
+      path: "/reports",
+      icon: BarChart3,
+      label: "Rapports Avancés",
+      permission: "view_accounting",
+    },
+    {
       path: "/settings",
       icon: Settings,
       label: "Paramètres",
