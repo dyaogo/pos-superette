@@ -11,6 +11,7 @@ import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { formatCFA, formatCFACompact } from '../../utils/currency';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
@@ -206,10 +207,10 @@ export default function AdvancedReportsModule() {
       ['Date génération', new Date().toLocaleString('fr-FR')],
       [''],
       ['Métriques Principales', ''],
-      ['Chiffre d\'affaires', metrics.totalRevenue.toFixed(0) + ' FCFA'],
-      ['Dépenses', metrics.totalExpenses.toFixed(0) + ' FCFA'],
-      ['Bénéfice', metrics.profit.toFixed(0) + ' FCFA'],
-      ['Marge', metrics.margin.toFixed(2) + '%'],
+      ['Chiffre d\'affaires', Math.round(metrics.totalRevenue).toLocaleString('fr-FR') + ' FCFA'],
+      ['Dépenses', Math.round(metrics.totalExpenses).toLocaleString('fr-FR') + ' FCFA'],
+      ['Bénéfice', Math.round(metrics.profit).toLocaleString('fr-FR') + ' FCFA'],
+      ['Marge', metrics.margin.toFixed(1) + '%'],
     ];
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Résumé');
@@ -217,7 +218,7 @@ export default function AdvancedReportsModule() {
     // Feuille Top Produits
     const productsData = [
       ['Nom', 'Quantité Vendue', 'Chiffre d\'affaires'],
-      ...topProducts.map(p => [p.name, p.quantity, p.revenue.toFixed(0)]),
+      ...topProducts.map(p => [p.name, p.quantity, Math.round(p.revenue).toLocaleString('fr-FR')]),
     ];
     const wsProducts = XLSX.utils.aoa_to_sheet(productsData);
     XLSX.utils.book_append_sheet(wb, wsProducts, 'Top Produits');
@@ -225,7 +226,7 @@ export default function AdvancedReportsModule() {
     // Feuille Ventes par jour
     const salesDailyData = [
       ['Date', 'Chiffre d\'affaires', 'Transactions'],
-      ...salesByDay.map(d => [d.date, d.revenue.toFixed(0), d.transactions]),
+      ...salesByDay.map(d => [d.date, Math.round(d.revenue).toLocaleString('fr-FR'), d.transactions]),
     ];
     const wsSales = XLSX.utils.aoa_to_sheet(salesDailyData);
     XLSX.utils.book_append_sheet(wb, wsSales, 'Ventes Quotidiennes');
@@ -249,10 +250,10 @@ export default function AdvancedReportsModule() {
     doc.setFontSize(14);
     doc.text('Métriques Principales', 14, 50);
     doc.setFontSize(10);
-    doc.text(`Chiffre d'affaires: ${metrics.totalRevenue.toLocaleString()} FCFA`, 14, 58);
-    doc.text(`Dépenses: ${metrics.totalExpenses.toLocaleString()} FCFA`, 14, 64);
-    doc.text(`Bénéfice: ${metrics.profit.toLocaleString()} FCFA`, 14, 70);
-    doc.text(`Marge: ${metrics.margin.toFixed(2)}%`, 14, 76);
+    doc.text(`Chiffre d'affaires: ${Math.round(metrics.totalRevenue).toLocaleString('fr-FR')} FCFA`, 14, 58);
+    doc.text(`Dépenses: ${Math.round(metrics.totalExpenses).toLocaleString('fr-FR')} FCFA`, 14, 64);
+    doc.text(`Bénéfice: ${Math.round(metrics.profit).toLocaleString('fr-FR')} FCFA`, 14, 70);
+    doc.text(`Marge: ${metrics.margin.toFixed(1)}%`, 14, 76);
 
     // Top Produits Table
     doc.setFontSize(14);
@@ -261,7 +262,7 @@ export default function AdvancedReportsModule() {
     autoTable(doc, {
       startY: 95,
       head: [['Produit', 'Quantité', 'CA (FCFA)']],
-      body: topProducts.map(p => [p.name, p.quantity, p.revenue.toLocaleString()]),
+      body: topProducts.map(p => [p.name, p.quantity, Math.round(p.revenue).toLocaleString('fr-FR')]),
     });
 
     doc.save(`rapport_${period}_${Date.now()}.pdf`);
@@ -370,7 +371,7 @@ export default function AdvancedReportsModule() {
             </div>
             <div>
               <div className="text-sm text-muted">Chiffre d'affaires</div>
-              <div className="text-2xl font-bold">{metrics.totalRevenue.toLocaleString()} FCFA</div>
+              <div className="text-2xl font-bold">{formatCFA(metrics.totalRevenue)}</div>
             </div>
           </div>
         </div>
@@ -382,7 +383,7 @@ export default function AdvancedReportsModule() {
             </div>
             <div>
               <div className="text-sm text-muted">Dépenses</div>
-              <div className="text-2xl font-bold">{metrics.totalExpenses.toLocaleString()} FCFA</div>
+              <div className="text-2xl font-bold">{formatCFA(metrics.totalExpenses)}</div>
             </div>
           </div>
         </div>
@@ -395,7 +396,7 @@ export default function AdvancedReportsModule() {
             <div>
               <div className="text-sm text-muted">Bénéfice</div>
               <div className="text-2xl font-bold" style={{ color: metrics.profit >= 0 ? 'var(--color-success)' : 'var(--color-danger)' }}>
-                {metrics.profit.toLocaleString()} FCFA
+                {formatCFA(metrics.profit)}
               </div>
             </div>
           </div>
@@ -429,7 +430,7 @@ export default function AdvancedReportsModule() {
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="date" />
               <YAxis />
-              <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
+              <Tooltip formatter={(value) => formatCFA(value)} />
               <Legend />
               <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} name="Chiffre d'affaires" />
             </LineChart>
@@ -454,7 +455,7 @@ export default function AdvancedReportsModule() {
                   <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => `${value.toLocaleString()} FCFA`} />
+              <Tooltip formatter={(value) => formatCFA(value)} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -488,7 +489,7 @@ export default function AdvancedReportsModule() {
                     <div className="text-sm text-muted">{product.quantity} unités vendues</div>
                   </div>
                 </div>
-                <div className="font-bold">{product.revenue.toLocaleString()} FCFA</div>
+                <div className="font-bold">{formatCFA(product.revenue)}</div>
               </div>
             ))}
           </div>
@@ -517,7 +518,7 @@ export default function AdvancedReportsModule() {
                       <div className="text-sm text-muted">{customer.transactions} transactions</div>
                     </div>
                   </div>
-                  <div className="font-bold">{customer.total.toLocaleString()} FCFA</div>
+                  <div className="font-bold">{formatCFA(customer.total)}</div>
                 </div>
               ))
             ) : (

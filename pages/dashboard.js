@@ -1,7 +1,8 @@
 // pages/dashboard.js - Dashboard Complet avec toutes les fonctionnalités
 import { useEffect, useState, useMemo } from "react";
 import ProtectedRoute from "../components/ProtectedRoute";
-import { useApp } from "../src/contexts/AppContext";
+import { useAuth } from "../src/contexts/AuthContext";
+import { formatCFA, formatCFACompact } from "../src/utils/currency";
 import {
   ShoppingCart,
   Package,
@@ -17,26 +18,40 @@ import {
 } from "lucide-react";
 
 function DashboardPage() {
-  const {
-    salesHistory = [],
-    productCatalog = [],
-    customers = [],
-    allProducts = [],
-    allSales = [],
-  } = useApp();
-
+  const { currentUser } = useAuth();
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [productCatalog, setProductCatalog] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [selectedPeriod, setSelectedPeriod] = useState("today");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Fonction pour formater les nombres
-  const formatNumber = (number) => {
-    if (number >= 1000000) {
-      return (number / 1000000).toFixed(1) + "M";
-    } else if (number >= 1000) {
-      return (number / 1000).toFixed(1) + "K";
-    }
-    return Math.round(number).toString();
-  };
+  // Charger les données depuis l'API
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setLoading(true);
+      try {
+        const [salesRes, productsRes, customersRes] = await Promise.all([
+          fetch('/api/sales?limit=1000'),
+          fetch('/api/products'),
+          fetch('/api/customers'),
+        ]);
+
+        const salesData = await salesRes.json();
+        const productsData = await productsRes.json();
+        const customersData = await customersRes.json();
+
+        setSalesHistory(Array.isArray(salesData?.data) ? salesData.data : Array.isArray(salesData) ? salesData : []);
+        setProductCatalog(Array.isArray(productsData?.data) ? productsData.data : Array.isArray(productsData) ? productsData : []);
+        setCustomers(Array.isArray(customersData?.data) ? customersData.data : Array.isArray(customersData) ? customersData : []);
+      } catch (error) {
+        console.error('Erreur chargement dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
 
   // Calcul des métriques pour la période sélectionnée
   const getMetricsForPeriod = useMemo(() => {
@@ -75,7 +90,7 @@ function DashboardPage() {
     }
 
     const periodSales = salesHistory.filter((sale) => {
-      const saleDate = new Date(sale.date);
+      const saleDate = new Date(sale.createdAt || sale.date);
       return saleDate >= startDate && saleDate <= endDate;
     });
 
@@ -124,7 +139,7 @@ function DashboardPage() {
       }
 
       const prevSales = salesHistory.filter((sale) => {
-        const saleDate = new Date(sale.date);
+        const saleDate = new Date(sale.createdAt || sale.date);
         return saleDate >= startDate && saleDate <= endDate;
       });
 
@@ -183,7 +198,7 @@ function DashboardPage() {
   // Ventes récentes
   const recentSales = useMemo(() => {
     return [...salesHistory]
-      .sort((a, b) => new Date(b.date) - new Date(a.date))
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
       .slice(0, 5);
   }, [salesHistory]);
 
@@ -288,6 +303,21 @@ function DashboardPage() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto", textAlign: "center" }}>
+        <RefreshCw size={48} style={{ animation: "spin 1s linear infinite", margin: "100px auto 20px" }} />
+        <p style={{ color: "#64748b", fontSize: "16px" }}>Chargement des données...</p>
+        <style jsx>{`
+          @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
   return (
     <div style={{ padding: "30px", maxWidth: "1400px", margin: "0 auto" }}>
       {/* Header avec filtres de période */}
@@ -342,7 +372,7 @@ function DashboardPage() {
       >
         <StatCard
           title="Chiffre d'Affaires"
-          value={`${formatNumber(getMetricsForPeriod.revenue)} FCFA`}
+          value={formatCFACompact(getMetricsForPeriod.revenue)}
           icon={DollarSign}
           trend={calculateTrends.revenue}
           color="#10b981"
@@ -351,7 +381,7 @@ function DashboardPage() {
 
         <StatCard
           title="Marge Brute"
-          value={`${formatNumber(getMetricsForPeriod.grossMargin)} FCFA`}
+          value={formatCFACompact(getMetricsForPeriod.grossMargin)}
           icon={TrendingUp}
           trend={calculateTrends.margin}
           color="#8b5cf6"
@@ -369,7 +399,7 @@ function DashboardPage() {
 
         <StatCard
           title="Transactions"
-          value={formatNumber(getMetricsForPeriod.transactions)}
+          value={getMetricsForPeriod.transactions.toLocaleString('fr-FR')}
           icon={ShoppingCart}
           trend={calculateTrends.transactions}
           color="#3b82f6"
@@ -378,9 +408,7 @@ function DashboardPage() {
 
         <StatCard
           title="Panier Moyen"
-          value={`${formatNumber(
-            Math.round(getMetricsForPeriod.avgBasket)
-          )} FCFA`}
+          value={formatCFACompact(getMetricsForPeriod.avgBasket)}
           icon={Award}
           trend={calculateTrends.basket}
           color="#f59e0b"
@@ -492,7 +520,13 @@ function DashboardPage() {
                         color: "#64748b",
                       }}
                     >
-                      {new Date(sale.date).toLocaleString("fr-FR")}
+                      {new Date(sale.createdAt || sale.date).toLocaleString("fr-FR", {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </div>
                   </div>
                   <div
@@ -502,7 +536,7 @@ function DashboardPage() {
                       color: "#10b981",
                     }}
                   >
-                    {formatNumber(sale.total)} FCFA
+                    {formatCFACompact(sale.total)}
                   </div>
                 </div>
               ))
@@ -585,7 +619,7 @@ function DashboardPage() {
                       color: "#10b981",
                     }}
                   >
-                    {formatNumber(product.revenue)} FCFA
+                    {formatCFACompact(product.revenue)}
                   </div>
                 </div>
               ))
@@ -691,10 +725,9 @@ function DashboardPage() {
             <div
               style={{ fontSize: "24px", fontWeight: "bold", color: "#10b981" }}
             >
-              {formatNumber(
+              {formatCFACompact(
                 salesHistory.reduce((sum, s) => sum + (s.total || 0), 0)
-              )}{" "}
-              FCFA
+              )}
             </div>
           </div>
         </div>
