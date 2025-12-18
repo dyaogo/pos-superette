@@ -67,6 +67,7 @@ export default function WorkPeriodsPage() {
   };
 
   const getSessionSales = (session) => {
+    if (!Array.isArray(sales)) return [];
     return sales.filter(
       (sale) =>
         sale.cashSessionId === session.id &&
@@ -109,7 +110,7 @@ export default function WorkPeriodsPage() {
     };
   };
 
-  const filteredSessions = sessions.filter((session) => {
+  const filteredSessions = Array.isArray(sessions) ? sessions.filter((session) => {
     if (filterStatus !== "all" && session.status !== filterStatus) return false;
 
     if (filterDate !== "all") {
@@ -131,7 +132,7 @@ export default function WorkPeriodsPage() {
     }
 
     return true;
-  });
+  }) : [];
 
   const formatDuration = (openedAt, closedAt) => {
     if (!closedAt) return "En cours...";
