@@ -189,8 +189,7 @@ export default function POSPage() {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
 
-    showToast(`${product.name} ajouté au panier`, "success", 1500);
-
+    // Toast removed for better fluidity
     const button = document.getElementById(`product-${product.id}`);
     if (button) {
       button.style.transform = "scale(0.95)";
