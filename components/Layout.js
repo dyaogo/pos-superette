@@ -20,6 +20,7 @@ import {
   LogOut,
   User,
   Calculator,
+  Clock,
 } from "lucide-react";
 import StoreSelector from "./StoreSelector";
 import OnlineStatusBadge from "./OnlineStatusBadge";
@@ -152,6 +153,12 @@ export default function Layout({ children }) {
       icon: BarChart3,
       label: "Rapports Avancés",
       permission: "view_accounting",
+    },
+    {
+      path: "/work-periods",
+      icon: Clock,
+      label: "Périodes de travail",
+      permission: "view_reports",
     },
     {
       path: "/settings",
