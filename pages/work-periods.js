@@ -68,12 +68,24 @@ export default function WorkPeriodsPage() {
 
   const getSessionSales = (session) => {
     if (!Array.isArray(sales)) return [];
-    return sales.filter(
-      (sale) =>
-        sale.cashSessionId === session.id &&
-        new Date(sale.createdAt) >= new Date(session.openedAt) &&
-        (!session.closedAt || new Date(sale.createdAt) <= new Date(session.closedAt))
-    );
+
+    // Filtrer les ventes par session
+    return sales.filter((sale) => {
+      // Vérifier d'abord si la vente a un cashSessionId correspondant
+      if (sale.cashSessionId && sale.cashSessionId === session.id) {
+        return true;
+      }
+
+      // Sinon, filtrer par date (ventes entre ouverture et fermeture de la session)
+      const saleDate = new Date(sale.createdAt);
+      const sessionStart = new Date(session.openedAt);
+      const sessionEnd = session.closedAt ? new Date(session.closedAt) : new Date();
+
+      // Vérifier aussi que la vente appartient au même magasin
+      const sameStore = !sale.storeId || sale.storeId === session.storeId;
+
+      return saleDate >= sessionStart && saleDate <= sessionEnd && sameStore;
+    });
   };
 
   const calculateSessionStats = (session) => {
@@ -81,18 +93,29 @@ export default function WorkPeriodsPage() {
 
     const cashSales = sessionSales
       .filter((s) => s.paymentMethod === "cash")
-      .reduce((sum, s) => sum + s.total, 0);
+      .reduce((sum, s) => sum + (s.total || 0), 0);
 
     const cardSales = sessionSales
       .filter((s) => s.paymentMethod === "card")
-      .reduce((sum, s) => sum + s.total, 0);
+      .reduce((sum, s) => sum + (s.total || 0), 0);
 
     const creditSales = sessionSales
       .filter((s) => s.paymentMethod === "credit")
-      .reduce((sum, s) => sum + s.total, 0);
+      .reduce((sum, s) => sum + (s.total || 0), 0);
 
-    const totalSales = sessionSales.reduce((sum, s) => sum + s.total, 0);
+    const totalSales = sessionSales.reduce((sum, s) => sum + (s.total || 0), 0);
     const transactionCount = sessionSales.length;
+
+    // Debug: afficher les stats calculées
+    if (sessionSales.length > 0) {
+      console.log(`Session ${session.sessionNumber}:`, {
+        salesCount: sessionSales.length,
+        totalSales,
+        cashSales,
+        cardSales,
+        creditSales,
+      });
+    }
 
     const expectedCash = session.openingAmount + cashSales;
     const actualCash = session.closingAmount || 0;
