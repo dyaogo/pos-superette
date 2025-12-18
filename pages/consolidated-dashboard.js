@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import ProtectedRoute from "../components/ProtectedRoute";
 import { useApp } from "../src/contexts/AppContext";
+import { formatCFA, formatCFACompact } from "../src/utils/currency";
 import {
   Store,
   TrendingUp,
@@ -189,7 +190,7 @@ function ConsolidatedDashboard() {
             </div>
           </div>
           <div style={{ fontSize: "32px", fontWeight: "bold" }}>
-            {stats.globalStats.totalRevenue.toLocaleString()} FCFA
+            {formatCFA(stats.globalStats.totalRevenue)}
           </div>
           <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "8px" }}>
             {stores.length} magasins actifs
@@ -219,7 +220,7 @@ function ConsolidatedDashboard() {
             {stats.globalStats.totalSales}
           </div>
           <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "8px" }}>
-            Ticket moyen: {stats.globalStats.averageTicket.toLocaleString()}{" "}
+            Ticket moyen: {formatCFA(stats.globalStats.averageTicket)}{" "}
             FCFA
           </div>
         </div>
@@ -244,10 +245,10 @@ function ConsolidatedDashboard() {
             <div style={{ fontSize: "14px", opacity: 0.9 }}>Stock total</div>
           </div>
           <div style={{ fontSize: "32px", fontWeight: "bold" }}>
-            {stats.globalStats.totalStock.toLocaleString()}
+            {stats.globalStats.totalStock.toLocaleString('fr-FR')}
           </div>
           <div style={{ fontSize: "13px", opacity: 0.8, marginTop: "8px" }}>
-            Valeur: {stats.globalStats.totalStockValue.toLocaleString()} FCFA
+            Valeur: {formatCFA(stats.globalStats.totalStockValue)}
           </div>
         </div>
 
@@ -367,7 +368,7 @@ function ConsolidatedDashboard() {
                       color: "var(--color-primary)",
                     }}
                   >
-                    {bestStore.totalRevenue.toLocaleString()} FCFA
+                    {formatCFA(bestStore.totalRevenue)}
                   </div>
                 </div>
                 <div>
@@ -424,7 +425,7 @@ function ConsolidatedDashboard() {
                       color: "var(--color-primary)",
                     }}
                   >
-                    {bestStore.averageTicket.toLocaleString()} FCFA
+                    {formatCFA(bestStore.averageTicket)}
                   </div>
                 </div>
               </div>
@@ -511,7 +512,7 @@ function ConsolidatedDashboard() {
                       color: "var(--color-primary)",
                     }}
                   >
-                    {worstStore.totalRevenue.toLocaleString()} FCFA
+                    {formatCFA(worstStore.totalRevenue)}
                   </div>
                 </div>
                 <div>
@@ -568,7 +569,7 @@ function ConsolidatedDashboard() {
                       color: "var(--color-primary)",
                     }}
                   >
-                    {worstStore.averageTicket.toLocaleString()} FCFA
+                    {formatCFA(worstStore.averageTicket)}
                   </div>
                 </div>
               </div>
@@ -758,7 +759,7 @@ function ConsolidatedDashboard() {
                         color: "var(--color-primary)",
                       }}
                     >
-                      {storeData.totalRevenue.toLocaleString()} FCFA
+                      {formatCFA(storeData.totalRevenue)}
                     </td>
                     <td
                       style={{
@@ -770,11 +771,11 @@ function ConsolidatedDashboard() {
                       {storeData.totalSales}
                     </td>
                     <td style={{ padding: "15px", textAlign: "center" }}>
-                      {storeData.averageTicket.toLocaleString()} FCFA
+                      {formatCFA(storeData.averageTicket)}
                     </td>
                     <td style={{ padding: "15px", textAlign: "center" }}>
                       <div style={{ fontWeight: "600" }}>
-                        {storeData.totalStock.toLocaleString()}
+                        {storeData.totalStock.toLocaleString('fr-FR')}
                       </div>
                       {storeData.lowStock > 0 && (
                         <div
@@ -794,7 +795,7 @@ function ConsolidatedDashboard() {
                       )}
                     </td>
                     <td style={{ padding: "15px", textAlign: "right" }}>
-                      {storeData.stockValue.toLocaleString()} FCFA
+                      {formatCFA(storeData.stockValue)}
                     </td>
                     <td style={{ padding: "15px", textAlign: "center" }}>
                       <div

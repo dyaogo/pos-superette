@@ -96,10 +96,10 @@ function CreditsPage() {
     }
 
     try {
-      const res = await fetch(`/api/credits/${selectedCredit.id}/payment`, {
-        method: "POST",
+      const res = await fetch(`/api/credits/${selectedCredit.id}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ paymentAmount: amount }),
       });
 
       if (res.ok) {
