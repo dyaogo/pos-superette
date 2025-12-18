@@ -239,131 +239,162 @@ export default function POSPage() {
 
     setIsProcessingSale(true);
 
-    try {
-      // Préparer les données de vente
-      const saleData = {
-        receiptNumber: `REC${Date.now()}`,
-        items: cart.map((item) => ({
-          productId: item.id,
-          name: item.name,
-          quantity: item.quantity,
-          unitPrice: item.sellingPrice,
-          total: item.sellingPrice * item.quantity,
-        })),
-        total,
-        paymentMethod,
-        customerId: selectedCustomer?.id || null,
-        cashReceived:
-          paymentMethod === "cash" ? parseFloat(cashReceived) || 0 : null,
-        change: paymentMethod === "cash" ? calculateChange() : 0,
-        storeId: currentStore?.id,
-        cashSessionId: cashSession.id,
-        userId: currentUser?.id,
-      };
+    // Préparer les données de vente
+    const saleData = {
+      receiptNumber: `REC${Date.now()}`,
+      items: cart.map((item) => ({
+        productId: item.id,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.sellingPrice,
+        total: item.sellingPrice * item.quantity,
+      })),
+      total,
+      paymentMethod,
+      customerId: selectedCustomer?.id || null,
+      cashReceived:
+        paymentMethod === "cash" ? parseFloat(cashReceived) || 0 : null,
+      change: paymentMethod === "cash" ? calculateChange() : 0,
+      storeId: currentStore?.id,
+      cashSessionId: cashSession.id,
+      userId: currentUser?.id,
+    };
 
-      console.log("📤 Envoi de la vente:", saleData);
+    // 🚀 OPTIMISTIC UI - Créer la vente temporaire pour l'affichage immédiat
+    const optimisticSale = {
+      ...saleData,
+      id: `temp-${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      synced: false,
+    };
 
-      // Envoyer à l'API
-      let newSale = null;
-      let savedOffline = false;
+    // 🚀 OPTIMISTIC UI - Mettre à jour l'interface IMMÉDIATEMENT
+    setLastSale(optimisticSale);
+    setShowReceipt(true);
+    addSaleOptimistic(optimisticSale); // Ajouter à l'historique local
 
+    // 🚀 OPTIMISTIC UI - Mettre à jour les stocks immédiatement
+    const stockUpdates = cart.map((item) => ({
+      id: item.id,
+      quantity: item.quantity,
+    }));
+    updateMultipleProductStocksOptimistic(stockUpdates);
+
+    // 🚀 OPTIMISTIC UI - Réinitialiser le panier IMMÉDIATEMENT
+    const cartSnapshot = [...cart];
+    const customerSnapshot = selectedCustomer;
+    const paymentMethodSnapshot = paymentMethod;
+
+    setCart([]);
+    setSelectedCustomer(null);
+    setCashReceived("");
+    setPaymentMethod("cash");
+    setIsProcessingSale(false); // Débloquer l'UI immédiatement
+
+    // 🔄 Enregistrement en arrière-plan (non bloquant)
+    (async () => {
       try {
-        // Essayer d'enregistrer en ligne
-        const response = await fetch("/api/sales", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(saleData),
-        });
+        console.log("📤 Envoi de la vente en arrière-plan:", saleData);
 
-        if (response.ok) {
-          newSale = await response.json();
-          console.log("✅ Vente enregistrée en ligne:", newSale);
-        } else {
-          throw new Error("Erreur API");
-        }
-      } catch (apiError) {
-        console.warn(
-          "⚠️ Impossible d'enregistrer en ligne, sauvegarde hors ligne...",
-          apiError
-        );
-
-        // Fallback : Sauvegarder hors ligne
-        try {
-          const { offlineDB } = await import("../src/utils/offlineDB");
-          const offlineId = await offlineDB.addPendingSale(saleData);
-
-          newSale = {
-            ...saleData,
-            id: offlineId,
-            createdAt: new Date().toISOString(),
-            synced: false,
-          };
-
-          savedOffline = true;
-          console.log("💾 Vente enregistrée hors ligne");
-        } catch (offlineError) {
-          console.error("❌ Erreur sauvegarde hors ligne:", offlineError);
-          throw new Error("Impossible d'enregistrer la vente");
-        }
-      }
-
-      if (!newSale) {
-        throw new Error("Aucune vente créée");
-      }
-
-      // Créer un crédit si nécessaire
-      if (paymentMethod === "credit" && selectedCustomer) {
-        const creditData = {
-          customerId: selectedCustomer.id,
-          amount: total,
-          remainingAmount: total,
-          description: `Vente ${saleData.receiptNumber}`,
-          dueDate: creditDueDate,
-          status: "pending",
-        };
+        let newSale = null;
+        let savedOffline = false;
 
         try {
-          await fetch("/api/credits", {
+          // Essayer d'enregistrer en ligne
+          const response = await fetch("/api/sales", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(creditData),
+            body: JSON.stringify(saleData),
           });
-        } catch (error) {
-          console.error("Erreur création crédit:", error);
+
+          if (response.ok) {
+            newSale = await response.json();
+            console.log("✅ Vente enregistrée en ligne:", newSale);
+          } else {
+            throw new Error("Erreur API");
+          }
+        } catch (apiError) {
+          console.warn(
+            "⚠️ Impossible d'enregistrer en ligne, sauvegarde hors ligne...",
+            apiError
+          );
+
+          // Fallback : Sauvegarder hors ligne
+          try {
+            const { offlineDB } = await import("../src/utils/offlineDB");
+            const offlineId = await offlineDB.addPendingSale(saleData);
+
+            newSale = {
+              ...saleData,
+              id: offlineId,
+              createdAt: new Date().toISOString(),
+              synced: false,
+            };
+
+            savedOffline = true;
+            console.log("💾 Vente enregistrée hors ligne");
+          } catch (offlineError) {
+            console.error("❌ Erreur sauvegarde hors ligne:", offlineError);
+
+            // 🔄 ROLLBACK - Restaurer le panier en cas d'erreur totale
+            setCart(cartSnapshot);
+            setSelectedCustomer(customerSnapshot);
+            setPaymentMethod(paymentMethodSnapshot);
+            setShowReceipt(false);
+
+            throw new Error("Impossible d'enregistrer la vente");
+          }
         }
+
+        // Créer un crédit si nécessaire (en arrière-plan)
+        if (paymentMethodSnapshot === "credit" && customerSnapshot) {
+          const creditData = {
+            customerId: customerSnapshot.id,
+            amount: total,
+            remainingAmount: total,
+            description: `Vente ${saleData.receiptNumber}`,
+            dueDate: creditDueDate,
+            status: "pending",
+          };
+
+          try {
+            const creditResponse = await fetch("/api/credits", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(creditData),
+            });
+
+            if (creditResponse.ok) {
+              const credit = await creditResponse.json();
+              addCreditOptimistic(credit); // Mise à jour optimiste
+            }
+          } catch (error) {
+            console.error("Erreur création crédit:", error);
+          }
+        }
+
+        // Mettre à jour avec la vraie vente de l'API
+        if (newSale && newSale.id !== optimisticSale.id) {
+          setLastSale(newSale);
+        }
+
+        // Toast de succès
+        setToast({
+          message: savedOffline
+            ? "Vente enregistrée hors ligne - Sera synchronisée plus tard"
+            : "Vente enregistrée avec succès !",
+          type: savedOffline ? "warning" : "success",
+        });
+        setTimeout(() => setToast(null), 3000);
+      } catch (error) {
+        console.error("❌ Erreur lors de la vente:", error);
+        setToast({
+          message: error.message || "Erreur lors de l'enregistrement de la vente",
+          type: "error",
+        });
+        setTimeout(() => setToast(null), 5000);
       }
-
-      // Afficher le reçu
-      setLastSale(newSale);
-      setShowReceipt(true);
-
-      // Réinitialiser le panier
-      setCart([]);
-      setSelectedCustomer(null);
-      setCashReceived("");
-      setPaymentMethod("cash");
-
-      // ✨ AJOUTÉ - Recharger les données pour mettre à jour l'historique
-      await reloadData();
-
-      // Afficher le toast
-      setToast({
-        message: savedOffline
-          ? "Vente enregistrée hors ligne - Sera synchronisée plus tard"
-          : "Vente enregistrée avec succès !",
-        type: savedOffline ? "warning" : "success",
-      });
-      setTimeout(() => setToast(null), 3000);
-    } catch (error) {
-      console.error("❌ Erreur lors de la vente:", error);
-      setToast({
-        message: error.message || "Erreur lors de l'enregistrement de la vente",
-        type: "error",
-      });
-      setTimeout(() => setToast(null), 5000);
-    } finally {
-      setIsProcessingSale(false);
-    }
+    })();
   };
 
   useEffect(() => {
@@ -1479,6 +1510,7 @@ export default function POSPage() {
                 cashReceived &&
                 parseFloat(cashReceived) < total)
             }
+            className="validate-sale-btn"
             style={{
               width: "100%",
               padding: "15px",
@@ -1490,7 +1522,7 @@ export default function POSPage() {
                   cashReceived &&
                   parseFloat(cashReceived) < total)
                   ? "#9ca3af"
-                  : "#10b981",
+                  : "linear-gradient(135deg, #10b981 0%, #059669 100%)",
               color: "white",
               border: "none",
               borderRadius: "8px",
@@ -1509,6 +1541,34 @@ export default function POSPage() {
               alignItems: "center",
               justifyContent: "center",
               gap: "10px",
+              transition: "all 0.2s ease",
+              boxShadow:
+                cart.length === 0 ||
+                isProcessingSale ||
+                !cashSession ||
+                (paymentMethod === "cash" &&
+                  cashReceived &&
+                  parseFloat(cashReceived) < total)
+                  ? "none"
+                  : "0 4px 6px -1px rgba(16, 185, 129, 0.3)",
+            }}
+            onMouseDown={(e) => {
+              if (!e.currentTarget.disabled) {
+                e.currentTarget.style.transform = "scale(0.98)";
+              }
+            }}
+            onMouseUp={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = "scale(1)";
+            }}
+            onMouseEnter={(e) => {
+              if (!e.currentTarget.disabled) {
+                e.currentTarget.style.boxShadow =
+                  "0 6px 8px -1px rgba(16, 185, 129, 0.4)";
+                e.currentTarget.style.transform = "translateY(-1px)";
+              }
             }}
           >
             {isProcessingSale ? (
