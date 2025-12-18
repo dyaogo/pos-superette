@@ -49,6 +49,7 @@ export default function POSPage() {
   const [openingAmount, setOpeningAmount] = useState("50000");
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [closingAmount, setClosingAmount] = useState("");
+  const [closingNotes, setClosingNotes] = useState("");
   const [cashReceived, setCashReceived] = useState("");
   const [toast, setToast] = useState(null);
   const [isProcessingSale, setIsProcessingSale] = useState(false);
@@ -488,6 +489,7 @@ export default function POSPage() {
       closedBy: currentUser?.fullName || "Admin",
       closedAt: new Date().toISOString(),
       status: "closed",
+      notes: closingNotes || "",
     };
 
     // Fermer localement
@@ -495,12 +497,29 @@ export default function POSPage() {
     localStorage.removeItem(`cash_session_${currentStore.id}`);
     setShowCloseModal(false);
     setClosingAmount("");
+    setClosingNotes("");
+
+    const expectedAmount = cashSession.openingAmount +
+      currentStoreSales
+        .filter(
+          (s) =>
+            s.paymentMethod === "cash" &&
+            new Date(s.createdAt) >= new Date(cashSession.openedAt)
+        )
+        .reduce((sum, s) => sum + s.total, 0);
+
+    const difference = parseFloat(closingAmount) - expectedAmount;
+    const diffText = difference === 0
+      ? "Écart: 0 FCFA ✅"
+      : difference > 0
+        ? `Surplus: +${difference.toLocaleString()} FCFA`
+        : `Manque: ${difference.toLocaleString()} FCFA`;
 
     showToast(
       `Session fermée !\nMontant final: ${parseFloat(
         closingAmount
-      ).toLocaleString()} FCFA`,
-      "success"
+      ).toLocaleString()} FCFA\n${diffText}`,
+      difference === 0 ? "success" : "warning"
     );
 
     // ✅ NOUVEAU: Synchroniser avec l'API seulement si online
@@ -512,6 +531,7 @@ export default function POSPage() {
           body: JSON.stringify({
             closingAmount: parseFloat(closingAmount),
             closedBy: currentUser?.fullName || "Admin",
+            notes: closingNotes || "",
           }),
         });
       } catch (error) {
@@ -1635,156 +1655,424 @@ export default function POSPage() {
         </div>
       )}
 
-      {showCloseModal && cashSession && (
-        <div
-          onClick={() => setShowCloseModal(false)}
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 2000,
-          }}
-        >
+      {showCloseModal && cashSession && (() => {
+        // Calculs en temps réel
+        const sessionCashSales = currentStoreSales
+          .filter(
+            (s) =>
+              s.paymentMethod === "cash" &&
+              new Date(s.createdAt) >= new Date(cashSession.openedAt)
+          )
+          .reduce((sum, s) => sum + s.total, 0);
+
+        const sessionCardSales = currentStoreSales
+          .filter(
+            (s) =>
+              s.paymentMethod === "card" &&
+              new Date(s.createdAt) >= new Date(cashSession.openedAt)
+          )
+          .reduce((sum, s) => sum + s.total, 0);
+
+        const sessionCreditSales = currentStoreSales
+          .filter(
+            (s) =>
+              s.paymentMethod === "credit" &&
+              new Date(s.createdAt) >= new Date(cashSession.openedAt)
+          )
+          .reduce((sum, s) => sum + s.total, 0);
+
+        const expectedAmount = cashSession.openingAmount + sessionCashSales;
+        const actualAmount = parseFloat(closingAmount) || 0;
+        const difference = closingAmount ? actualAmount - expectedAmount : 0;
+
+        const getDifferenceColor = () => {
+          if (!closingAmount) return "var(--color-text-secondary)";
+          if (difference === 0) return "#10b981";
+          if (difference > 0) return "#f59e0b";
+          return "#ef4444";
+        };
+
+        const getDifferenceIcon = () => {
+          if (!closingAmount) return null;
+          if (difference === 0) return "✓";
+          if (difference > 0) return "↑";
+          return "↓";
+        };
+
+        const getDifferenceLabel = () => {
+          if (!closingAmount) return "En attente...";
+          if (difference === 0) return "Parfait !";
+          if (difference > 0) return "Surplus";
+          return "Manque";
+        };
+
+        return (
           <div
-            onClick={(e) => e.stopPropagation()}
+            onClick={() => setShowCloseModal(false)}
+            className="modal-backdrop"
             style={{
-              background: "var(--color-surface)",
-              borderRadius: "12px",
-              padding: "30px",
-              width: "500px",
-              maxHeight: "90vh",
-              overflow: "auto",
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0,0,0,0.6)",
+              backdropFilter: "blur(4px)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 2000,
+              animation: "fadeIn 0.2s ease-out",
             }}
           >
-            <div style={{ marginBottom: "20px" }}>
-              <h2
-                style={{
-                  margin: "0 0 10px 0",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                }}
-              >
-                <DollarSign size={24} color="var(--color-danger)" />
-                Fermeture de Caisse
-              </h2>
-              <p style={{ margin: 0, color: "var(--color-text-secondary)" }}>
-                Session ouverte à{" "}
-                {new Date(cashSession.openedAt).toLocaleTimeString("fr-FR")}
-              </p>
-            </div>
-
             <div
+              onClick={(e) => e.stopPropagation()}
+              className="closing-modal"
               style={{
-                background: "var(--color-bg)",
-                padding: "15px",
-                borderRadius: "8px",
-                marginBottom: "20px",
+                background: "var(--color-surface)",
+                borderRadius: "16px",
+                padding: "0",
+                width: "580px",
+                maxHeight: "90vh",
+                overflow: "auto",
+                boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.3), 0 10px 10px -5px rgba(0, 0, 0, 0.2)",
+                animation: "slideUp 0.3s ease-out",
               }}
             >
+              {/* Header avec dégradé */}
               <div
                 style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "8px",
-                }}
-              >
-                <span>Fond de caisse initial:</span>
-                <strong>
-                  {cashSession.openingAmount.toLocaleString()} FCFA
-                </strong>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span>Ventes en espèces:</span>
-                <strong style={{ color: "var(--color-success)" }}>
-                  {currentStoreSales
-                    .filter(
-                      (s) =>
-                        s.paymentMethod === "cash" &&
-                        new Date(s.createdAt).toDateString() ===
-                          new Date().toDateString()
-                    )
-                    .reduce((sum, s) => sum + s.total, 0)
-                    .toLocaleString()}{" "}
-                  FCFA
-                </strong>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: "20px" }}>
-              <label
-                style={{
-                  display: "block",
-                  marginBottom: "8px",
-                  fontWeight: "500",
-                }}
-              >
-                Montant réel en caisse (FCFA)
-              </label>
-              <input
-                type="number"
-                value={closingAmount}
-                onChange={(e) => setClosingAmount(e.target.value)}
-                placeholder="Comptez l'argent en caisse"
-                autoFocus
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  border: "2px solid var(--color-border)",
-                  borderRadius: "8px",
-                  fontSize: "18px",
-                  fontWeight: "bold",
-                  textAlign: "right",
-                  background: "var(--color-surface)",
-                  color: "var(--color-text-primary)",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                onClick={() => setShowCloseModal(false)}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  background: "var(--color-border)",
-                  color: "var(--color-text-primary)",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  fontWeight: "600",
-                }}
-              >
-                Annuler
-              </button>
-              <button
-                onClick={closeCashSession}
-                disabled={!closingAmount}
-                style={{
-                  flex: 1,
-                  padding: "12px",
-                  background: !closingAmount
-                    ? "var(--color-border)"
-                    : "var(--color-danger)",
+                  background: "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+                  padding: "24px 30px",
+                  borderRadius: "16px 16px 0 0",
                   color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: !closingAmount ? "not-allowed" : "pointer",
-                  fontWeight: "600",
                 }}
               >
-                Fermer la caisse
-              </button>
+                <h2
+                  style={{
+                    margin: "0 0 8px 0",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "12px",
+                    fontSize: "24px",
+                    fontWeight: "700",
+                  }}
+                >
+                  <DollarSign size={28} />
+                  Fermeture de Caisse
+                </h2>
+                <p style={{ margin: 0, opacity: 0.9, fontSize: "14px" }}>
+                  Session ouverte à{" "}
+                  {new Date(cashSession.openedAt).toLocaleTimeString("fr-FR")} par{" "}
+                  {cashSession.openedBy || "Admin"}
+                </p>
+              </div>
+
+              <div style={{ padding: "30px" }}>
+                {/* Statistiques de la session */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(3, 1fr)",
+                    gap: "12px",
+                    marginBottom: "24px",
+                  }}
+                >
+                  <div
+                    style={{
+                      background: "linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)",
+                      padding: "16px",
+                      borderRadius: "12px",
+                      border: "1px solid #bae6fd",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", color: "#0369a1", marginBottom: "4px", fontWeight: "600" }}>
+                      💵 Espèces
+                    </div>
+                    <div style={{ fontSize: "18px", fontWeight: "700", color: "#0c4a6e" }}>
+                      {sessionCashSales.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: "linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)",
+                      padding: "16px",
+                      borderRadius: "12px",
+                      border: "1px solid #bbf7d0",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", color: "#15803d", marginBottom: "4px", fontWeight: "600" }}>
+                      💳 Carte
+                    </div>
+                    <div style={{ fontSize: "18px", fontWeight: "700", color: "#14532d" }}>
+                      {sessionCardSales.toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)",
+                      padding: "16px",
+                      borderRadius: "12px",
+                      border: "1px solid #fcd34d",
+                    }}
+                  >
+                    <div style={{ fontSize: "12px", color: "#b45309", marginBottom: "4px", fontWeight: "600" }}>
+                      📋 Crédit
+                    </div>
+                    <div style={{ fontSize: "18px", fontWeight: "700", color: "#78350f" }}>
+                      {sessionCreditSales.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Résumé financier */}
+                <div
+                  style={{
+                    background: "var(--color-bg)",
+                    padding: "20px",
+                    borderRadius: "12px",
+                    marginBottom: "24px",
+                    border: "1px solid var(--color-border)",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "12px",
+                      paddingBottom: "12px",
+                      borderBottom: "1px solid var(--color-border)",
+                    }}
+                  >
+                    <span style={{ color: "var(--color-text-secondary)" }}>Fond initial</span>
+                    <strong style={{ fontSize: "16px" }}>
+                      {cashSession.openingAmount.toLocaleString()} FCFA
+                    </strong>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      marginBottom: "12px",
+                      paddingBottom: "12px",
+                      borderBottom: "1px solid var(--color-border)",
+                    }}
+                  >
+                    <span style={{ color: "var(--color-text-secondary)" }}>Ventes espèces</span>
+                    <strong style={{ fontSize: "16px", color: "#10b981" }}>
+                      +{sessionCashSales.toLocaleString()} FCFA
+                    </strong>
+                  </div>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      padding: "12px",
+                      background: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)",
+                      borderRadius: "8px",
+                    }}
+                  >
+                    <span style={{ fontWeight: "600", color: "#1e40af" }}>Attendu en caisse</span>
+                    <strong style={{ fontSize: "18px", color: "#1e3a8a" }}>
+                      {expectedAmount.toLocaleString()} FCFA
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Montant réel */}
+                <div style={{ marginBottom: "20px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "10px",
+                      fontWeight: "600",
+                      fontSize: "14px",
+                    }}
+                  >
+                    💰 Montant réel compté en caisse
+                  </label>
+                  <input
+                    type="number"
+                    value={closingAmount}
+                    onChange={(e) => setClosingAmount(e.target.value)}
+                    placeholder="Entrez le montant compté..."
+                    autoFocus
+                    style={{
+                      width: "100%",
+                      padding: "16px",
+                      border: `3px solid ${closingAmount ? getDifferenceColor() : "var(--color-border)"}`,
+                      borderRadius: "12px",
+                      fontSize: "24px",
+                      fontWeight: "bold",
+                      textAlign: "right",
+                      background: "var(--color-surface)",
+                      color: "var(--color-text-primary)",
+                      transition: "all 0.3s ease",
+                      boxShadow: closingAmount ? "0 4px 6px -1px rgba(0, 0, 0, 0.1)" : "none",
+                    }}
+                  />
+                </div>
+
+                {/* Indicateur d'écart */}
+                {closingAmount && (
+                  <div
+                    style={{
+                      padding: "20px",
+                      borderRadius: "12px",
+                      background: `linear-gradient(135deg, ${getDifferenceColor()}15 0%, ${getDifferenceColor()}25 100%)`,
+                      border: `2px solid ${getDifferenceColor()}`,
+                      marginBottom: "20px",
+                      animation: "slideDown 0.3s ease-out",
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            fontSize: "14px",
+                            fontWeight: "600",
+                            color: getDifferenceColor(),
+                            marginBottom: "4px",
+                          }}
+                        >
+                          {getDifferenceIcon()} {getDifferenceLabel()}
+                        </div>
+                        <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                          {difference === 0
+                            ? "La caisse est parfaitement équilibrée"
+                            : difference > 0
+                              ? "Il y a plus d'argent que prévu"
+                              : "Il manque de l'argent en caisse"}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "28px",
+                          fontWeight: "800",
+                          color: getDifferenceColor(),
+                        }}
+                      >
+                        {difference === 0
+                          ? "0"
+                          : difference > 0
+                            ? `+${difference.toLocaleString()}`
+                            : difference.toLocaleString()}{" "}
+                        <span style={{ fontSize: "16px" }}>FCFA</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Notes optionnelles */}
+                <div style={{ marginBottom: "24px" }}>
+                  <label
+                    style={{
+                      display: "block",
+                      marginBottom: "8px",
+                      fontWeight: "500",
+                      fontSize: "14px",
+                      color: "var(--color-text-secondary)",
+                    }}
+                  >
+                    📝 Notes (optionnel)
+                  </label>
+                  <textarea
+                    value={closingNotes}
+                    onChange={(e) => setClosingNotes(e.target.value)}
+                    placeholder="Ajoutez des remarques ou observations..."
+                    rows={3}
+                    style={{
+                      width: "100%",
+                      padding: "12px",
+                      border: "2px solid var(--color-border)",
+                      borderRadius: "8px",
+                      fontSize: "14px",
+                      background: "var(--color-surface)",
+                      color: "var(--color-text-primary)",
+                      resize: "vertical",
+                      fontFamily: "inherit",
+                    }}
+                  />
+                </div>
+
+                {/* Boutons d'action */}
+                <div style={{ display: "flex", gap: "12px" }}>
+                  <button
+                    onClick={() => {
+                      setShowCloseModal(false);
+                      setClosingAmount("");
+                      setClosingNotes("");
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "14px",
+                      background: "var(--color-bg)",
+                      color: "var(--color-text-primary)",
+                      border: "2px solid var(--color-border)",
+                      borderRadius: "10px",
+                      cursor: "pointer",
+                      fontWeight: "600",
+                      fontSize: "15px",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.background = "var(--color-border)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.background = "var(--color-bg)";
+                    }}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    onClick={closeCashSession}
+                    disabled={!closingAmount}
+                    style={{
+                      flex: 2,
+                      padding: "14px",
+                      background: !closingAmount
+                        ? "var(--color-border)"
+                        : "linear-gradient(135deg, #dc2626 0%, #991b1b 100%)",
+                      color: "white",
+                      border: "none",
+                      borderRadius: "10px",
+                      cursor: !closingAmount ? "not-allowed" : "pointer",
+                      fontWeight: "700",
+                      fontSize: "15px",
+                      transition: "all 0.2s",
+                      boxShadow: !closingAmount
+                        ? "none"
+                        : "0 4px 6px -1px rgba(220, 38, 38, 0.3)",
+                    }}
+                    onMouseEnter={(e) => {
+                      if (closingAmount) {
+                        e.target.style.transform = "translateY(-2px)";
+                        e.target.style.boxShadow = "0 6px 8px -1px rgba(220, 38, 38, 0.4)";
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = "translateY(0)";
+                      e.target.style.boxShadow = !closingAmount
+                        ? "none"
+                        : "0 4px 6px -1px rgba(220, 38, 38, 0.3)";
+                    }}
+                  >
+                    🔒 Fermer la caisse
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {toast && (
         <Toast
@@ -1806,6 +2094,37 @@ export default function POSPage() {
         @keyframes spin {
           to {
             transform: rotate(360deg);
+          }
+        }
+
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+          }
+          to {
+            opacity: 1;
+          }
+        }
+
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
           }
         }
       `}</style>
