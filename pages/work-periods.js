@@ -59,10 +59,12 @@ export default function WorkPeriodsPage() {
     try {
       const response = await fetch("/api/sales");
       if (response.ok) {
-        const data = await response.json();
-        console.log("🛒 Ventes chargées:", data.length, data);
-        console.log("🛒 Exemple de vente:", data[0]);
-        setSales(data);
+        const result = await response.json();
+        // L'API retourne {data: [...], pagination: {...}}
+        const salesData = result.data || result;
+        console.log("🛒 Ventes chargées:", salesData.length, salesData);
+        console.log("🛒 Exemple de vente:", salesData[0]);
+        setSales(salesData);
       }
     } catch (error) {
       console.error("Erreur chargement ventes:", error);
