@@ -177,13 +177,11 @@ function DashboardPage() {
     salesHistory.forEach((sale) => {
       (sale.items || []).forEach((item) => {
         const productId = item.productId || item.id;
-        const productName = item.name || 'Produit inconnu';
         const unitPrice = item.unitPrice || item.price || item.total / (item.quantity || 1);
 
         if (!productSales[productId]) {
           productSales[productId] = {
             id: productId,
-            name: productName,
             sales: 0,
             revenue: 0,
           };
@@ -193,10 +191,18 @@ function DashboardPage() {
       });
     });
 
+    // Enrichir avec les informations du catalogue
     return Object.values(productSales)
+      .map((productSale) => {
+        const catalogProduct = productCatalog.find(p => p.id === productSale.id);
+        return {
+          ...productSale,
+          name: catalogProduct ? catalogProduct.name : `Produit #${productSale.id?.slice(-6) || 'inconnu'}`,
+        };
+      })
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
-  }, [salesHistory]);
+  }, [salesHistory, productCatalog]);
 
   // Ventes récentes
   const recentSales = useMemo(() => {
