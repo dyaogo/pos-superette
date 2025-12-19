@@ -378,14 +378,7 @@ export default function POSPage() {
           setLastSale(newSale);
         }
 
-        // Toast de succès
-        setToast({
-          message: savedOffline
-            ? "Vente enregistrée hors ligne - Sera synchronisée plus tard"
-            : "Vente enregistrée avec succès !",
-          type: savedOffline ? "warning" : "success",
-        });
-        setTimeout(() => setToast(null), 3000);
+        // Toast de succès supprimé pour meilleure fluidité
       } catch (error) {
         console.error("❌ Erreur lors de la vente:", error);
         setToast({
