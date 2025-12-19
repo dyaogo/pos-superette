@@ -57,17 +57,28 @@ export function OnlineProvider({ children }) {
 
       for (const sale of pendingSales) {
         try {
+          // Nettoyer les données avant envoi (retirer les champs IndexedDB)
+          const {
+            id: dbId,  // Retirer l'ID d'IndexedDB
+            synced,    // Retirer le flag synced
+            ...saleData
+          } = sale;
+
+          console.log("📤 Envoi vente:", sale.receiptNumber, saleData);
+
           const response = await fetch("/api/sales", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(sale),
+            body: JSON.stringify(saleData),
           });
 
           if (response.ok) {
-            await offlineDB.markSaleAsSynced(sale.id);
+            const result = await response.json();
+            await offlineDB.markSaleAsSynced(dbId);
             console.log(`✅ Vente ${sale.receiptNumber} synchronisée`);
           } else {
-            console.error(`❌ Erreur sync vente ${sale.receiptNumber}`);
+            const errorText = await response.text();
+            console.error(`❌ Erreur sync vente ${sale.receiptNumber}:`, response.status, errorText);
           }
         } catch (error) {
           console.error("Erreur lors de la sync:", error);
