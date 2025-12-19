@@ -176,17 +176,20 @@ function DashboardPage() {
 
     salesHistory.forEach((sale) => {
       (sale.items || []).forEach((item) => {
-        if (!productSales[item.id]) {
-          productSales[item.id] = {
-            id: item.id,
-            name: item.name,
+        const productId = item.productId || item.id;
+        const productName = item.name || 'Produit inconnu';
+        const unitPrice = item.unitPrice || item.price || item.total / (item.quantity || 1);
+
+        if (!productSales[productId]) {
+          productSales[productId] = {
+            id: productId,
+            name: productName,
             sales: 0,
             revenue: 0,
           };
         }
-        productSales[item.id].sales += item.quantity || 0;
-        productSales[item.id].revenue +=
-          (item.price || 0) * (item.quantity || 0);
+        productSales[productId].sales += item.quantity || 0;
+        productSales[productId].revenue += unitPrice * (item.quantity || 0);
       });
     });
 
