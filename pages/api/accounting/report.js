@@ -30,7 +30,7 @@ export default async function handler(req, res) {
 
     const whereStore = storeId && storeId !== 'all' ? { storeId } : {};
 
-    // Récupérer les ventes
+    // Récupérer les ventes avec leurs items et produits pour calculer le COGS
     const sales = await prisma.sale.findMany({
       where: {
         ...whereStore,
@@ -43,6 +43,13 @@ export default async function handler(req, res) {
         total: true,
         subtotal: true,
         tax: true,
+        items: {
+          select: {
+            quantity: true,
+            unitPrice: true,
+            productId: true,
+          }
+        }
       },
     });
 
@@ -60,13 +67,50 @@ export default async function handler(req, res) {
       },
     });
 
-    // Calculer les totaux
+    // Calculer les totaux de revenus
     const revenue = {
       total: sales.reduce((sum, s) => sum + s.total, 0),
       subtotal: sales.reduce((sum, s) => sum + s.subtotal, 0),
       tax: sales.reduce((sum, s) => sum + s.tax, 0),
     };
 
+    // Récupérer tous les productIds uniques des ventes
+    const productIds = [...new Set(
+      sales.flatMap(sale => sale.items.map(item => item.productId))
+    )];
+
+    // Récupérer les informations de coût des produits
+    const products = await prisma.product.findMany({
+      where: {
+        id: {
+          in: productIds
+        }
+      },
+      select: {
+        id: true,
+        costPrice: true
+      }
+    });
+
+    // Créer un map pour un accès rapide au costPrice
+    const productCostMap = {};
+    products.forEach(p => {
+      productCostMap[p.id] = p.costPrice || 0;
+    });
+
+    // Calculer le COGS (Coût des Marchandises Vendues)
+    let totalCOGS = 0;
+    let totalItemsSold = 0;
+
+    sales.forEach(sale => {
+      (sale.items || []).forEach(item => {
+        const costPrice = productCostMap[item.productId] || 0;
+        totalCOGS += costPrice * item.quantity;
+        totalItemsSold += item.quantity;
+      });
+    });
+
+    // Calculer les dépenses d'exploitation
     const totalExpenses = expenses.reduce((sum, e) => sum + e.amount, 0);
 
     // Grouper les dépenses par catégorie
@@ -83,9 +127,12 @@ export default async function handler(req, res) {
       return acc;
     }, {});
 
+    // Calculs financiers corrects
     const totalRevenue = revenue.total;
-    const netProfit = totalRevenue - totalExpenses;
-    const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
+    const grossProfit = totalRevenue - totalCOGS;  // Marge brute
+    const netProfit = grossProfit - totalExpenses;  // Bénéfice net
+    const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
+    const netMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
     // Format pour le frontend
     const expensesByCategory = expenses.reduce((acc, expense) => {
@@ -103,11 +150,22 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       period,
+      // Métriques principales
       revenue: totalRevenue,
+      cogs: totalCOGS,
+      grossProfit,
       expenses: totalExpenses,
       netProfit,
-      profitMargin,
+      // Marges
+      grossMargin,
+      netMargin,
+      profitMargin: netMargin, // Alias pour compatibilité
+      // Statistiques
       salesCount: sales.length,
+      itemsSold: totalItemsSold,
+      averageBasket: sales.length > 0 ? totalRevenue / sales.length : 0,
+      averageItemPrice: totalItemsSold > 0 ? totalRevenue / totalItemsSold : 0,
+      // Détails par catégorie
       expensesByCategory,
       // Données détaillées supplémentaires
       revenueDetails: revenue,

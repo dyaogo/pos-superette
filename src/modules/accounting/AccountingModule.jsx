@@ -314,10 +314,15 @@ function DashboardView({ reportData, loading, period, setPeriod, categories }) {
 
   const {
     revenue = 0,
+    cogs = 0,
+    grossProfit = 0,
     expenses = 0,
     netProfit = 0,
-    profitMargin = 0,
+    grossMargin = 0,
+    netMargin = 0,
     salesCount = 0,
+    itemsSold = 0,
+    averageBasket = 0,
     expensesByCategory = []
   } = reportData;
 
@@ -349,11 +354,50 @@ function DashboardView({ reportData, loading, period, setPeriod, categories }) {
         ))}
       </div>
 
-      {/* Key Metrics */}
+      {/* Section: Résumé Financier */}
+      <div style={{
+        background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
+        borderRadius: '16px',
+        padding: '24px',
+        marginBottom: '24px',
+        border: '1px solid #e5e7eb'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
+          📊 Compte de Résultat
+        </h3>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e5e7eb' }}>
+            <span style={{ fontWeight: '600' }}>Chiffre d'affaires</span>
+            <span style={{ fontWeight: '600', color: '#10b981' }}>+ {revenue.toLocaleString()} FCFA</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 8px 20px', borderBottom: '1px solid #f3f4f6' }}>
+            <span style={{ color: '#6b7280' }}>Coût des marchandises vendues</span>
+            <span style={{ color: '#ef4444' }}>- {cogs.toLocaleString()} FCFA</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '2px solid #667eea', background: '#f8f9ff', margin: '0 -12px', padding: '8px 12px' }}>
+            <span style={{ fontWeight: '600' }}>= Marge brute</span>
+            <span style={{ fontWeight: '600', color: grossProfit >= 0 ? '#10b981' : '#ef4444' }}>
+              {grossProfit.toLocaleString()} FCFA ({grossMargin.toFixed(1)}%)
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 8px 20px', borderBottom: '1px solid #f3f4f6' }}>
+            <span style={{ color: '#6b7280' }}>Dépenses d'exploitation</span>
+            <span style={{ color: '#ef4444' }}>- {expenses.toLocaleString()} FCFA</span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: netProfit >= 0 ? '#f0fdf4' : '#fef2f2', margin: '8px -12px -12px -12px', borderRadius: '0 0 16px 16px', borderTop: '2px solid ' + (netProfit >= 0 ? '#10b981' : '#ef4444') }}>
+            <span style={{ fontWeight: '700', fontSize: '16px' }}>= BÉNÉFICE NET</span>
+            <span style={{ fontWeight: '700', fontSize: '16px', color: netProfit >= 0 ? '#10b981' : '#ef4444' }}>
+              {netProfit.toLocaleString()} FCFA ({netMargin.toFixed(1)}%)
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Metrics Cards */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
-        gap: '20px',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+        gap: '16px',
         marginBottom: '32px'
       }}>
         <MetricCard
@@ -364,7 +408,21 @@ function DashboardView({ reportData, loading, period, setPeriod, categories }) {
           trend={`${salesCount || 0} ventes`}
         />
         <MetricCard
-          title="Dépenses totales"
+          title="Coût marchandises"
+          value={`${cogs?.toLocaleString() || 0} FCFA`}
+          icon={Calculator}
+          color="#f59e0b"
+          trend={`${itemsSold || 0} articles vendus`}
+        />
+        <MetricCard
+          title="Marge brute"
+          value={`${grossProfit?.toLocaleString() || 0} FCFA`}
+          icon={TrendingUp}
+          color="#3b82f6"
+          trend={`Taux: ${grossMargin?.toFixed(1) || 0}%`}
+        />
+        <MetricCard
+          title="Dépenses exploit."
           value={`${expenses?.toLocaleString() || 0} FCFA`}
           icon={TrendingDown}
           color="#ef4444"
@@ -375,7 +433,14 @@ function DashboardView({ reportData, loading, period, setPeriod, categories }) {
           value={`${netProfit?.toLocaleString() || 0} FCFA`}
           icon={DollarSign}
           color={netProfit >= 0 ? '#10b981' : '#ef4444'}
-          trend={`Marge: ${profitMargin?.toFixed(1) || 0}%`}
+          trend={`Marge nette: ${netMargin?.toFixed(1) || 0}%`}
+        />
+        <MetricCard
+          title="Panier moyen"
+          value={`${averageBasket?.toLocaleString() || 0} FCFA`}
+          icon={Calculator}
+          color="#8b5cf6"
+          trend={`${salesCount || 0} transactions`}
         />
       </div>
 
