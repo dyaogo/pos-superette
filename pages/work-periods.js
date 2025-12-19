@@ -45,6 +45,7 @@ export default function WorkPeriodsPage() {
       const response = await fetch(`/api/cash-sessions?${params}`);
       if (response.ok) {
         const data = await response.json();
+        console.log("📦 Sessions chargées:", data.length, data);
         setSessions(data);
       }
     } catch (error) {
@@ -59,6 +60,8 @@ export default function WorkPeriodsPage() {
       const response = await fetch("/api/sales");
       if (response.ok) {
         const data = await response.json();
+        console.log("🛒 Ventes chargées:", data.length, data);
+        console.log("🛒 Exemple de vente:", data[0]);
         setSales(data);
       }
     } catch (error) {
@@ -69,8 +72,16 @@ export default function WorkPeriodsPage() {
   const getSessionSales = (session) => {
     if (!Array.isArray(sales)) return [];
 
+    console.log(`🔍 Filtrage ventes pour session ${session.sessionNumber}:`, {
+      sessionId: session.id,
+      sessionStart: session.openedAt,
+      sessionEnd: session.closedAt,
+      storeId: session.storeId,
+      totalSales: sales.length,
+    });
+
     // Filtrer les ventes par session
-    return sales.filter((sale) => {
+    const filtered = sales.filter((sale) => {
       // Vérifier d'abord si la vente a un cashSessionId correspondant
       if (sale.cashSessionId && sale.cashSessionId === session.id) {
         return true;
@@ -86,6 +97,10 @@ export default function WorkPeriodsPage() {
 
       return saleDate >= sessionStart && saleDate <= sessionEnd && sameStore;
     });
+
+    console.log(`✅ Ventes trouvées pour ${session.sessionNumber}:`, filtered.length, filtered);
+
+    return filtered;
   };
 
   const calculateSessionStats = (session) => {
