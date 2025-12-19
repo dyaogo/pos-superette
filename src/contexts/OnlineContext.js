@@ -64,7 +64,25 @@ export function OnlineProvider({ children }) {
             ...saleData
           } = sale;
 
-          console.log("📤 Envoi vente:", sale.receiptNumber, saleData);
+          // ✅ Validation des données critiques
+          if (!saleData.items || !Array.isArray(saleData.items)) {
+            console.error(`❌ Vente ${sale.receiptNumber} invalide - items manquant ou invalide`, saleData);
+            // Marquer comme synchronisée pour ne plus essayer
+            await offlineDB.markSaleAsSynced(dbId);
+            continue;
+          }
+
+          if (!saleData.receiptNumber || !saleData.total) {
+            console.error(`❌ Vente ${sale.receiptNumber} invalide - données manquantes`, saleData);
+            await offlineDB.markSaleAsSynced(dbId);
+            continue;
+          }
+
+          console.log("📤 Envoi vente:", sale.receiptNumber, {
+            ...saleData,
+            itemsCount: saleData.items.length,
+            total: saleData.total,
+          });
 
           const response = await fetch("/api/sales", {
             method: "POST",
@@ -79,6 +97,12 @@ export function OnlineProvider({ children }) {
           } else {
             const errorText = await response.text();
             console.error(`❌ Erreur sync vente ${sale.receiptNumber}:`, response.status, errorText);
+
+            // Si erreur 400/500, marquer comme synced pour ne pas bloquer
+            if (response.status >= 400) {
+              console.warn(`⚠️ Abandon de la vente ${sale.receiptNumber} (erreur ${response.status})`);
+              await offlineDB.markSaleAsSynced(dbId);
+            }
           }
         } catch (error) {
           console.error("Erreur lors de la sync:", error);
