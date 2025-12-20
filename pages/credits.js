@@ -19,7 +19,7 @@ import Toast from "../components/Toast";
 import LoadingSpinner from "../components/LoadingSpinner";
 
 function CreditsPage() {
-  const { customers, loading, salesHistory } = useApp();
+  const { customers, loading, salesHistory, currentStore } = useApp();
   const { currentUser, hasRole } = useAuth(); // ✨ AJOUTÉ
   const [credits, setCredits] = useState([]);
   const [filter, setFilter] = useState("all");
@@ -28,15 +28,33 @@ function CreditsPage() {
   const [selectedCredit, setSelectedCredit] = useState(null);
   const [paymentAmount, setPaymentAmount] = useState("");
   const [toast, setToast] = useState(null);
+  const [openCashSession, setOpenCashSession] = useState(null);
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
   };
 
-  // Charger les crédits
+  // Charger les crédits et la session de caisse ouverte
   useEffect(() => {
     loadCredits();
-  }, []);
+    loadOpenCashSession();
+  }, [currentStore]);
+
+  const loadOpenCashSession = async () => {
+    if (!currentStore?.id) return;
+
+    try {
+      const params = new URLSearchParams({ storeId: currentStore.id });
+      const response = await fetch(`/api/cash-sessions?${params}`);
+      if (response.ok) {
+        const sessions = await response.json();
+        const openSession = sessions.find((s) => s.status === "open");
+        setOpenCashSession(openSession);
+      }
+    } catch (error) {
+      console.error("Erreur chargement session caisse:", error);
+    }
+  };
 
   const loadCredits = async () => {
     try {
@@ -99,7 +117,11 @@ function CreditsPage() {
       const res = await fetch(`/api/credits/${selectedCredit.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ paymentAmount: amount }),
+        body: JSON.stringify({
+          paymentAmount: amount,
+          sessionId: openCashSession?.id,
+          createdBy: currentUser?.fullName || currentUser?.email || "Utilisateur"
+        }),
       });
 
       if (res.ok) {
