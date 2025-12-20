@@ -19,7 +19,7 @@ const PhysicalInventoryModule = dynamic(
   }
 );
 
-const ReceptionModule = dynamic(() => import("../src/modules/inventory/ReceptionModule"), {
+const ReceptionModule = dynamic(() => import("../src/modules/reception/ReceptionModule"), {
   loading: () => <LoadingSpinner />,
   ssr: false,
 });
