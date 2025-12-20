@@ -13,8 +13,9 @@ import {
 import Toast from "../components/Toast";
 
 function TransfersPage() {
-  const { stores, productCatalog, currentStore, loading } = useApp();
+  const { stores, currentStore, loading } = useApp();
   const [transfers, setTransfers] = useState([]);
+  const [allProducts, setAllProducts] = useState([]); // Tous les produits de tous les magasins
   const [showAddModal, setShowAddModal] = useState(false);
   const [toast, setToast] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,7 +36,18 @@ function TransfersPage() {
 
   useEffect(() => {
     loadTransfers();
+    loadAllProducts();
   }, []);
+
+  const loadAllProducts = async () => {
+    try {
+      const res = await fetch("/api/products?all=true");
+      const data = await res.json();
+      setAllProducts(Array.isArray(data?.data) ? data.data : Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Erreur chargement produits:", error);
+    }
+  };
 
   const loadTransfers = async () => {
     try {
@@ -56,7 +68,7 @@ function TransfersPage() {
     setIsSubmitting(true);
 
     try {
-      const product = productCatalog.find((p) => p.id === formData.productId);
+      const product = allProducts.find((p) => p.id === formData.productId);
 
       const res = await fetch("/api/transfers", {
         method: "POST",
@@ -134,9 +146,10 @@ function TransfersPage() {
     }
   };
 
-  // Produits disponibles avec stock > 0
-  // Note: Les produits sont globaux dans le système
-  const sourceProducts = productCatalog.filter((p) => p.stock > 0);
+  // Produits disponibles dans le magasin source sélectionné
+  const sourceProducts = allProducts.filter(
+    (p) => p.storeId === formData.fromStoreId && p.stock > 0
+  );
 
   if (loading) {
     return <div style={{ padding: "20px" }}>Chargement...</div>;
