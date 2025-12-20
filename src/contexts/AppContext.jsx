@@ -6,7 +6,7 @@ const AppContext = createContext();
 
 export function AppProvider({ children }) {
   const { isOnline, cacheData } = useOnline();
-  
+
   const [stores, setStores] = useState([]);
   const [currentStore, setCurrentStore] = useState(null);
   const [productCatalog, setProductCatalog] = useState([]);
@@ -16,6 +16,12 @@ export function AppProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [lastLoadTime, setLastLoadTime] = useState(null);
+  const [viewMode, setViewMode] = useState('single'); // 'single' ou 'consolidated'
+  const [appSettings, setAppSettings] = useState({
+    darkMode: false,
+    currency: 'FCFA',
+    language: 'fr'
+  });
 
   // Initialisation au démarrage - AVEC PROTECTION
   useEffect(() => {
@@ -364,12 +370,12 @@ export function AppProvider({ children }) {
       if (res.ok) {
         const updatedStore = await res.json();
         setCurrentStore(updatedStore);
-        
+
         // Mettre à jour aussi dans la liste
-        setStores(prev => prev.map(s => 
+        setStores(prev => prev.map(s =>
           s.id === updatedStore.id ? updatedStore : s
         ));
-        
+
         return { success: true };
       }
       return { success: false };
@@ -378,17 +384,47 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Helper pour changer de magasin par ID (pour compatibilité avec StoreSelector)
+  const setCurrentStoreId = (storeId) => {
+    const store = stores.find(s => s.id === storeId);
+    if (store) {
+      changeStore(store);
+    }
+  };
+
+  // Helper pour obtenir le store actif
+  const getCurrentStore = () => currentStore;
+
+  // Calculer currentStoreId pour compatibilité
+  const currentStoreId = currentStore?.id;
+
+  // Calculer stockByStore - regrouper les produits par magasin
+  const stockByStore = productCatalog.reduce((acc, product) => {
+    if (!acc[product.storeId]) {
+      acc[product.storeId] = [];
+    }
+    acc[product.storeId].push(product);
+    return acc;
+  }, {});
+
   return (
     <AppContext.Provider
       value={{
         // Magasins
         stores,
         currentStore,
+        currentStoreId,
+        setCurrentStoreId,
+        getCurrentStore,
         changeStore,
         updateCurrentStore,
         updateStoreOptimistic,
         addStoreOptimistic,
         deleteStoreOptimistic,
+
+        // Mode de vue
+        viewMode,
+        setViewMode,
 
         // Données filtrées par magasin
         productCatalog: currentStoreProducts,
@@ -398,7 +434,12 @@ export function AppProvider({ children }) {
 
         // Données complètes (pour admin)
         allProducts: productCatalog,
+        globalProducts: productCatalog, // Alias pour compatibilité
         allSales: salesHistory,
+        stockByStore,
+
+        // Paramètres
+        appSettings,
 
         // Actions
         addProduct,
