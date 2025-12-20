@@ -134,10 +134,9 @@ function TransfersPage() {
     }
   };
 
-  // Produits disponibles dans le magasin source
-  const sourceProducts = productCatalog.filter(
-    (p) => p.storeId === formData.fromStoreId && p.stock > 0
-  );
+  // Produits disponibles avec stock > 0
+  // Note: Les produits sont globaux dans le système
+  const sourceProducts = productCatalog.filter((p) => p.stock > 0);
 
   if (loading) {
     return <div style={{ padding: "20px" }}>Chargement...</div>;
