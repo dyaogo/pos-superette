@@ -1180,12 +1180,40 @@ if (success) {
      </div>
 
      {/* Grille des produits */}
-     <div style={{
-       display: 'grid',
-       gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-       gap: '16px'
-     }}>
-       {filteredProducts.map(product => {
+     {filteredProducts.length === 0 ? (
+       <div style={{
+         textAlign: 'center',
+         padding: '60px 20px',
+         background: 'var(--color-surface)',
+         borderRadius: '12px',
+         border: '2px dashed var(--color-border)'
+       }}>
+         <Package size={64} style={{ color: 'var(--color-text-muted)', marginBottom: '16px' }} />
+         <h3 style={{ margin: '0 0 8px 0', color: 'var(--color-text-primary)' }}>
+           Aucun produit trouvé
+         </h3>
+         <p style={{ margin: '0 0 20px 0', color: 'var(--color-text-secondary)' }}>
+           {globalProducts.length === 0
+             ? "Commencez par ajouter des produits à votre catalogue"
+             : "Aucun produit ne correspond aux filtres sélectionnés"}
+         </p>
+         {globalProducts.length === 0 && (
+           <Button
+             variant="primary"
+             onClick={() => setShowAddModal(true)}
+             leftIcon={<Plus style={{ width: '16px', height: '16px' }} />}
+           >
+             Ajouter votre premier produit
+           </Button>
+         )}
+       </div>
+     ) : (
+       <div style={{
+         display: 'grid',
+         gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+         gap: '16px'
+       }}>
+         {filteredProducts.map(product => {
          const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
          const isLowStock = currentStock <= (product.minStock || 5);
          const isOutOfStock = currentStock === 0;
@@ -1301,17 +1329,6 @@ if (success) {
          );
        })}
      </div>
-
-     {filteredProducts.length === 0 && (
-       <Card style={{ textAlign: 'center', padding: '48px' }}>
-         <Package style={{ width: '64px', height: '64px', color: '#9ca3af', margin: '0 auto 16px' }} />
-         <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', color: '#6b7280' }}>
-           Aucun produit trouvé
-         </h3>
-         <p style={{ margin: 0, fontSize: '14px', color: '#9ca3af' }}>
-           {searchQuery ? 'Essayez de modifier votre recherche' : 'Commencez par ajouter des produits'}
-         </p>
-       </Card>
      )}
    </div>
  );
