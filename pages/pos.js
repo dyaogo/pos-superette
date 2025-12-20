@@ -55,6 +55,7 @@ export default function POSPage() {
   const [isProcessingSale, setIsProcessingSale] = useState(false);
   const [showKeypad, setShowKeypad] = useState(false);
   const [creditDueDate, setCreditDueDate] = useState("");
+  const [cashOperations, setCashOperations] = useState([]);
 
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
@@ -393,6 +394,26 @@ export default function POSPage() {
   useEffect(() => {
     loadActiveSession();
   }, [currentStore]);
+
+  useEffect(() => {
+    if (cashSession?.id) {
+      loadCashOperations();
+    }
+  }, [cashSession]);
+
+  const loadCashOperations = async () => {
+    if (!cashSession?.id) return;
+
+    try {
+      const response = await fetch(`/api/cash-operations?sessionId=${cashSession.id}`);
+      if (response.ok) {
+        const data = await response.json();
+        setCashOperations(data);
+      }
+    } catch (error) {
+      console.error('Erreur chargement opérations:', error);
+    }
+  };
 
   const loadActiveSession = async () => {
     if (!currentStore) return;
@@ -1734,7 +1755,18 @@ export default function POSPage() {
           )
           .reduce((sum, s) => sum + s.total, 0);
 
-        const expectedAmount = cashSession.openingAmount + sessionCashSales;
+        // Calculer les entrées et sorties d'argent
+        const sessionOperations = cashOperations.filter(
+          (op) => op.sessionId === cashSession.id
+        );
+        const cashIn = sessionOperations
+          .filter((op) => op.type === "in")
+          .reduce((sum, op) => sum + op.amount, 0);
+        const cashOut = sessionOperations
+          .filter((op) => op.type === "out")
+          .reduce((sum, op) => sum + op.amount, 0);
+
+        const expectedAmount = cashSession.openingAmount + sessionCashSales + cashIn - cashOut;
         const actualAmount = parseFloat(closingAmount) || 0;
         const difference = closingAmount ? actualAmount - expectedAmount : 0;
 
@@ -1918,6 +1950,38 @@ export default function POSPage() {
                       +{sessionCashSales.toLocaleString()} FCFA
                     </strong>
                   </div>
+                  {cashIn > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "12px",
+                        paddingBottom: "12px",
+                        borderBottom: "1px solid var(--color-border)",
+                      }}
+                    >
+                      <span style={{ color: "var(--color-text-secondary)" }}>Entrées d'argent</span>
+                      <strong style={{ fontSize: "16px", color: "#10b981" }}>
+                        +{cashIn.toLocaleString()} FCFA
+                      </strong>
+                    </div>
+                  )}
+                  {cashOut > 0 && (
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        marginBottom: "12px",
+                        paddingBottom: "12px",
+                        borderBottom: "1px solid var(--color-border)",
+                      }}
+                    >
+                      <span style={{ color: "var(--color-text-secondary)" }}>Sorties d'argent</span>
+                      <strong style={{ fontSize: "16px", color: "#ef4444" }}>
+                        -{cashOut.toLocaleString()} FCFA
+                      </strong>
+                    </div>
+                  )}
                   <div
                     style={{
                       display: "flex",
@@ -1933,6 +1997,61 @@ export default function POSPage() {
                     </strong>
                   </div>
                 </div>
+
+                {/* Liste détaillée des opérations */}
+                {sessionOperations.length > 0 && (
+                  <div
+                    style={{
+                      background: "var(--color-bg)",
+                      padding: "16px",
+                      borderRadius: "12px",
+                      marginBottom: "24px",
+                      border: "1px solid var(--color-border)",
+                    }}
+                  >
+                    <h3 style={{ margin: "0 0 12px 0", fontSize: "14px", fontWeight: "600" }}>
+                      💰 Opérations de caisse ({sessionOperations.length})
+                    </h3>
+                    <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                      {sessionOperations.map((op, index) => (
+                        <div
+                          key={index}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            padding: "10px",
+                            marginBottom: "8px",
+                            background: "var(--color-surface)",
+                            borderRadius: "8px",
+                            borderLeft: `4px solid ${op.type === "in" ? "#10b981" : "#ef4444"}`,
+                          }}
+                        >
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: "13px", fontWeight: "600", marginBottom: "2px" }}>
+                              {op.type === "in" ? "📥" : "📤"} {op.reason}
+                            </div>
+                            {op.description && (
+                              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
+                                {op.description}
+                              </div>
+                            )}
+                          </div>
+                          <div
+                            style={{
+                              fontSize: "14px",
+                              fontWeight: "bold",
+                              color: op.type === "in" ? "#10b981" : "#ef4444",
+                            }}
+                          >
+                            {op.type === "in" ? "+" : "-"}
+                            {op.amount.toLocaleString()} FCFA
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Montant réel */}
                 <div style={{ marginBottom: "20px" }}>
