@@ -17,17 +17,19 @@ export default async function handler(req, res) {
     try {
       const { paymentAmount, sessionId, createdBy } = req.body;
 
-      // Récupérer le crédit actuel avec les infos du client
+      // Récupérer le crédit actuel
       const credit = await prisma.credit.findUnique({
-        where: { id },
-        include: {
-          customer: true
-        }
+        where: { id }
       });
 
       if (!credit) {
         return res.status(404).json({ error: 'Crédit non trouvé' });
       }
+
+      // Récupérer le client séparément
+      const customer = await prisma.customer.findUnique({
+        where: { id: credit.customerId }
+      });
 
       // Calculer le nouveau montant restant
       const newRemainingAmount = credit.remainingAmount - parseFloat(paymentAmount);
@@ -58,7 +60,7 @@ export default async function handler(req, res) {
               type: 'in',
               amount: Math.round(parseFloat(paymentAmount)), // Arrondir pour FCFA
               reason: 'Remboursement de crédit',
-              description: `Client: ${credit.customer?.name || 'Inconnu'} - Crédit #${(id || '').slice(-6) || 'inconnu'}`,
+              description: `Client: ${customer?.name || 'Inconnu'} - Crédit #${(id || '').slice(-6) || 'inconnu'}`,
               createdBy: createdBy || 'Système'
             }
           });
