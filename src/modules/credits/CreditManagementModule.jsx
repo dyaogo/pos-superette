@@ -5,7 +5,7 @@ import { saveCredits } from '../../services/sales.service';
 import { useResponsive, getResponsiveStyles } from '../../components/ResponsiveComponents';
 
 const CreditManagementModule = () => {
-  const { customers, setCustomers, appSettings, credits, setCredits } = useApp();
+  const { customers = [], setCustomers, appSettings, credits = [], setCredits } = useApp();
   const [showAddCreditModal, setShowAddCreditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedCredit, setSelectedCredit] = useState(null);
@@ -107,37 +107,41 @@ const CreditManagementModule = () => {
   // Filtrer les crédits selon l'onglet actif
   const getFilteredCredits = () => {
     const now = new Date();
-    
+    const safeCredits = Array.isArray(credits) ? credits : [];
+
     switch (activeTab) {
       case 'pending':
-        return credits.filter(c => c.status === 'pending' || c.status === 'partial');
+        return safeCredits.filter(c => c.status === 'pending' || c.status === 'partial');
       case 'paid':
-        return credits.filter(c => c.status === 'paid');
+        return safeCredits.filter(c => c.status === 'paid');
       case 'overdue':
-        return credits.filter(c => {
+        return safeCredits.filter(c => {
           const dueDate = new Date(c.dueDate);
           return (c.status === 'pending' || c.status === 'partial') && dueDate < now;
         });
       default:
-        return credits;
+        return safeCredits;
     }
   };
 
   // Calculer les statistiques
   const getStats = () => {
-    const totalCredits = credits.reduce((sum, c) => sum + c.remainingAmount, 0);
-    const overdueCredits = credits.filter(c => {
+    // S'assurer que credits est un tableau et gérer les valeurs undefined
+    const safeCredits = Array.isArray(credits) ? credits : [];
+
+    const totalCredits = safeCredits.reduce((sum, c) => sum + (c?.remainingAmount || 0), 0);
+    const overdueCredits = safeCredits.filter(c => {
       const dueDate = new Date(c.dueDate);
       return (c.status === 'pending' || c.status === 'partial') && dueDate < new Date();
     });
-    const overdueAmount = overdueCredits.reduce((sum, c) => sum + c.remainingAmount, 0);
-    
+    const overdueAmount = overdueCredits.reduce((sum, c) => sum + (c?.remainingAmount || 0), 0);
+
     return {
-      totalCredits,
-      pendingCount: credits.filter(c => c.status === 'pending' || c.status === 'partial').length,
+      totalCredits: totalCredits || 0,
+      pendingCount: safeCredits.filter(c => c.status === 'pending' || c.status === 'partial').length,
       overdueCount: overdueCredits.length,
-      overdueAmount,
-      paidCount: credits.filter(c => c.status === 'paid').length
+      overdueAmount: overdueAmount || 0,
+      paidCount: safeCredits.filter(c => c.status === 'paid').length
     };
   };
 
