@@ -17,6 +17,8 @@ import {
   ChevronDown,
   ChevronUp,
   AlertCircle,
+  Plus,
+  Minus,
 } from "lucide-react";
 
 export default function WorkPeriodsPage() {
@@ -24,15 +26,24 @@ export default function WorkPeriodsPage() {
   const { currentUser } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [sales, setSales] = useState([]);
+  const [cashOperations, setCashOperations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterDate, setFilterDate] = useState("all");
   const [selectedSession, setSelectedSession] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
+  const [showOperationModal, setShowOperationModal] = useState(false);
+  const [operationForm, setOperationForm] = useState({
+    type: "in",
+    amount: "",
+    reason: "",
+    description: "",
+  });
 
   useEffect(() => {
     loadSessions();
     loadSales();
+    loadCashOperations();
   }, [currentStore]);
 
   const loadSessions = async () => {
@@ -71,6 +82,58 @@ export default function WorkPeriodsPage() {
     }
   };
 
+  const loadCashOperations = async () => {
+    try {
+      const response = await fetch("/api/cash-operations");
+      if (response.ok) {
+        const data = await response.json();
+        setCashOperations(data);
+      }
+    } catch (error) {
+      console.error("Erreur chargement opérations:", error);
+    }
+  };
+
+  const handleCreateOperation = async () => {
+    if (!selectedSession || !operationForm.amount || !operationForm.reason) {
+      alert("Veuillez remplir tous les champs requis");
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/cash-operations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sessionId: selectedSession.id,
+          type: operationForm.type,
+          amount: parseFloat(operationForm.amount),
+          reason: operationForm.reason,
+          description: operationForm.description,
+          createdBy: currentUser?.fullName || currentUser?.email || "Utilisateur",
+        }),
+      });
+
+      if (response.ok) {
+        await loadCashOperations();
+        setShowOperationModal(false);
+        setOperationForm({
+          type: "in",
+          amount: "",
+          reason: "",
+          description: "",
+        });
+        alert("Opération enregistrée avec succès");
+      } else {
+        const error = await response.json();
+        alert(error.error || "Erreur lors de la création");
+      }
+    } catch (error) {
+      console.error("Erreur:", error);
+      alert("Erreur lors de la création de l'opération");
+    }
+  };
+
   const getSessionSales = (session) => {
     if (!Array.isArray(sales)) return [];
 
@@ -105,8 +168,14 @@ export default function WorkPeriodsPage() {
     return filtered;
   };
 
+  const getSessionOperations = (session) => {
+    if (!Array.isArray(cashOperations)) return [];
+    return cashOperations.filter((op) => op.sessionId === session.id);
+  };
+
   const calculateSessionStats = (session) => {
     const sessionSales = getSessionSales(session);
+    const sessionOps = getSessionOperations(session);
 
     const cashSales = sessionSales
       .filter((s) => s.paymentMethod === "cash")
@@ -123,6 +192,15 @@ export default function WorkPeriodsPage() {
     const totalSales = sessionSales.reduce((sum, s) => sum + (s.total || 0), 0);
     const transactionCount = sessionSales.length;
 
+    // Calculer les entrées et sorties d'argent
+    const cashIn = sessionOps
+      .filter((op) => op.type === "in")
+      .reduce((sum, op) => sum + op.amount, 0);
+
+    const cashOut = sessionOps
+      .filter((op) => op.type === "out")
+      .reduce((sum, op) => sum + op.amount, 0);
+
     // Debug: afficher les stats calculées
     if (sessionSales.length > 0) {
       console.log(`Session ${session.sessionNumber}:`, {
@@ -131,10 +209,12 @@ export default function WorkPeriodsPage() {
         cashSales,
         cardSales,
         creditSales,
+        cashIn,
+        cashOut,
       });
     }
 
-    const expectedCash = session.openingAmount + cashSales;
+    const expectedCash = session.openingAmount + cashSales + cashIn - cashOut;
     const actualCash = session.closingAmount || 0;
     const difference = session.status === "closed" ? actualCash - expectedCash : 0;
 
@@ -144,6 +224,8 @@ export default function WorkPeriodsPage() {
       creditSales,
       totalSales,
       transactionCount,
+      cashIn,
+      cashOut,
       expectedCash,
       actualCash,
       difference,
@@ -351,6 +433,141 @@ export default function WorkPeriodsPage() {
                 value={`${stats.creditSales.toLocaleString()} F`}
                 color="#f59e0b"
               />
+            </div>
+
+            {/* Cash Operations */}
+            <div
+              style={{
+                background: "var(--color-bg)",
+                padding: "20px",
+                borderRadius: "12px",
+                marginBottom: "20px",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+                <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "600" }}>
+                  Entrées / Sorties d'argent
+                </h4>
+                {session.status === "open" && (
+                  <div style={{ display: "flex", gap: "8px" }}>
+                    <button
+                      onClick={() => {
+                        setSelectedSession(session);
+                        setOperationForm({ ...operationForm, type: "in" });
+                        setShowOperationModal(true);
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                      }}
+                    >
+                      <Plus size={16} />
+                      Entrée
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSelectedSession(session);
+                        setOperationForm({ ...operationForm, type: "out" });
+                        setShowOperationModal(true);
+                      }}
+                      style={{
+                        padding: "8px 16px",
+                        background: "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                        color: "white",
+                        border: "none",
+                        borderRadius: "8px",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "6px",
+                        fontSize: "14px",
+                        fontWeight: "500",
+                      }}
+                    >
+                      <Minus size={16} />
+                      Sortie
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {getSessionOperations(session).length === 0 ? (
+                <div style={{ textAlign: "center", padding: "20px", color: "var(--color-text-secondary)", fontSize: "14px" }}>
+                  Aucune opération pour cette session
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {getSessionOperations(session).map((op) => (
+                    <div
+                      key={op.id}
+                      style={{
+                        padding: "12px",
+                        background: "var(--color-surface)",
+                        borderRadius: "8px",
+                        border: `2px solid ${op.type === "in" ? "#10b981" : "#ef4444"}`,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+                          {op.type === "in" ? (
+                            <TrendingUp size={16} color="#10b981" />
+                          ) : (
+                            <TrendingDown size={16} color="#ef4444" />
+                          )}
+                          <span style={{ fontWeight: "600", fontSize: "14px" }}>{op.reason}</span>
+                        </div>
+                        {op.description && (
+                          <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginLeft: "24px" }}>
+                            {op.description}
+                          </div>
+                        )}
+                        <div style={{ fontSize: "11px", color: "var(--color-text-secondary)", marginLeft: "24px", marginTop: "4px" }}>
+                          {new Date(op.createdAt).toLocaleString("fr-FR")} • {op.createdBy}
+                        </div>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: "18px",
+                          fontWeight: "700",
+                          color: op.type === "in" ? "#10b981" : "#ef4444",
+                        }}
+                      >
+                        {op.type === "in" ? "+" : "-"} {op.amount.toLocaleString()} F
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Résumé des opérations */}
+              {(stats.cashIn > 0 || stats.cashOut > 0) && (
+                <div style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid var(--color-border)", display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+                  <div style={{ textAlign: "center", padding: "12px", background: "#f0fdf4", borderRadius: "8px" }}>
+                    <div style={{ fontSize: "12px", color: "#059669", marginBottom: "4px" }}>Total Entrées</div>
+                    <div style={{ fontSize: "20px", fontWeight: "700", color: "#10b981" }}>
+                      + {stats.cashIn.toLocaleString()} F
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "center", padding: "12px", background: "#fef2f2", borderRadius: "8px" }}>
+                    <div style={{ fontSize: "12px", color: "#dc2626", marginBottom: "4px" }}>Total Sorties</div>
+                    <div style={{ fontSize: "20px", fontWeight: "700", color: "#ef4444" }}>
+                      - {stats.cashOut.toLocaleString()} F
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Closing Info */}
@@ -675,6 +892,163 @@ export default function WorkPeriodsPage() {
           )}
         </div>
       </div>
+
+      {/* Modal Création Opération */}
+      {showOperationModal && (
+        <div
+          onClick={() => setShowOperationModal(false)}
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+            padding: "20px",
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "var(--color-surface)",
+              borderRadius: "16px",
+              padding: "32px",
+              maxWidth: "500px",
+              width: "100%",
+              boxShadow: "0 20px 25px -5px rgba(0,0,0,0.2)",
+            }}
+          >
+            <h2 style={{ margin: "0 0 24px 0", fontSize: "24px", fontWeight: "700" }}>
+              {operationForm.type === "in" ? "Entrée d'argent" : "Sortie d'argent"}
+            </h2>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600" }}>
+                  Montant (FCFA) *
+                </label>
+                <input
+                  type="number"
+                  value={operationForm.amount}
+                  onChange={(e) => setOperationForm({ ...operationForm, amount: e.target.value })}
+                  placeholder="Entrez le montant"
+                  min="0"
+                  step="1"
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "2px solid var(--color-border)",
+                    borderRadius: "8px",
+                    fontSize: "16px",
+                    background: "var(--color-bg)",
+                  }}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600" }}>
+                  Raison *
+                </label>
+                <select
+                  value={operationForm.reason}
+                  onChange={(e) => setOperationForm({ ...operationForm, reason: e.target.value })}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "2px solid var(--color-border)",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    background: "var(--color-bg)",
+                    cursor: "pointer",
+                  }}
+                >
+                  <option value="">Sélectionner une raison</option>
+                  {operationForm.type === "in" ? (
+                    <>
+                      <option value="Apport initial">Apport initial</option>
+                      <option value="Virement bancaire">Virement bancaire</option>
+                      <option value="Remboursement">Remboursement</option>
+                      <option value="Autre entrée">Autre entrée</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="Achat fournitures">Achat fournitures</option>
+                      <option value="Paiement fournisseur">Paiement fournisseur</option>
+                      <option value="Dépenses diverses">Dépenses diverses</option>
+                      <option value="Retrait">Retrait</option>
+                      <option value="Autre sortie">Autre sortie</option>
+                    </>
+                  )}
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: "block", marginBottom: "8px", fontSize: "14px", fontWeight: "600" }}>
+                  Description (optionnel)
+                </label>
+                <textarea
+                  value={operationForm.description}
+                  onChange={(e) => setOperationForm({ ...operationForm, description: e.target.value })}
+                  placeholder="Ajouter des détails..."
+                  rows={3}
+                  style={{
+                    width: "100%",
+                    padding: "12px",
+                    border: "2px solid var(--color-border)",
+                    borderRadius: "8px",
+                    fontSize: "14px",
+                    background: "var(--color-bg)",
+                    resize: "vertical",
+                  }}
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+                <button
+                  onClick={() => setShowOperationModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: "14px",
+                    background: "var(--color-bg)",
+                    color: "var(--color-text-primary)",
+                    border: "2px solid var(--color-border)",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleCreateOperation}
+                  style={{
+                    flex: 1,
+                    padding: "14px",
+                    background: operationForm.type === "in"
+                      ? "linear-gradient(135deg, #10b981 0%, #059669 100%)"
+                      : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "600",
+                    fontSize: "14px",
+                  }}
+                >
+                  Enregistrer
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style jsx>{`
         @keyframes slideDown {
