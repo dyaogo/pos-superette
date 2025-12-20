@@ -15,20 +15,23 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'PUT') {
     try {
-      const { paymentAmount } = req.body;
-      
-      // Récupérer le crédit actuel
+      const { paymentAmount, sessionId, createdBy } = req.body;
+
+      // Récupérer le crédit actuel avec les infos du client
       const credit = await prisma.credit.findUnique({
-        where: { id }
+        where: { id },
+        include: {
+          customer: true
+        }
       });
-      
+
       if (!credit) {
         return res.status(404).json({ error: 'Crédit non trouvé' });
       }
-      
+
       // Calculer le nouveau montant restant
       const newRemainingAmount = credit.remainingAmount - parseFloat(paymentAmount);
-      
+
       // Déterminer le nouveau statut
       let newStatus = 'pending';
       if (newRemainingAmount === 0) {
@@ -36,7 +39,7 @@ export default async function handler(req, res) {
       } else if (newRemainingAmount < credit.amount) {
         newStatus = 'partial';
       }
-      
+
       // Mettre à jour le crédit
       const updatedCredit = await prisma.credit.update({
         where: { id },
@@ -45,12 +48,31 @@ export default async function handler(req, res) {
           status: newStatus
         }
       });
-      
+
+      // Créer une opération de caisse si une session est fournie
+      if (sessionId) {
+        try {
+          await prisma.cashOperation.create({
+            data: {
+              sessionId,
+              type: 'in',
+              amount: Math.round(parseFloat(paymentAmount)), // Arrondir pour FCFA
+              reason: 'Remboursement de crédit',
+              description: `Client: ${credit.customer?.name || 'Inconnu'} - Crédit #${id.slice(-6)}`,
+              createdBy: createdBy || 'Système'
+            }
+          });
+        } catch (opError) {
+          console.error('Erreur création CashOperation:', opError);
+          // Continue même si l'opération de caisse échoue
+        }
+      }
+
       res.status(200).json(updatedCredit);
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
-  } else {
+  } else if (req.method === 'DELETE') {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
