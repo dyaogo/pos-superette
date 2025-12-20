@@ -846,7 +846,7 @@ if (success) {
     padding: '24px',
     maxWidth: '1400px',
     margin: '0 auto',
-    backgroundColor: appSettings.darkMode ? '#1a202c' : '#f9fafb',
+    backgroundColor: appSettings?.darkMode ? '#1a202c' : '#f9fafb',
     minHeight: '100vh'
   };
 
@@ -900,7 +900,7 @@ if (success) {
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>Valeur Stock</h3>
                 <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: 'bold' }}>
-                  {analytics.totals.totalValue.toLocaleString()} {appSettings.currency || 'FCFA'}
+                  {analytics.totals.totalValue.toLocaleString()} {appSettings?.currency || 'FCFA'}
                 </p>
               </div>
               <DollarSign style={{ width: '48px', height: '48px', opacity: 0.8 }} />
@@ -932,7 +932,7 @@ if (success) {
               <div>
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600' }}>Profit Potentiel</h3>
                 <p style={{ margin: '8px 0 0 0', fontSize: '24px', fontWeight: 'bold' }}>
-                  {analytics.totals.potentialProfit.toLocaleString()} {appSettings.currency || 'FCFA'}
+                  {analytics.totals.potentialProfit.toLocaleString()} {appSettings?.currency || 'FCFA'}
                 </p>
               </div>
               <TrendingUp style={{ width: '48px', height: '48px', opacity: 0.8 }} />
@@ -1239,7 +1239,7 @@ if (success) {
                <div>
                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Prix de vente</span>
                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#059669' }}>
-                   {product.price?.toLocaleString()} {appSettings.currency || 'FCFA'}
+                   {product.price?.toLocaleString()} {appSettings?.currency || 'FCFA'}
                  </span>
                </div>
                <div>
@@ -1805,14 +1805,14 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
              margin: 0, 
              fontSize: '32px', 
              fontWeight: 'bold',
-             color: appSettings.darkMode ? '#f7fafc' : '#1f2937'
+             color: appSettings?.darkMode ? '#f7fafc' : '#1f2937'
            }}>
              Gestion des Stocks
            </h1>
            <p style={{
              margin: '4px 0 0 0',
              fontSize: '16px',
-             color: appSettings.darkMode ? '#a0aec0' : '#6b7280'
+             color: appSettings?.darkMode ? '#a0aec0' : '#6b7280'
            }}>
              Magasin: {stores.find(s => s.id === currentStoreId)?.name || 'Non sélectionné'}
            </p>
