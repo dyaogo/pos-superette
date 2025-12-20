@@ -356,6 +356,73 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Traiter un retour de produit
+  const processReturn = async (productId, quantity, reason = '') => {
+    try {
+      // Trouver le produit
+      const product = productCatalog.find(p => p.id === productId);
+      if (!product) {
+        console.error('Produit non trouvé');
+        return { success: false };
+      }
+
+      // Augmenter le stock (mise à jour optimiste)
+      setProductCatalog(prev => prev.map(p =>
+        p.id === productId
+          ? { ...p, stock: p.stock + quantity }
+          : p
+      ));
+
+      // TODO: Enregistrer le retour dans la DB si une API existe
+      console.log('Retour traité:', { productId, quantity, reason });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Erreur traitement retour:', error);
+      return { success: false };
+    }
+  };
+
+  // Ajouter du stock à un produit
+  const addStock = async (productId, quantity) => {
+    try {
+      const res = await fetch(`/api/products/${productId}/stock`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ quantity })
+      });
+
+      if (res.ok) {
+        await loadData();
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Erreur ajout stock:', error);
+      return { success: false };
+    }
+  };
+
+  // Retirer du stock (pour les transferts, pertes, etc.)
+  const removeStock = async (productId, quantity, reason = '') => {
+    try {
+      // Mise à jour optimiste
+      setProductCatalog(prev => prev.map(p =>
+        p.id === productId
+          ? { ...p, stock: Math.max(0, p.stock - quantity) }
+          : p
+      ));
+
+      // TODO: API pour enregistrer la sortie de stock
+      console.log('Stock retiré:', { productId, quantity, reason });
+
+      return { success: true };
+    } catch (error) {
+      console.error('Erreur retrait stock:', error);
+      return { success: false };
+    }
+  };
+
   // Mettre à jour le magasin actif
   const updateCurrentStore = async (storeData) => {
     if (!currentStore) return { success: false };
@@ -440,6 +507,7 @@ export function AppProvider({ children }) {
 
         // Paramètres
         appSettings,
+        setAppSettings,
 
         // Actions
         addProduct,
@@ -454,6 +522,15 @@ export function AppProvider({ children }) {
         addCustomer,
         updateCustomer,
         recordSale,
+        processReturn,
+        addStock,
+        removeStock,
+
+        // Setters directs pour compatibilité
+        setCustomers,
+        setCredits,
+        setProductCatalog,
+        setSalesHistory,
 
         // État
         loading,
