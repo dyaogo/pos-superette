@@ -17,7 +17,7 @@ const BarcodeSystem = () => {
   });
   
   const printRef = useRef();
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   // Générer le code-barres en format texte (simulation)
   const generateBarcodeText = (code) => {
@@ -184,7 +184,7 @@ const BarcodeSystem = () => {
           <div style={{ fontSize: '9px', textAlign: 'center' }}>{barcode}</div>
           {barcodeSettings.includePrice && (
             <div style={{ fontSize: '14px', textAlign: 'center', fontWeight: 'bold', color: '#2563eb' }}>
-              {product.price} {appSettings.currency}
+              {product.price} {appSettings?.currency}
             </div>
           )}
         </div>
@@ -206,7 +206,7 @@ const BarcodeSystem = () => {
             {product.category} | SKU: {product.sku}
           </div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6', textAlign: 'center' }}>
-            {product.price} {appSettings.currency}
+            {product.price} {appSettings?.currency}
           </div>
           <div style={{
             fontSize: '10px',
@@ -231,7 +231,7 @@ const BarcodeSystem = () => {
           color: 'black'
         }}>
           <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', color: '#ef4444' }}>
-            {product.price} {appSettings.currency}
+            {product.price} {appSettings?.currency}
           </div>
           <div style={{ fontSize: '10px', textAlign: 'center', marginTop: '4px' }}>
             {product.name}
@@ -481,7 +481,7 @@ const BarcodeSystem = () => {
                       {barcode}
                     </td>
                     <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                      {product.price} {appSettings.currency}
+                      {product.price} {appSettings?.currency}
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center' }}>
                       <button
@@ -602,7 +602,7 @@ const BarcodeSystem = () => {
                       <div className="barcode">{barcode}</div>
                       <div style={{ fontSize: '8pt', textAlign: 'center' }}>{barcode}</div>
                       {barcodeSettings.includePrice && (
-                        <div className="price">{product.price} {appSettings.currency}</div>
+                        <div className="price">{product.price} {appSettings?.currency}</div>
                       )}
                     </div>
                   );

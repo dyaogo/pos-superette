@@ -87,7 +87,7 @@ const PaymentModal = ({
           borderRadius: '8px'
         }}>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>
-            {total.toLocaleString()} {appSettings.currency}
+            {total.toLocaleString()} {appSettings?.currency}
           </div>
         </div>
 
@@ -178,8 +178,8 @@ const PaymentModal = ({
                   fontSize: '18px'
                 }}>
                   {parseFloat(amountReceived) >= total
-                    ? `Monnaie: ${calculateChange(amountReceived).toLocaleString()} ${appSettings.currency}`
-                    : `Manque: ${(total - parseFloat(amountReceived)).toLocaleString()} ${appSettings.currency}`}
+                    ? `Monnaie: ${calculateChange(amountReceived).toLocaleString()} ${appSettings?.currency}`
+                    : `Manque: ${(total - parseFloat(amountReceived)).toLocaleString()} ${appSettings?.currency}`}
                 </div>
               </div>
             )}

@@ -22,7 +22,7 @@ const DashboardModule = () => {
 
   const [loading, setLoading] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState('today');
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   // Fonction utilitaire pour formater les nombres
   const formatNumber = (number) => {

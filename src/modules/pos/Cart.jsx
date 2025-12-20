@@ -126,7 +126,7 @@ const Cart = ({ cart, setCart, updateQuantity, total, appSettings, isDark, onChe
             }}>
               <span>Total:</span>
               <span style={{ color: '#3b82f6' }}>
-                {total.toLocaleString()} {appSettings.currency}
+                {total.toLocaleString()} {appSettings?.currency}
               </span>
             </div>
 

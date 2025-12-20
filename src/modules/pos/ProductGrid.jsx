@@ -64,7 +64,7 @@ const ProductGrid = ({ products, addToCart, quickMode, isDark, appSettings }) =>
             fontWeight: 'bold',
             fontSize: quickMode ? '14px' : '16px'
           }}>
-            {product.price} {appSettings.currency}
+            {product.price} {appSettings?.currency}
           </div>
           {!quickMode && (
             <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#64748b' }}>

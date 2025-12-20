@@ -22,7 +22,7 @@ const SalesModule = () => {
   const [showScanner, setShowScanner] = useState(false);
 
   const products = globalProducts;
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const { deviceType, isMobile } = useResponsive();
 

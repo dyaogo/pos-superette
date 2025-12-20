@@ -7,7 +7,7 @@ import LoyaltyProgram from './LoyaltyProgram';
 const CustomersModule = () => {
   const { appSettings } = useApp();
   const [activeTab, setActiveTab] = useState('list');
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const styles = {
     container: {

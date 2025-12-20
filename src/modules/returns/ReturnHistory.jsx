@@ -3,7 +3,7 @@ import { useApp } from '../../contexts/AppContext';
 
 const ReturnHistory = () => {
   const { returnsHistory, appSettings } = useApp();
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
   const list = returnsHistory || [];
 
   const styles = {

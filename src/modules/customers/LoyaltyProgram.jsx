@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 const LoyaltyProgram = () => {
   const { customers, setCustomers, appSettings } = useApp();
   const [points, setPoints] = useState(10);
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const list = (customers || []).filter(c => c.id !== 1);
 

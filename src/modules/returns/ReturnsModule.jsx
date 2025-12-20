@@ -7,7 +7,7 @@ import ReturnHistory from './ReturnHistory';
 const ReturnsModule = () => {
   const { appSettings } = useApp();
   const [activeTab, setActiveTab] = useState('form');
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const styles = {
     container: {

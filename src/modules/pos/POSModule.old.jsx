@@ -100,7 +100,7 @@ const POSModule = ({ onNavigate }) => {
     salesHistory = []
   } = useApp();
 
-  const isDark = appSettings.darkMode || false;
+  const isDark = appSettings?.darkMode || false;
 
   // ==================== HOOKS PERSONNALISÉS ====================
   const { 
@@ -331,7 +331,7 @@ const POSModule = ({ onNavigate }) => {
       amountReceivedRef.current = '';
       setAmountDisplay('');
       
-      toast.success(`💰 Vente terminée ! Total: ${cartStats.finalTotal.toLocaleString()} ${appSettings.currency}`);
+      toast.success(`💰 Vente terminée ! Total: ${cartStats.finalTotal.toLocaleString()} ${appSettings?.currency}`);
       
     } catch (error) {
       console.error('Erreur vente:', error);
@@ -696,7 +696,7 @@ const POSModule = ({ onNavigate }) => {
                   color: '#10b981',
                   marginBottom: '2px'
                 }}>
-                  {product.price?.toLocaleString()} {appSettings.currency}
+                  {product.price?.toLocaleString()} {appSettings?.currency}
                 </div>
                 
                 <div style={{
@@ -839,7 +839,7 @@ const POSModule = ({ onNavigate }) => {
                         fontSize: '10px',
                         color: isDark ? '#9ca3af' : '#6b7280'
                       }}>
-                        {item.price?.toLocaleString()} {appSettings.currency}
+                        {item.price?.toLocaleString()} {appSettings?.currency}
                       </div>
                     </div>
                     
@@ -921,7 +921,7 @@ const POSModule = ({ onNavigate }) => {
                       fontWeight: '700',
                       color: '#10b981'
                     }}>
-                      {(item.price * item.quantity).toLocaleString()} {appSettings.currency}
+                      {(item.price * item.quantity).toLocaleString()} {appSettings?.currency}
                     </div>
                   </div>
                 </div>
@@ -947,7 +947,7 @@ const POSModule = ({ onNavigate }) => {
                   marginBottom: '2px'
                 }}>
                   <span>Sous-total:</span>
-                  <span>{cartStats.totalAmount?.toLocaleString()} {appSettings.currency}</span>
+                  <span>{cartStats.totalAmount?.toLocaleString()} {appSettings?.currency}</span>
                 </div>
                 
                 {cartStats.totalTax > 0 && (
@@ -957,7 +957,7 @@ const POSModule = ({ onNavigate }) => {
                     marginBottom: '2px'
                   }}>
                     <span>TVA ({appSettings.taxRate}%):</span>
-                    <span>{cartStats.totalTax?.toLocaleString()} {appSettings.currency}</span>
+                    <span>{cartStats.totalTax?.toLocaleString()} {appSettings?.currency}</span>
                   </div>
                 )}
               </div>
@@ -982,7 +982,7 @@ const POSModule = ({ onNavigate }) => {
                   fontWeight: '700',
                   color: '#10b981'
                 }}>
-                  {cartStats.finalTotal?.toLocaleString()} {appSettings.currency}
+                  {cartStats.finalTotal?.toLocaleString()} {appSettings?.currency}
                 </span>
               </div>
 
@@ -1145,7 +1145,7 @@ const POSModule = ({ onNavigate }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Fond initial:</span>
                 <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                  {cashSession?.initialAmount?.toLocaleString()} {appSettings.currency}
+                  {cashSession?.initialAmount?.toLocaleString()} {appSettings?.currency}
                 </span>
               </div>
               
@@ -1156,7 +1156,7 @@ const POSModule = ({ onNavigate }) => {
                     .filter(sale => new Date(sale.date) >= new Date(cashSession?.openedAt || 0))
                     .filter(sale => sale.paymentMethod === 'cash')
                     .reduce((sum, sale) => sum + sale.total, 0)
-                    .toLocaleString()} {appSettings.currency}
+                    .toLocaleString()} {appSettings?.currency}
                 </span>
               </div>
               
@@ -1175,7 +1175,7 @@ const POSModule = ({ onNavigate }) => {
                       .filter(sale => new Date(sale.date) >= new Date(cashSession?.openedAt || 0))
                       .filter(sale => sale.paymentMethod === 'cash')
                       .reduce((sum, sale) => sum + sale.total, 0)
-                  ).toLocaleString()} {appSettings.currency}
+                  ).toLocaleString()} {appSettings?.currency}
                 </span>
               </div>
             </div>
@@ -1360,7 +1360,7 @@ const POSModule = ({ onNavigate }) => {
                     fontWeight: '600',
                     color: isDark ? '#f9fafb' : '#111827'
                   }}>
-                    {cartStats.totalAmount?.toLocaleString()} {appSettings.currency}
+                    {cartStats.totalAmount?.toLocaleString()} {appSettings?.currency}
                   </span>
                 </div>
                 
@@ -1381,7 +1381,7 @@ const POSModule = ({ onNavigate }) => {
                       fontWeight: '600',
                       color: isDark ? '#f9fafb' : '#111827'
                     }}>
-                      {cartStats.totalTax?.toLocaleString()} {appSettings.currency}
+                      {cartStats.totalTax?.toLocaleString()} {appSettings?.currency}
                     </span>
                   </div>
                 )}
@@ -1404,7 +1404,7 @@ const POSModule = ({ onNavigate }) => {
                     fontWeight: '700',
                     color: '#10b981'
                   }}>
-                    {cartStats.finalTotal?.toLocaleString()} {appSettings.currency}
+                    {cartStats.finalTotal?.toLocaleString()} {appSettings?.currency}
                   </span>
                 </div>
               </div>
@@ -1528,7 +1528,7 @@ const POSModule = ({ onNavigate }) => {
                         fontWeight: '700',
                         color: '#3b82f6'
                       }}>
-                        {amountDisplay || '0'} {appSettings.currency}
+                        {amountDisplay || '0'} {appSettings?.currency}
                       </span>
                     </div>
                     
@@ -1552,7 +1552,7 @@ const POSModule = ({ onNavigate }) => {
                           fontWeight: '700',
                           color: '#10b981'
                         }}>
-                          {(parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} {appSettings.currency}
+                          {(parseFloat(amountDisplay) - cartStats.finalTotal).toLocaleString()} {appSettings?.currency}
                         </span>
                       </div>
                     )}

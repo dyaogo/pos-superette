@@ -18,7 +18,7 @@ const CreditManagementModule = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
 
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
   const { deviceType } = useResponsive();
   const sharedStyles = getResponsiveStyles(deviceType, isDark);
 
@@ -212,7 +212,7 @@ const CreditManagementModule = () => {
           <CreditCard size={24} color="#3b82f6" />
           <div>
             <div style={{ fontSize: '20px', fontWeight: 'bold', color: isDark ? '#f7fafc' : '#2d3748' }}>
-              {stats.totalCredits.toLocaleString()} {appSettings.currency}
+              {stats.totalCredits.toLocaleString()} {appSettings?.currency}
             </div>
             <div style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#64748b' }}>
               Total crédits en cours
@@ -257,7 +257,7 @@ const CreditManagementModule = () => {
           <Clock size={24} color="#f59e0b" />
           <div>
             <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#f59e0b' }}>
-              {stats.overdueAmount.toLocaleString()} {appSettings.currency}
+              {stats.overdueAmount.toLocaleString()} {appSettings?.currency}
             </div>
             <div style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#64748b' }}>
               Montant en retard
@@ -348,11 +348,11 @@ const CreditManagementModule = () => {
                         )}
                       </td>
                       <td style={{ padding: '12px', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                        {credit.originalAmount.toLocaleString()} {appSettings.currency}
+                        {credit.originalAmount.toLocaleString()} {appSettings?.currency}
                       </td>
                       <td style={{ padding: '12px', fontWeight: '600' }}>
                         <span style={{ color: credit.remainingAmount > 0 ? '#ef4444' : '#10b981' }}>
-                          {credit.remainingAmount.toLocaleString()} {appSettings.currency}
+                          {credit.remainingAmount.toLocaleString()} {appSettings?.currency}
                         </span>
                       </td>
                       <td style={{ padding: '12px', color: isDark ? '#f7fafc' : '#2d3748' }}>
@@ -409,7 +409,7 @@ const CreditManagementModule = () => {
                             <button
                               onClick={() => {
                                 const phone = getCustomerPhone(credit.customerId);
-                                const message = `Bonjour ${getCustomerName(credit.customerId)}, rappel amical: votre crédit de ${credit.remainingAmount.toLocaleString()} ${appSettings.currency} arrive à échéance le ${new Date(credit.dueDate).toLocaleDateString('fr-FR')}. Merci!`;
+                                const message = `Bonjour ${getCustomerName(credit.customerId)}, rappel amical: votre crédit de ${credit.remainingAmount.toLocaleString()} ${appSettings?.currency} arrive à échéance le ${new Date(credit.dueDate).toLocaleDateString('fr-FR')}. Merci!`;
                                 window.open(`https://wa.me/${phone.replace(/\s/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
                               }}
                               style={{
@@ -639,7 +639,7 @@ const CreditManagementModule = () => {
                 </strong>
               </div>
               <div style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#64748b' }}>
-                Montant restant: {selectedCredit.remainingAmount.toLocaleString()} {appSettings.currency}
+                Montant restant: {selectedCredit.remainingAmount.toLocaleString()} {appSettings?.currency}
               </div>
             </div>
             

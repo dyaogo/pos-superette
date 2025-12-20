@@ -14,7 +14,7 @@ const SalesHistoryModule = () => {
   const [selectedSale, setSelectedSale] = useState(null);
   const [showDetails, setShowDetails] = useState(false);
 
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   // Fonction pour formater les nombres avec espaces
   const formatNumber = (num) => {

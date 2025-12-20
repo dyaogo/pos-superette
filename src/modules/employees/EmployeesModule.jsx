@@ -9,7 +9,7 @@ import ShiftManagement from './ShiftManagement';
 const EmployeesModule = () => {
   const { appSettings } = useApp();
   const [activeTab, setActiveTab] = useState('list');
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
   const { deviceType } = useResponsive();
   const sharedStyles = getResponsiveStyles(deviceType, isDark);
 

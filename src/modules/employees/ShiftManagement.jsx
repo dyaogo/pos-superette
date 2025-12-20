@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 const ShiftManagement = () => {
   const { employees, setEmployees, appSettings } = useApp();
   const [shift, setShift] = useState({ employeeId: '', date: '', start: '', end: '' });
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const handleChange = (e) => {
     setShift({ ...shift, [e.target.name]: e.target.value });
