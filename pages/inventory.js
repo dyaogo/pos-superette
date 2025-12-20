@@ -48,20 +48,20 @@ function InventoryPage() {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  // Statistiques
+  // Statistiques (montants arrondis pour FCFA)
   const totalProducts = productCatalog.length;
-  const totalValue = productCatalog.reduce(
+  const totalValue = Math.round(productCatalog.reduce(
     (sum, p) => sum + p.sellingPrice * p.stock,
     0
-  );
+  ));
   const lowStockProducts = productCatalog.filter((p) => p.stock < 10).length;
 
   // ✨ AJOUTÉ - Calculer la valeur d'achat et marge (Admin et Manager uniquement)
-  const totalCostValue = productCatalog.reduce(
+  const totalCostValue = Math.round(productCatalog.reduce(
     (sum, p) => sum + p.costPrice * p.stock,
     0
-  );
-  const totalMargin = totalValue - totalCostValue;
+  ));
+  const totalMargin = Math.round(totalValue - totalCostValue);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -539,7 +539,7 @@ function InventoryPage() {
                         fontWeight: "600",
                       }}
                     >
-                      {(
+                      {Math.round(
                         product.sellingPrice - product.costPrice
                       ).toLocaleString()}{" "}
                       FCFA

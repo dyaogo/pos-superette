@@ -127,10 +127,12 @@ export default async function handler(req, res) {
       return acc;
     }, {});
 
-    // Calculs financiers corrects
-    const totalRevenue = revenue.total;
-    const grossProfit = totalRevenue - totalCOGS;  // Marge brute
-    const netProfit = grossProfit - totalExpenses;  // Bénéfice net
+    // Calculs financiers corrects (arrondis à l'entier pour FCFA)
+    const totalRevenue = Math.round(revenue.total);
+    const totalCOGSRounded = Math.round(totalCOGS);
+    const grossProfit = Math.round(totalRevenue - totalCOGSRounded);  // Marge brute
+    const totalExpensesRounded = Math.round(totalExpenses);
+    const netProfit = Math.round(grossProfit - totalExpensesRounded);  // Bénéfice net
     const grossMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0;
     const netMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0;
 
@@ -150,27 +152,37 @@ export default async function handler(req, res) {
 
     res.status(200).json({
       period,
-      // Métriques principales
+      // Métriques principales (arrondies à l'entier)
       revenue: totalRevenue,
-      cogs: totalCOGS,
+      cogs: totalCOGSRounded,
       grossProfit,
-      expenses: totalExpenses,
+      expenses: totalExpensesRounded,
       netProfit,
-      // Marges
+      // Marges (en pourcentage, gardent les décimales)
       grossMargin,
       netMargin,
       profitMargin: netMargin, // Alias pour compatibilité
       // Statistiques
       salesCount: sales.length,
       itemsSold: totalItemsSold,
-      averageBasket: sales.length > 0 ? totalRevenue / sales.length : 0,
-      averageItemPrice: totalItemsSold > 0 ? totalRevenue / totalItemsSold : 0,
+      averageBasket: sales.length > 0 ? Math.round(totalRevenue / sales.length) : 0,
+      averageItemPrice: totalItemsSold > 0 ? Math.round(totalRevenue / totalItemsSold) : 0,
       // Détails par catégorie
-      expensesByCategory,
+      expensesByCategory: expensesByCategory.map(cat => ({
+        ...cat,
+        total: Math.round(cat.total)
+      })),
       // Données détaillées supplémentaires
-      revenueDetails: revenue,
+      revenueDetails: {
+        total: Math.round(revenue.total),
+        subtotal: Math.round(revenue.subtotal),
+        tax: Math.round(revenue.tax)
+      },
       expensesDetails: {
-        byCategory: Object.values(byCategory),
+        byCategory: Object.values(byCategory).map(cat => ({
+          ...cat,
+          total: Math.round(cat.total)
+        })),
         count: expenses.length,
       },
     });

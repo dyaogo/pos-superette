@@ -8,7 +8,7 @@ export function useExpenseCategories(options = {}) {
   return useQuery({
     queryKey: EXPENSE_CATEGORIES_KEY,
     queryFn: async () => {
-      const res = await fetch('/api/expense-categories');
+      const res = await fetch('/api/accounting/categories');
       if (!res.ok) throw new Error('Failed to fetch expense categories');
       return res.json();
     },
