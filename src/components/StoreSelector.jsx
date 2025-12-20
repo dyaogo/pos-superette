@@ -7,14 +7,14 @@ const StoreSelector = ({ modal = false }) => {
     stores,
     currentStoreId,
     setCurrentStoreId,
-    viewMode, 
-    setViewMode, 
+    viewMode,
+    setViewMode,
     getCurrentStore,
-    appSettings 
+    appSettings
   } = useApp();
-  
+
   const [isOpen, setIsOpen] = useState(false);
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const currentStore = getCurrentStore();
 
