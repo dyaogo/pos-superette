@@ -208,7 +208,8 @@ export default function AccountingModule() {
         {[
           { id: 'dashboard', label: 'Tableau de bord', icon: TrendingUp },
           { id: 'expenses', label: 'Dépenses', icon: DollarSign },
-          { id: 'reports', label: 'Rapports', icon: Calendar }
+          { id: 'reports', label: 'Rapports', icon: Calendar },
+          { id: 'categories', label: 'Catégories', icon: Calculator }
         ].map(tab => {
           const Icon = tab.icon;
           return (
@@ -281,6 +282,14 @@ export default function AccountingModule() {
           period={period}
           setPeriod={setPeriod}
           categories={categories}
+        />
+      )}
+
+      {/* Categories Tab */}
+      {activeTab === 'categories' && (
+        <CategoriesView
+          categories={categories}
+          loading={categoriesLoading}
         />
       )}
 
@@ -758,6 +767,123 @@ function ExpensesView({
 // Reports View (similar to Dashboard but with more details)
 function ReportsView({ reportData, loading, period, setPeriod, categories }) {
   return <DashboardView reportData={reportData} loading={loading} period={period} setPeriod={setPeriod} categories={categories} />;
+}
+
+// Categories View Component
+function CategoriesView({ categories, loading }) {
+  const [initializing, setInitializing] = useState(false);
+
+  const handleInitializeCategories = async () => {
+    if (!confirm('Voulez-vous créer les catégories de dépenses par défaut ?')) return;
+
+    setInitializing(true);
+    try {
+      const res = await fetch('/api/accounting/categories/initialize', { method: 'POST' });
+      if (res.ok) {
+        toast.success('Catégories initialisées avec succès');
+        window.location.reload(); // Recharger pour voir les catégories
+      } else {
+        throw new Error('Erreur lors de l\'initialisation');
+      }
+    } catch (error) {
+      toast.error('Erreur lors de l\'initialisation des catégories');
+    } finally {
+      setInitializing(false);
+    }
+  };
+
+  if (loading) {
+    return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Chargement...</div>;
+  }
+
+  if (!categories || categories.length === 0) {
+    return (
+      <div style={{ textAlign: 'center', padding: '60px' }}>
+        <div style={{ fontSize: '48px', marginBottom: '20px' }}>📋</div>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
+          Aucune catégorie de dépenses
+        </h3>
+        <p style={{ color: '#6b7280', marginBottom: '24px', maxWidth: '400px', margin: '0 auto 24px' }}>
+          Pour commencer à enregistrer des dépenses, vous devez d'abord initialiser les catégories par défaut.
+        </p>
+        <button
+          onClick={handleInitializeCategories}
+          disabled={initializing}
+          style={{
+            padding: '12px 24px',
+            background: initializing ? '#9ca3af' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: initializing ? 'not-allowed' : 'pointer',
+            fontWeight: '600',
+            fontSize: '14px'
+          }}
+        >
+          {initializing ? 'Initialisation...' : 'Initialiser les catégories'}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+        gap: '20px'
+      }}>
+        {categories.map(category => (
+          <div
+            key={category.id}
+            style={{
+              background: 'white',
+              borderRadius: '12px',
+              padding: '20px',
+              border: '1px solid #e5e7eb',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                background: `${category.color}20`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '20px'
+              }}>
+                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: category.color }} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: '#111827' }}>
+                  {category.name}
+                </h3>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                  {category.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{
+        marginTop: '24px',
+        padding: '16px',
+        background: '#f9fafb',
+        borderRadius: '8px',
+        textAlign: 'center',
+        color: '#6b7280',
+        fontSize: '14px'
+      }}>
+        💡 Les catégories de dépenses vous permettent de mieux organiser vos finances.<br />
+        Pour créer de nouvelles catégories, contactez l'administrateur système.
+      </div>
+    </div>
+  );
 }
 
 // Expense Modal Component
