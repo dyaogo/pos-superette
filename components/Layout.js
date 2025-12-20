@@ -65,16 +65,10 @@ export default function Layout({ children }) {
 
   const menuItems = [
     {
-      path: "/dashboard",
+      path: "/dashboards",
       icon: Home,
       label: "Tableau de bord",
       permission: "view_dashboard",
-    },
-    {
-      path: "/consolidated-dashboard",
-      icon: BarChart3,
-      label: "Dashboard Consolidé",
-      permission: "view_consolidated_dashboard",
     },
     {
       path: "/pos",
@@ -83,22 +77,16 @@ export default function Layout({ children }) {
       permission: "manage_pos",
     },
     {
-      path: "/inventory",
+      path: "/stocks",
       icon: Package,
-      label: "Inventaire",
+      label: "Stocks",
       permission: "manage_inventory",
     },
     {
-      path: "/reception",
-      icon: Package,
-      label: "Réception",
-      permission: "manage_inventory",
-    },
-    {
-      path: "/physical-inventory",
-      icon: ClipboardList,
-      label: "Inventaire Physique",
-      permission: "manage_inventory",
+      path: "/sales-customers",
+      icon: FileText,
+      label: "Ventes & Clients",
+      permission: "view_sales",
     },
     {
       path: "/stores",
@@ -107,51 +95,15 @@ export default function Layout({ children }) {
       permission: "view_stores",
     },
     {
-      path: "/transfers",
-      icon: ArrowRightLeft,
-      label: "Transferts",
-      permission: "manage_transfers",
-    },
-    {
       path: "/users",
       icon: UserCog,
       label: "Utilisateurs",
       permission: "manage_users",
     },
     {
-      path: "/sales",
-      icon: FileText,
-      label: "Ventes",
-      permission: "view_sales",
-    },
-    {
-      path: "/customers",
-      icon: Users,
-      label: "Clients",
-      permission: "manage_customers",
-    },
-    {
-      path: "/credits",
-      icon: CreditCard,
-      label: "Crédits",
-      permission: "manage_credits",
-    },
-    {
-      path: "/returns",
-      icon: Package,
-      label: "Retours",
-      permission: "view_returns",
-    },
-    {
       path: "/accounting",
       icon: Calculator,
       label: "Comptabilité",
-      permission: "view_accounting",
-    },
-    {
-      path: "/reports",
-      icon: BarChart3,
-      label: "Rapports Avancés",
       permission: "view_accounting",
     },
     {
