@@ -58,7 +58,7 @@ export default async function handler(req, res) {
               type: 'in',
               amount: Math.round(parseFloat(paymentAmount)), // Arrondir pour FCFA
               reason: 'Remboursement de crédit',
-              description: `Client: ${credit.customer?.name || 'Inconnu'} - Crédit #${id.slice(-6)}`,
+              description: `Client: ${credit.customer?.name || 'Inconnu'} - Crédit #${(id || '').slice(-6) || 'inconnu'}`,
               createdBy: createdBy || 'Système'
             }
           });
@@ -70,9 +70,20 @@ export default async function handler(req, res) {
 
       res.status(200).json(updatedCredit);
     } catch (error) {
+      console.error('Erreur PUT credit:', error);
       res.status(500).json({ error: error.message });
     }
   } else if (req.method === 'DELETE') {
+    try {
+      await prisma.credit.delete({
+        where: { id }
+      });
+      res.status(200).json({ success: true });
+    } catch (error) {
+      console.error('Erreur DELETE credit:', error);
+      res.status(500).json({ error: error.message });
+    }
+  } else {
     res.status(405).json({ error: 'Method not allowed' });
   }
 }
