@@ -204,8 +204,8 @@ const ModernCashRegister = ({ salesHistory = [], appSettings = {} }) => {
   const [operationAmount, setOperationAmount] = useState('');
   const [operationDescription, setOperationDescription] = useState('');
 
-  const isDark = appSettings.darkMode;
-  const currency = appSettings.currency || 'FCFA';
+  const isDark = appSettings?.darkMode;
+  const currency = appSettings?.currency || 'FCFA';
 
   const formatAmount = (amount) => {
     return new Intl.NumberFormat('fr-FR').format(amount || 0);

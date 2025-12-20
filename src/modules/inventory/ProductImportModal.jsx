@@ -20,7 +20,7 @@ const ProductImportModal = ({ isOpen, onClose }) => {
   const [errors, setErrors] = useState([]);
   const [step, setStep] = useState('upload'); // 'upload', 'preview', 'importing', 'success'
 
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   // Headers pour le template et validation
   const baseHeaders = ['sku', 'name', 'category', 'price', 'costPrice', 'minStock', 'maxStock', 'supplier'];

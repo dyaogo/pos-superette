@@ -16,7 +16,7 @@ const ReportsModule = () => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [exportType, setExportType] = useState('');
   
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   // Calcul des données pour les rapports (même code que précédemment)
   const reportData = useMemo(() => {
@@ -353,7 +353,7 @@ const ReportsModule = () => {
        <div style={styles.metricsGrid}>
          <MetricCard
            label="Chiffre d'Affaires"
-           value={`${sales.totalRevenue.toLocaleString()} ${appSettings.currency}`}
+           value={`${sales.totalRevenue.toLocaleString()} ${appSettings?.currency}`}
            icon={DollarSign}
            color="#10b981"
          />
@@ -365,7 +365,7 @@ const ReportsModule = () => {
          />
          <MetricCard
            label="Panier Moyen"
-           value={`${Math.round(sales.averageBasket).toLocaleString()} ${appSettings.currency}`}
+           value={`${Math.round(sales.averageBasket).toLocaleString()} ${appSettings?.currency}`}
            icon={Target}
            color="#8b5cf6"
          />
@@ -378,19 +378,19 @@ const ReportsModule = () => {
          <div style={styles.metricsGrid}>
            <MetricCard
              label="Espèces"
-             value={`${sales.cashSales.toLocaleString()} ${appSettings.currency}`}
+             value={`${sales.cashSales.toLocaleString()} ${appSettings?.currency}`}
              icon={DollarSign}
              color="#10b981"
            />
            <MetricCard
              label="Carte"
-             value={`${sales.cardSales.toLocaleString()} ${appSettings.currency}`}
+             value={`${sales.cardSales.toLocaleString()} ${appSettings?.currency}`}
              icon={BarChart3}
              color="#3b82f6"
            />
            <MetricCard
              label="Crédit"
-             value={`${sales.creditSales.toLocaleString()} ${appSettings.currency}`}
+             value={`${sales.creditSales.toLocaleString()} ${appSettings?.currency}`}
              icon={FileText}
              color="#f59e0b"
            />
@@ -417,10 +417,10 @@ const ReportsModule = () => {
                    <td style={{ padding: '8px', color: isDark ? '#f7fafc' : '#2d3748' }}>{product.name}</td>
                    <td style={{ padding: '8px', textAlign: 'right', color: isDark ? '#f7fafc' : '#2d3748' }}>{product.totalSold}</td>
                    <td style={{ padding: '8px', textAlign: 'right', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                     {product.totalRevenue.toLocaleString()} {appSettings.currency}
+                     {product.totalRevenue.toLocaleString()} {appSettings?.currency}
                    </td>
                    <td style={{ padding: '8px', textAlign: 'right', fontWeight: 'bold', color: '#10b981' }}>
-                     {product.profit.toLocaleString()} {appSettings.currency}
+                     {product.profit.toLocaleString()} {appSettings?.currency}
                    </td>
                  </tr>
                ))}
@@ -450,13 +450,13 @@ const ReportsModule = () => {
          />
          <MetricCard
            label="Valeur Stock (Achat)"
-           value={`${stock.totalStockValue.toLocaleString()} ${appSettings.currency}`}
+           value={`${stock.totalStockValue.toLocaleString()} ${appSettings?.currency}`}
            icon={DollarSign}
            color="#10b981"
          />
          <MetricCard
            label="Valeur Stock (Vente)"
-           value={`${stock.totalSaleValue.toLocaleString()} ${appSettings.currency}`}
+           value={`${stock.totalSaleValue.toLocaleString()} ${appSettings?.currency}`}
            icon={TrendingUp}
            color="#3b82f6"
          />
@@ -542,13 +542,13 @@ const ReportsModule = () => {
          />
          <MetricCard
            label="Montant En Cours"
-           value={`${creditData.pendingAmount.toLocaleString()} ${appSettings.currency}`}
+           value={`${creditData.pendingAmount.toLocaleString()} ${appSettings?.currency}`}
            icon={FileText}
            color="#f59e0b"
          />
          <MetricCard
            label="Montant Remboursé"
-           value={`${creditData.paidAmount.toLocaleString()} ${appSettings.currency}`}
+           value={`${creditData.paidAmount.toLocaleString()} ${appSettings?.currency}`}
            icon={FileText}
            color="#10b981"
          />

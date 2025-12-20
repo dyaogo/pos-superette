@@ -4,7 +4,7 @@ import { useApp } from '../../contexts/AppContext';
 
 const PerformanceMetrics = () => {
   const { salesHistory, globalProducts, customers, appSettings } = useApp();
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
   
   // Calculs de performance
   const metrics = useMemo(() => {
@@ -135,7 +135,7 @@ const PerformanceMetrics = () => {
                 Panier Moyen
               </div>
               <div style={{ fontSize: '28px', fontWeight: 'bold', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                {metrics.averageBasketSize.toLocaleString()} {appSettings.currency}
+                {metrics.averageBasketSize.toLocaleString()} {appSettings?.currency}
               </div>
             </div>
             <DollarSign size={32} color="#3b82f6" />
@@ -254,13 +254,13 @@ const PerformanceMetrics = () => {
                       {customer.name}
                     </div>
                     <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#718096' }}>
-                      {customer.purchaseCount} achats | Panier moyen: {customer.averageBasket.toLocaleString()} {appSettings.currency}
+                      {customer.purchaseCount} achats | Panier moyen: {customer.averageBasket.toLocaleString()} {appSettings?.currency}
                     </div>
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontWeight: 'bold', color: '#3b82f6' }}>
-                    {customer.totalSpent.toLocaleString()} {appSettings.currency}
+                    {customer.totalSpent.toLocaleString()} {appSettings?.currency}
                   </div>
                   <div style={{ fontSize: '12px', color: '#f59e0b' }}>
                     {customer.points} points

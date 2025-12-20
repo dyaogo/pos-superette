@@ -24,7 +24,7 @@ const InventoryHistoryModule = () => {
   const [filterPeriod, setFilterPeriod] = useState('week'); // 'day', 'week', 'month', 'all'
   const [selectedStore, setSelectedStore] = useState(currentStoreId || 'all');
 
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   // Simulation des mouvements de stock basés sur l'historique des ventes
   const stockMovements = useMemo(() => {

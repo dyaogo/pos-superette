@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 const EmployeeForm = () => {
   const { employees, setEmployees, appSettings, stores, currentStoreId } = useApp();
   const [form, setForm] = useState({ name: '', role: '', phone: '', storeId: currentStoreId });
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

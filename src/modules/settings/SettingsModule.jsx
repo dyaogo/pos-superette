@@ -22,7 +22,7 @@ const SettingsModule = () => {
   const [activeTab, setActiveTab] = useState('general');
   const [hasChanges, setHasChanges] = useState(false);
   
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
   const currentStore = getCurrentStore();
   const stats = getStats();
 

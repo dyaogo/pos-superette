@@ -5,7 +5,7 @@ import { useApp } from '../../contexts/AppContext';
 const ReturnForm = () => {
   const { globalProducts, processReturn, appSettings } = useApp();
   const [form, setForm] = useState({ productId: '', quantity: '', reason: '' });
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });

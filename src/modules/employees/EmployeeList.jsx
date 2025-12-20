@@ -4,7 +4,7 @@ import { useApp } from '../../contexts/AppContext';
 
 const EmployeeList = () => {
   const { employees, setEmployees, appSettings } = useApp();
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
 
   const removeEmployee = (id) => {
     if (window.confirm('Supprimer cet employé ?')) {

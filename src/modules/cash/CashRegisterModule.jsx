@@ -22,7 +22,7 @@ const CashRegisterModule = () => {
   const [cashOperations, setCashOperations] = useState([]);
   const [notes, setNotes] = useState('');
 
-  const isDark = appSettings.darkMode;
+  const isDark = appSettings?.darkMode;
   const { deviceType } = useResponsive();
   const sharedStyles = getResponsiveStyles(deviceType, isDark);
 
@@ -153,7 +153,7 @@ const getSessionTotals = () => {
     setNotes('');
     
     // Afficher le résumé
-    alert(`Caisse fermée!\nÉcart: ${difference.toLocaleString()} ${appSettings.currency}\n${difference === 0 ? 'Parfait!' : difference > 0 ? 'Surplus' : 'Manque'}`);
+    alert(`Caisse fermée!\nÉcart: ${difference.toLocaleString()} ${appSettings?.currency}\n${difference === 0 ? 'Parfait!' : difference > 0 ? 'Surplus' : 'Manque'}`);
   };
 
   // Ajouter une opération de caisse
@@ -271,7 +271,7 @@ const getSessionTotals = () => {
                   Fond de caisse initial
                 </div>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6' }}>
-                  {cashSession.openingAmount.toLocaleString()} {appSettings.currency}
+                  {cashSession.openingAmount.toLocaleString()} {appSettings?.currency}
                 </div>
               </div>
               
@@ -280,7 +280,7 @@ const getSessionTotals = () => {
                   Espèces attendues
                 </div>
                 <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#10b981' }}>
-                  {expectedCash.toLocaleString()} {appSettings.currency}
+                  {expectedCash.toLocaleString()} {appSettings?.currency}
                 </div>
               </div>
             </div>
@@ -311,7 +311,7 @@ const getSessionTotals = () => {
                     </span>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 'bold', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                    {totals.totalSales.toLocaleString()} {appSettings.currency}
+                    {totals.totalSales.toLocaleString()} {appSettings?.currency}
                   </div>
                   <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#64748b' }}>
                     {totals.transactionCount} transactions
@@ -330,7 +330,7 @@ const getSessionTotals = () => {
                     </span>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#10b981' }}>
-                    {totals.cashSales.toLocaleString()} {appSettings.currency}
+                    {totals.cashSales.toLocaleString()} {appSettings?.currency}
                   </div>
                   <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#64748b' }}>
                     {totals.cashTransactions} transactions
@@ -349,7 +349,7 @@ const getSessionTotals = () => {
                     </span>
                   </div>
                   <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#6366f1' }}>
-                    {totals.cardSales.toLocaleString()} {appSettings.currency}
+                    {totals.cardSales.toLocaleString()} {appSettings?.currency}
                   </div>
                   <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#64748b' }}>
                     {totals.cardTransactions} transactions
@@ -464,7 +464,7 @@ const getSessionTotals = () => {
                         textAlign: 'right',
                         color: op.type === 'out' ? '#ef4444' : '#10b981'
                       }}>
-                        {op.type === 'out' ? '-' : '+'}{op.amount.toLocaleString()} {appSettings.currency}
+                        {op.type === 'out' ? '-' : '+'}{op.amount.toLocaleString()} {appSettings?.currency}
                       </td>
                     </tr>
                   ))}
@@ -601,13 +601,13 @@ const getSessionTotals = () => {
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Fond initial:</span>
                 <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                  {cashSession.openingAmount.toLocaleString()} {appSettings.currency}
+                  {cashSession.openingAmount.toLocaleString()} {appSettings?.currency}
                 </span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                 <span style={{ color: isDark ? '#a0aec0' : '#64748b' }}>Ventes espèces:</span>
                 <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                  {(totals?.cashSales || 0).toLocaleString()} {appSettings.currency}
+                  {(totals?.cashSales || 0).toLocaleString()} {appSettings?.currency}
                 </span>
               </div>
               <div style={{ 
@@ -618,7 +618,7 @@ const getSessionTotals = () => {
               }}>
                 <span style={{ fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>Attendu:</span>
                 <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#3b82f6' }}>
-                  {expectedCash.toLocaleString()} {appSettings.currency}
+                  {expectedCash.toLocaleString()} {appSettings?.currency}
                 </span>
               </div>
             </div>
@@ -659,7 +659,7 @@ const getSessionTotals = () => {
                     '#166534' : '#dc2626'
                 }}>
                   <div style={{ fontWeight: '600' }}>
-                    Écart: {(parseFloat(closingCash) - expectedCash).toLocaleString()} {appSettings.currency}
+                    Écart: {(parseFloat(closingCash) - expectedCash).toLocaleString()} {appSettings?.currency}
                     {Math.abs(parseFloat(closingCash) - expectedCash) === 0 && ' ✅ Parfait!'}
                   </div>
                 </div>

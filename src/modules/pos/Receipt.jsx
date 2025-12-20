@@ -12,11 +12,11 @@ const Receipt = ({ data, onClose, appSettings }) => {
           <p className={styles.text}>Reçu: {data.receiptNumber}</p>
         )}
         <p className={styles.text}>
-          Total: {data.total.toLocaleString()} {appSettings.currency}
+          Total: {data.total.toLocaleString()} {appSettings?.currency}
         </p>
         {data.change > 0 && (
           <p className={styles.text}>
-            Monnaie: {data.change.toLocaleString()} {appSettings.currency}
+            Monnaie: {data.change.toLocaleString()} {appSettings?.currency}
           </p>
         )}
         <button onClick={onClose} className={styles.closeButton}>
