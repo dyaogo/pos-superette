@@ -96,13 +96,14 @@ const CreditManagementModule = () => {
 
   // Obtenir le nom du client
   const getCustomerName = (customerId) => {
-    const customer = customers.find(c => c.id === customerId);
+    // Comparer en convertissant les deux en string pour gérer différents types
+    const customer = customers.find(c => String(c.id) === String(customerId));
     return customer ? customer.name : 'Client inconnu';
   };
 
   // Obtenir le téléphone du client
   const getCustomerPhone = (customerId) => {
-    const customer = customers.find(c => c.id === customerId);
+    const customer = customers.find(c => String(c.id) === String(customerId));
     return customer ? customer.phone : '';
   };
 
