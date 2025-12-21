@@ -76,8 +76,8 @@ export default function SalesModule() {
         if (result.localOnly) {
           console.warn('Vente supprimée de l\'interface uniquement (API non disponible)');
         }
-        // Rechargement de la page pour rafraîchir la liste
-        window.location.reload();
+        // Pas de rechargement - le state local est déjà mis à jour
+        // La liste se rafraîchira automatiquement
       } else {
         alert('Erreur lors de la suppression de la vente');
       }
