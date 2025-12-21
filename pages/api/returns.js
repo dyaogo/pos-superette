@@ -13,7 +13,13 @@ export default async function handler(req, res) {
       res.status(200).json(returns);
     } catch (error) {
       console.error('Erreur GET returns:', error);
-      res.status(200).json([]);
+      // En cas d'erreur, vérifier si c'est une erreur de modèle
+      if (error.code === 'P2021' || error.message.includes('does not exist')) {
+        // Le modèle n'existe pas encore dans la DB
+        res.status(200).json([]);
+      } else {
+        res.status(500).json({ error: error.message, returns: [] });
+      }
     }
   } else if (req.method === 'POST') {
     try {
