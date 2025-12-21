@@ -38,17 +38,19 @@ const CreditManagementModule = () => {
   const addCredit = () => {
     if (!newCredit.customerId || !newCredit.amount) return;
 
+    const roundedAmount = Math.round(parseFloat(newCredit.amount));
+
     const credit = {
       id: Date.now(),
       customerId: parseInt(newCredit.customerId),
-      amount: parseFloat(newCredit.amount),
-      originalAmount: parseFloat(newCredit.amount),
+      amount: roundedAmount,
+      originalAmount: roundedAmount,
       description: newCredit.description || 'Vente à crédit',
       createdAt: new Date().toISOString(),
       dueDate: newCredit.dueDate || getDefaultDueDate(),
       status: 'pending', // pending, partial, paid, overdue
       payments: [],
-      remainingAmount: parseFloat(newCredit.amount)
+      remainingAmount: roundedAmount
     };
 
     setCredits([...credits, credit]);
@@ -60,7 +62,7 @@ const CreditManagementModule = () => {
   const recordPayment = () => {
     if (!selectedCredit || !paymentAmount) return;
 
-    const amount = parseFloat(paymentAmount);
+    const amount = Math.round(parseFloat(paymentAmount));
     if (amount > selectedCredit.remainingAmount) {
       alert('Le montant dépasse la dette restante!');
       return;
@@ -75,7 +77,7 @@ const CreditManagementModule = () => {
 
     const updatedCredits = credits.map(credit => {
       if (credit.id === selectedCredit.id) {
-        const newRemainingAmount = credit.remainingAmount - amount;
+        const newRemainingAmount = Math.round(credit.remainingAmount - amount);
         return {
           ...credit,
           payments: [...credit.payments, payment],
@@ -129,12 +131,12 @@ const CreditManagementModule = () => {
     // S'assurer que credits est un tableau et gérer les valeurs undefined
     const safeCredits = Array.isArray(credits) ? credits : [];
 
-    const totalCredits = safeCredits.reduce((sum, c) => sum + (c?.remainingAmount || 0), 0);
+    const totalCredits = Math.round(safeCredits.reduce((sum, c) => sum + (c?.remainingAmount || 0), 0));
     const overdueCredits = safeCredits.filter(c => {
       const dueDate = new Date(c.dueDate);
       return (c.status === 'pending' || c.status === 'partial') && dueDate < new Date();
     });
-    const overdueAmount = overdueCredits.reduce((sum, c) => sum + (c?.remainingAmount || 0), 0);
+    const overdueAmount = Math.round(overdueCredits.reduce((sum, c) => sum + (c?.remainingAmount || 0), 0));
 
     return {
       totalCredits: totalCredits || 0,
