@@ -38,10 +38,10 @@ const ReturnHistory = () => {
       <tbody>
         {list.map(r => (
           <tr key={r.id}>
-            <td style={styles.td}>{new Date(r.date).toLocaleString()}</td>
+            <td style={styles.td}>{new Date(r.createdAt || r.date).toLocaleString()}</td>
             <td style={styles.td}>{r.productName}</td>
             <td style={styles.td}>{r.quantity}</td>
-            <td style={styles.td}>{r.reason}</td>
+            <td style={styles.td}>{r.reason || 'Aucune raison'}</td>
           </tr>
         ))}
         {list.length === 0 && (
