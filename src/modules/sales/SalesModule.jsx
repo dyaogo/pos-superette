@@ -384,7 +384,138 @@ export default function SalesModule() {
         </div>
       )}
 
-      {/* Modal détails - TODO: implement if needed */}
+      {/* Modal détails */}
+      {showDetailModal && selectedSale && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}
+          onClick={() => setShowDetailModal(false)}
+        >
+          <div
+            style={{
+              background: "var(--color-surface)",
+              borderRadius: "12px",
+              padding: "30px",
+              maxWidth: "600px",
+              width: "90%",
+              maxHeight: "80vh",
+              overflow: "auto",
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "20px" }}>
+              <h2 style={{ fontSize: "24px", fontWeight: "bold" }}>
+                Détails de la vente
+              </h2>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "5px",
+                }}
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "15px" }}>
+                <div>
+                  <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                    N° Reçu
+                  </div>
+                  <div style={{ fontWeight: "600" }}>{selectedSale.receiptNumber}</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                    Date
+                  </div>
+                  <div style={{ fontWeight: "600" }}>
+                    {new Date(selectedSale.createdAt).toLocaleDateString("fr-FR", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                    Client
+                  </div>
+                  <div style={{ fontWeight: "600" }}>
+                    {selectedSale.customer?.name || "Client comptant"}
+                  </div>
+                </div>
+                <div>
+                  <div style={{ fontSize: "12px", color: "var(--color-text-secondary)", marginBottom: "4px" }}>
+                    Paiement
+                  </div>
+                  <div style={{ fontWeight: "600" }}>
+                    {selectedSale.paymentMethod === "cash"
+                      ? "Espèces"
+                      : selectedSale.paymentMethod === "credit"
+                      ? "Crédit"
+                      : "Mobile"}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: "20px" }}>
+              <h3 style={{ fontSize: "16px", fontWeight: "600", marginBottom: "10px" }}>
+                Articles
+              </h3>
+              <div style={{ border: "1px solid var(--color-border)", borderRadius: "8px", overflow: "hidden" }}>
+                {selectedSale.items?.map((item, index) => (
+                  <div
+                    key={index}
+                    style={{
+                      padding: "12px",
+                      borderBottom: index < selectedSale.items.length - 1 ? "1px solid var(--color-border)" : "none",
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: "600" }}>{item.name}</div>
+                      <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
+                        {item.quantity} × {Math.round(item.price).toLocaleString()} FCFA
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: "bold" }}>
+                      {Math.round(item.quantity * item.price).toLocaleString()} FCFA
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ borderTop: "2px solid var(--color-border)", paddingTop: "15px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "18px", fontWeight: "bold" }}>
+                <span>Total</span>
+                <span style={{ color: "var(--color-primary)" }}>
+                  {Math.round(selectedSale.total).toLocaleString()} FCFA
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

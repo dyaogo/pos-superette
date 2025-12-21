@@ -368,6 +368,17 @@ export function AppProvider({ children }) {
         return { success: false };
       }
 
+      // Créer l'entrée de retour
+      const returnEntry = {
+        id: Date.now(),
+        productId,
+        productName: product.name,
+        quantity,
+        reason,
+        createdAt: new Date().toISOString(),
+        storeId: currentStore?.id
+      };
+
       // Augmenter le stock (mise à jour optimiste)
       setProductCatalog(prev => prev.map(p =>
         p.id === productId
@@ -375,8 +386,11 @@ export function AppProvider({ children }) {
           : p
       ));
 
+      // Ajouter à l'historique des retours
+      setReturnsHistory(prev => [returnEntry, ...prev]);
+
       // TODO: Enregistrer le retour dans la DB si une API existe
-      console.log('Retour traité:', { productId, quantity, reason });
+      console.log('Retour traité:', returnEntry);
 
       return { success: true };
     } catch (error) {
@@ -533,6 +547,25 @@ export function AppProvider({ children }) {
     }
   };
 
+  // Fonction pour définir le stock d'un magasin (inventaire physique)
+  const setStockForStore = (storeId, newStockData) => {
+    try {
+      // newStockData est un objet { productId: newStock, ... }
+      setProductCatalog(prev => prev.map(p => {
+        if (p.storeId === storeId && newStockData[p.id] !== undefined) {
+          return { ...p, stock: newStockData[p.id] };
+        }
+        return p;
+      }));
+
+      console.log('Stock mis à jour pour le magasin:', storeId, newStockData);
+      return { success: true };
+    } catch (error) {
+      console.error('Erreur mise à jour stock magasin:', error);
+      return { success: false };
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -590,6 +623,7 @@ export function AppProvider({ children }) {
         removeStock,
         transferStock,
         addCredit,
+        setStockForStore,
 
         // Setters directs pour compatibilité
         setCustomers,
