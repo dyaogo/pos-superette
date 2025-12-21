@@ -357,10 +357,13 @@ export default function POSPage() {
             return date.toISOString().split('T')[0];
           };
 
+          // Arrondir le total pour éliminer les décimales
+          const roundedTotal = Math.round(total);
+
           const creditData = {
             customerId: customerSnapshot.id,
-            amount: total,
-            remainingAmount: total,
+            amount: roundedTotal,
+            remainingAmount: roundedTotal,
             description: `Vente ${saleData.receiptNumber}`,
             dueDate: creditDueDate || getDefaultDueDate(),
             status: "pending",
@@ -373,7 +376,7 @@ export default function POSPage() {
             id: tempCreditId,
             createdAt: new Date().toISOString(),
             payments: [],
-            originalAmount: total,
+            originalAmount: roundedTotal,
           };
           addCreditOptimistic(optimisticCredit);
 

@@ -74,15 +74,23 @@ export function AppProvider({ children }) {
       const cachedProducts = await offlineDB.getProducts();
       const cachedCustomers = await offlineDB.getCustomers();
       const cachedCredits = await offlineDB.getCredits();
-      
+
+      // Normaliser les crédits du cache
+      const normalizedCachedCredits = cachedCredits.map(credit => ({
+        ...credit,
+        payments: credit.payments || [],
+        originalAmount: credit.originalAmount || credit.amount,
+        remainingAmount: credit.remainingAmount || credit.amount,
+      }));
+
       // Afficher les données du cache immédiatement si disponibles
       if (cachedProducts.length > 0) {
         setProductCatalog(cachedProducts);
         setCustomers(cachedCustomers);
-        setCredits(cachedCredits);
+        setCredits(normalizedCachedCredits);
         console.log('✅ Données chargées depuis le cache');
       }
-      
+
       // ÉTAPE 2: Si online, mettre à jour depuis l'API
       if (isOnline) {
         const [productsRes, salesRes, customersRes, creditsRes, storesRes] = await Promise.all([
@@ -105,8 +113,16 @@ export function AppProvider({ children }) {
           const products = productsData.data || productsData;
           const sales = salesData.data || salesData;
           const customers = customersData.data || customersData;
-          const credits = creditsData.data || creditsData;
+          const creditsRaw = creditsData.data || creditsData;
           const stores = storesData.data || storesData;
+
+          // Normaliser les crédits de l'API pour ajouter les champs manquants
+          const credits = creditsRaw.map(credit => ({
+            ...credit,
+            payments: credit.payments || [],
+            originalAmount: credit.originalAmount || credit.amount,
+            remainingAmount: credit.remainingAmount || credit.amount,
+          }));
 
           setProductCatalog(products);
           setSalesHistory(sales);
@@ -123,13 +139,21 @@ export function AppProvider({ children }) {
       }
     } catch (error) {
       console.error('Erreur chargement données:', error);
-      
+
       // En cas d'erreur, essayer de charger depuis le cache
       try {
         const products = await offlineDB.getProducts();
         const customers = await offlineDB.getCustomers();
-        const credits = await offlineDB.getCredits();
-        
+        const creditsRaw = await offlineDB.getCredits();
+
+        // Normaliser les crédits du cache de secours
+        const credits = creditsRaw.map(credit => ({
+          ...credit,
+          payments: credit.payments || [],
+          originalAmount: credit.originalAmount || credit.amount,
+          remainingAmount: credit.remainingAmount || credit.amount,
+        }));
+
         if (products.length > 0) {
           setProductCatalog(products);
           setCustomers(customers);
