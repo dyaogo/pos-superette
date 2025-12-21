@@ -352,11 +352,11 @@ const CreditManagementModule = () => {
                         )}
                       </td>
                       <td style={{ padding: '12px', color: isDark ? '#f7fafc' : '#2d3748' }}>
-                        {credit.originalAmount.toLocaleString()} {appSettings?.currency}
+                        {(credit.originalAmount || 0).toLocaleString()} {appSettings?.currency}
                       </td>
                       <td style={{ padding: '12px', fontWeight: '600' }}>
                         <span style={{ color: credit.remainingAmount > 0 ? '#ef4444' : '#10b981' }}>
-                          {credit.remainingAmount.toLocaleString()} {appSettings?.currency}
+                          {(credit.remainingAmount || 0).toLocaleString()} {appSettings?.currency}
                         </span>
                       </td>
                       <td style={{ padding: '12px', color: isDark ? '#f7fafc' : '#2d3748' }}>
@@ -391,7 +391,7 @@ const CreditManagementModule = () => {
                             <button
                               onClick={() => {
                                 setSelectedCredit(credit);
-                                setPaymentAmount(credit.remainingAmount.toString());
+                                setPaymentAmount((credit.remainingAmount || 0).toString());
                                 setShowPaymentModal(true);
                               }}
                               style={{
@@ -413,7 +413,7 @@ const CreditManagementModule = () => {
                             <button
                               onClick={() => {
                                 const phone = getCustomerPhone(credit.customerId);
-                                const message = `Bonjour ${getCustomerName(credit.customerId)}, rappel amical: votre crédit de ${credit.remainingAmount.toLocaleString()} ${appSettings?.currency} arrive à échéance le ${new Date(credit.dueDate).toLocaleDateString('fr-FR')}. Merci!`;
+                                const message = `Bonjour ${getCustomerName(credit.customerId)}, rappel amical: votre crédit de ${(credit.remainingAmount || 0).toLocaleString()} ${appSettings?.currency} arrive à échéance le ${new Date(credit.dueDate).toLocaleDateString('fr-FR')}. Merci!`;
                                 window.open(`https://wa.me/${phone.replace(/\s/g, '')}?text=${encodeURIComponent(message)}`, '_blank');
                               }}
                               style={{
@@ -643,13 +643,13 @@ const CreditManagementModule = () => {
                 </strong>
               </div>
               <div style={{ fontSize: '14px', color: isDark ? '#a0aec0' : '#64748b' }}>
-                Montant restant: {selectedCredit.remainingAmount.toLocaleString()} {appSettings?.currency}
+                Montant restant: {(selectedCredit?.remainingAmount || 0).toLocaleString()} {appSettings?.currency}
               </div>
             </div>
-            
+
             <div style={{ marginBottom: '20px' }}>
-              <label style={{ 
-                display: 'block', 
+              <label style={{
+                display: 'block',
                 marginBottom: '5px',
                 color: isDark ? '#a0aec0' : '#64748b'
               }}>
@@ -659,7 +659,7 @@ const CreditManagementModule = () => {
                 type="number"
                 value={paymentAmount}
                 onChange={(e) => setPaymentAmount(e.target.value)}
-                max={selectedCredit.remainingAmount}
+                max={selectedCredit?.remainingAmount || 0}
                 style={{
                   width: '100%',
                   padding: '12px',
