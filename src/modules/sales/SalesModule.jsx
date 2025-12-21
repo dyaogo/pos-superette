@@ -492,13 +492,15 @@ export default function SalesModule() {
                     }}
                   >
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontWeight: "600" }}>{item.name}</div>
+                      <div style={{ fontWeight: "600" }}>
+                        {item.name || item.productName || item.product?.name || "Produit"}
+                      </div>
                       <div style={{ fontSize: "12px", color: "var(--color-text-secondary)" }}>
-                        {item.quantity} × {Math.round(item.price).toLocaleString()} FCFA
+                        {item.quantity || 0} × {Math.round(item.price || item.unitPrice || item.sellingPrice || 0).toLocaleString()} FCFA
                       </div>
                     </div>
                     <div style={{ fontWeight: "bold" }}>
-                      {Math.round(item.quantity * item.price).toLocaleString()} FCFA
+                      {Math.round((item.quantity || 0) * (item.price || item.unitPrice || item.sellingPrice || 0)).toLocaleString()} FCFA
                     </div>
                   </div>
                 ))}
