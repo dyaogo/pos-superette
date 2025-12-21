@@ -36,18 +36,30 @@ export function AppProvider({ children }) {
   const initializeApp = async () => {
     setLoading(true);
     try {
-      // 1. Charger les magasins
+      // 1. Charger les retours depuis localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          const savedReturns = localStorage.getItem('returns_history');
+          if (savedReturns) {
+            setReturnsHistory(JSON.parse(savedReturns));
+          }
+        } catch (e) {
+          console.warn('Erreur chargement returns localStorage:', e);
+        }
+      }
+
+      // 2. Charger les magasins
       const storesRes = await fetch('/api/stores');
       const storesData = await storesRes.json();
       setStores(storesData);
 
-      // 2. Définir le magasin actif
+      // 3. Définir le magasin actif
       let activeStore = null;
-      
+
       if (typeof window !== 'undefined') {
         const savedStoreId = localStorage.getItem('currentStoreId');
-        activeStore = savedStoreId 
-          ? storesData.find(s => s.id === savedStoreId) 
+        activeStore = savedStoreId
+          ? storesData.find(s => s.id === savedStoreId)
           : storesData[0];
       } else {
         activeStore = storesData[0];
@@ -57,7 +69,7 @@ export function AppProvider({ children }) {
         setCurrentStore(activeStore);
       }
 
-      // 3. Charger les autres données
+      // 4. Charger les autres données
       await loadData();
     } catch (error) {
       console.error('Erreur initialisation:', error);
@@ -394,13 +406,14 @@ export function AppProvider({ children }) {
 
       // Créer l'entrée de retour
       const returnEntry = {
-        id: Date.now(),
+        id: `return-${Date.now()}`,
         productId,
         productName: product.name,
         quantity,
         reason,
         createdAt: new Date().toISOString(),
-        storeId: currentStore?.id
+        storeId: currentStore?.id,
+        amount: product.costPrice * quantity // Montant estimé du retour
       };
 
       // Augmenter le stock (mise à jour optimiste)
@@ -408,13 +421,51 @@ export function AppProvider({ children }) {
         p.id === productId
           ? { ...p, stock: p.stock + quantity }
           : p
-      ));
+      ).sort((a, b) => a.name.localeCompare(b.name)));
 
-      // Ajouter à l'historique des retours
-      setReturnsHistory(prev => [returnEntry, ...prev]);
+      // Ajouter à l'historique des retours (optimiste)
+      const newReturns = [returnEntry, ...returnsHistory];
+      setReturnsHistory(newReturns);
 
-      // TODO: Enregistrer le retour dans la DB si une API existe
-      console.log('Retour traité:', returnEntry);
+      // Sauvegarder dans localStorage pour persistance
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('returns_history', JSON.stringify(newReturns));
+        } catch (e) {
+          console.warn('Erreur sauvegarde localStorage:', e);
+        }
+      }
+
+      // Enregistrer dans la DB via API
+      try {
+        const returnData = {
+          saleId: 'DIRECT_RETURN', // ID spécial pour les retours directs (sans vente)
+          reason: reason || 'Retour de marchandise',
+          refundMethod: 'stock', // Remis en stock
+          items: [{
+            productId,
+            productName: product.name,
+            quantity,
+            unitPrice: product.costPrice,
+            total: product.costPrice * quantity
+          }]
+        };
+
+        const res = await fetch('/api/returns', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(returnData)
+        });
+
+        if (res.ok) {
+          const savedReturn = await res.json();
+          console.log('✅ Retour enregistré dans la DB:', savedReturn);
+        } else {
+          console.warn('⚠️ Retour sauvegardé localement uniquement');
+        }
+      } catch (apiError) {
+        console.warn('⚠️ Erreur API retour, sauvegardé localement:', apiError);
+      }
 
       return { success: true };
     } catch (error) {
