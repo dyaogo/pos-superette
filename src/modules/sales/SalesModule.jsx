@@ -58,9 +58,23 @@ export default function SalesModule() {
   const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
   const avgSale = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-  const handleDeleteSale = async (saleId) => {
+  const handleDeleteSale = async (sale) => {
+    // Trouver l'ID de la vente - peut être .id, ._id, ou .receiptNumber
+    const saleId = sale?.id || sale?._id || sale?.receiptNumber;
+
+    if (!saleId) {
+      console.error('Impossible de trouver l\'ID de la vente:', sale);
+      alert('Erreur: Impossible de supprimer cette vente (ID manquant)');
+      return;
+    }
+
     if (confirm("Êtes-vous sûr de vouloir supprimer cette vente ?")) {
-      await deleteSale(saleId);
+      console.log('Suppression de la vente:', saleId);
+      const result = await deleteSale(saleId);
+
+      if (!result.success) {
+        alert('Erreur lors de la suppression de la vente');
+      }
     }
   };
 
@@ -345,7 +359,7 @@ export default function SalesModule() {
                       </button>
                       {hasRole("admin") && (
                         <button
-                          onClick={() => handleDeleteSale(sale.id)}
+                          onClick={() => handleDeleteSale(sale)}
                           style={{
                             padding: "6px 12px",
                             background: "#ef4444",
