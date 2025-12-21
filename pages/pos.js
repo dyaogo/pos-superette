@@ -349,14 +349,31 @@ export default function POSPage() {
 
         // Créer un crédit si nécessaire (en arrière-plan)
         if (paymentMethodSnapshot === "credit" && customerSnapshot) {
+          // Calculer date d'échéance par défaut (30 jours) si non fournie
+          const getDefaultDueDate = () => {
+            const date = new Date();
+            date.setDate(date.getDate() + 30);
+            return date.toISOString().split('T')[0];
+          };
+
           const creditData = {
             customerId: customerSnapshot.id,
             amount: total,
             remainingAmount: total,
             description: `Vente ${saleData.receiptNumber}`,
-            dueDate: creditDueDate,
+            dueDate: creditDueDate || getDefaultDueDate(),
             status: "pending",
           };
+
+          // 🚀 OPTIMISTIC UI - Créer le crédit local immédiatement
+          const optimisticCredit = {
+            ...creditData,
+            id: `temp-credit-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            payments: [],
+            originalAmount: total,
+          };
+          addCreditOptimistic(optimisticCredit);
 
           try {
             const creditResponse = await fetch("/api/credits", {
@@ -367,10 +384,15 @@ export default function POSPage() {
 
             if (creditResponse.ok) {
               const credit = await creditResponse.json();
-              addCreditOptimistic(credit); // Mise à jour optimiste
+              // Remplacer le crédit temporaire par le crédit réel de l'API
+              addCreditOptimistic(credit);
+              console.log("✅ Crédit enregistré en ligne:", credit);
+            } else {
+              console.warn("⚠️ Erreur API crédit, crédit conservé localement");
             }
           } catch (error) {
-            console.error("Erreur création crédit:", error);
+            console.error("❌ Erreur création crédit:", error);
+            console.log("💾 Crédit conservé en local uniquement");
           }
         }
 
