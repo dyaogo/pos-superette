@@ -9,7 +9,7 @@ import {
 import Toast from "../../../components/Toast";
 
 export default function TransferModule() {
-  const { stores, currentStore, loading } = useApp();
+  const { stores, currentStore, loading, reloadData, transferStock } = useApp();
   const [transfers, setTransfers] = useState([]);
   const [allProducts, setAllProducts] = useState([]);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -83,7 +83,17 @@ export default function TransferModule() {
       });
 
       if (res.ok) {
+        // Mettre à jour le stock localement avec mise à jour optimiste
+        await transferStock(
+          formData.fromStoreId,
+          formData.toStoreId,
+          formData.productId,
+          parseInt(formData.quantity)
+        );
+
         await loadTransfers();
+        await reloadData(); // Recharger toutes les données pour synchroniser
+
         setShowAddModal(false);
         setFormData({
           fromStoreId: currentStore?.id || "",
