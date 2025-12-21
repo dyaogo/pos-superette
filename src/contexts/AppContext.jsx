@@ -245,12 +245,13 @@ export function AppProvider({ children }) {
 
   // Mettre à jour plusieurs stocks en une fois
   const updateMultipleProductStocksOptimistic = (stockUpdates) => {
-    // stockUpdates = [{productId, quantitySold}, ...]
+    // stockUpdates = [{productId, quantitySold}, ...] OU [{id, quantity}, ...]
     setProductCatalog(prev => {
       const updated = prev.map(p => {
-        const update = stockUpdates.find(u => u.productId === p.id);
+        const update = stockUpdates.find(u => (u.productId || u.id) === p.id);
         if (update) {
-          return { ...p, stock: Math.max(0, p.stock - update.quantitySold) };
+          const quantityToDeduct = update.quantitySold || update.quantity;
+          return { ...p, stock: Math.max(0, p.stock - quantityToDeduct) };
         }
         return p;
       });
@@ -477,14 +478,26 @@ export function AppProvider({ children }) {
   // Ajouter du stock à un produit
   const addStock = async (productId, quantity) => {
     try {
-      const res = await fetch(`/api/products/${productId}/stock`, {
-        method: 'POST',
+      // Trouver le produit actuel
+      const product = productCatalog.find(p => p.id === productId);
+      if (!product) {
+        console.error('Produit non trouvé:', productId);
+        return { success: false };
+      }
+
+      // Calculer le nouveau stock
+      const newStock = (product.stock || 0) + quantity;
+
+      // Mettre à jour le produit via l'API
+      const res = await fetch(`/api/products/${productId}`, {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity })
+        body: JSON.stringify({ stock: newStock })
       });
 
       if (res.ok) {
-        await loadData();
+        // Mise à jour optimiste du stock local
+        updateProductOptimistic(productId, { stock: newStock });
         return { success: true };
       }
       return { success: false };
