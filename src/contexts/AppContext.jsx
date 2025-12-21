@@ -13,6 +13,8 @@ export function AppProvider({ children }) {
   const [salesHistory, setSalesHistory] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [credits, setCredits] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [returnsHistory, setReturnsHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [initialized, setInitialized] = useState(false);
   const [lastLoadTime, setLastLoadTime] = useState(null);
@@ -474,6 +476,63 @@ export function AppProvider({ children }) {
     return acc;
   }, {});
 
+  // Fonction pour transférer du stock entre magasins
+  const transferStock = async (fromStoreId, toStoreId, productId, quantity) => {
+    try {
+      // TODO: Appeler l'API de transfert si elle existe
+      console.log('Transfert:', { fromStoreId, toStoreId, productId, quantity });
+
+      // Mise à jour optimiste - retirer du stock source et ajouter au stock destination
+      setProductCatalog(prev => prev.map(p => {
+        if (p.id === productId) {
+          if (p.storeId === fromStoreId) {
+            return { ...p, stock: Math.max(0, p.stock - quantity) };
+          } else if (p.storeId === toStoreId) {
+            return { ...p, stock: p.stock + quantity };
+          }
+        }
+        return p;
+      }));
+
+      return { success: true };
+    } catch (error) {
+      console.error('Erreur transfert stock:', error);
+      return { success: false };
+    }
+  };
+
+  // Fonction pour traiter une vente (alias de recordSale pour compatibilité)
+  const processSale = async (saleData) => {
+    return await recordSale(saleData);
+  };
+
+  // Fonction pour ajouter un crédit (alias de addCreditOptimistic)
+  const addCredit = (creditData) => {
+    const newCredit = {
+      ...creditData,
+      id: Date.now(),
+      createdAt: new Date().toISOString(),
+      status: 'pending'
+    };
+    addCreditOptimistic(newCredit);
+    return { success: true, credit: newCredit };
+  };
+
+  // Fonction pour supprimer une vente
+  const deleteSale = async (saleId) => {
+    try {
+      const res = await fetch(`/api/sales/${saleId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setSalesHistory(prev => prev.filter(s => s.id !== saleId));
+        return { success: true };
+      }
+      return { success: false };
+    } catch (error) {
+      console.error('Erreur suppression vente:', error);
+      return { success: false };
+    }
+  };
+
   return (
     <AppContext.Provider
       value={{
@@ -498,6 +557,8 @@ export function AppProvider({ children }) {
         salesHistory: currentStoreSales,
         customers,
         credits,
+        employees,
+        returnsHistory,
 
         // Données complètes (pour admin)
         allProducts: productCatalog,
@@ -522,13 +583,19 @@ export function AppProvider({ children }) {
         addCustomer,
         updateCustomer,
         recordSale,
+        processSale,
+        deleteSale,
         processReturn,
         addStock,
         removeStock,
+        transferStock,
+        addCredit,
 
         // Setters directs pour compatibilité
         setCustomers,
         setCredits,
+        setEmployees,
+        setReturnsHistory,
         setProductCatalog,
         setSalesHistory,
 
