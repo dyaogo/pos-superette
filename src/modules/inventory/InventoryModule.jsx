@@ -612,7 +612,8 @@ const EditModal = ({ product, onClose, onSave, appSettings }) => {
 const InventoryModule = () => {
   // ===== UTILISATION DU CONTEXTE RÉEL =====
   const {
-    globalProducts = [],
+    productCatalog = [], // Produits du magasin actuel uniquement
+    allProducts = [], // Tous les produits (pour certaines opérations globales)
     addProduct,
     updateProduct,
     addStock,
@@ -658,13 +659,13 @@ const InventoryModule = () => {
 
   // Hooks personnalisés utilisant les vraies données
   const debouncedSearch = useDebounce(searchQuery, 300);
-  const categories = useCategories(globalProducts);
-  const filteredProducts = useProductSearch(globalProducts, debouncedSearch, selectedCategory, filterBy);
+  const categories = useCategories(productCatalog);
+  const filteredProducts = useProductSearch(productCatalog, debouncedSearch, selectedCategory, filterBy);
 
   // Analytics basés sur les vraies données
   const analytics = useMemo(() => {
-    // Utiliser directement les produits du magasin actuel (déjà filtrés)
-    const productsWithStock = globalProducts.filter(p => p.storeId === currentStoreId);
+    // productCatalog contient déjà uniquement les produits du magasin actuel
+    const productsWithStock = productCatalog;
 
     const totalProducts = productsWithStock.length;
     const totalValue = productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0);
@@ -694,7 +695,7 @@ const InventoryModule = () => {
     };
 
     return { alerts, totals, productsWithStock };
-  }, [globalProducts, stockByStore, currentStoreId]);
+  }, [productCatalog]);
 
   // Calculer la marge brute en temps réel
   const calculateMargin = (price, costPrice) => {
@@ -803,26 +804,30 @@ if (success) {
 
   const handleRestock = useCallback(async (productId, quantity, reason = 'Réapprovisionnement') => {
     try {
-      await addStock(currentStoreId, productId, parseInt(quantity), reason);
-      setRestockingProduct(null);
-      setShowRestockModal(false);
-      Toast.success(`Stock mis à jour: +${quantity} unités`);
+      const result = await addStock(productId, parseInt(quantity));
+      if (result.success) {
+        setRestockingProduct(null);
+        setShowRestockModal(false);
+        Toast.success(`Stock mis à jour: +${quantity} unités`);
+      } else {
+        Toast.error('Erreur lors du réapprovisionnement');
+      }
     } catch (error) {
       console.error('Erreur lors du réapprovisionnement:', error);
       Toast.error('Erreur lors du réapprovisionnement');
     }
-  }, [addStock, currentStoreId]);
+  }, [addStock]);
 
   const handleClearCatalog = useCallback(() => {
-    if (window.confirm('⚠️ Êtes-vous sûr de vouloir supprimer TOUT le catalogue ? Cette action est irréversible !')) {
-      if (window.confirm('🚨 DERNIÈRE CONFIRMATION : Tous les produits seront définitivement supprimés !')) {
-        globalProducts.forEach(product => {
+    if (window.confirm('⚠️ Êtes-vous sûr de vouloir supprimer TOUS les produits de ce magasin ? Cette action est irréversible !')) {
+      if (window.confirm('🚨 DERNIÈRE CONFIRMATION : Tous les produits du magasin actuel seront définitivement supprimés !')) {
+        productCatalog.forEach(product => {
           removeProduct(product.id);
         });
-        Toast.success('Catalogue vidé avec succès');
+        Toast.success('Catalogue du magasin vidé avec succès');
       }
     }
-  }, [globalProducts, removeProduct]);
+  }, [productCatalog, removeProduct]);
 
   // Gestion de l'image produit
   const handleImageUpload = (e, setProductFunction) => {
@@ -1188,11 +1193,11 @@ if (success) {
            Aucun produit trouvé
          </h3>
          <p style={{ margin: '0 0 20px 0', color: 'var(--color-text-secondary)' }}>
-           {globalProducts.length === 0
-             ? "Commencez par ajouter des produits à votre catalogue"
+           {productCatalog.length === 0
+             ? "Commencez par ajouter des produits au catalogue de ce magasin"
              : "Aucun produit ne correspond aux filtres sélectionnés"}
          </p>
-         {globalProducts.length === 0 && (
+         {productCatalog.length === 0 && (
            <Button
              variant="primary"
              onClick={() => setShowAddModal(true)}
@@ -1673,11 +1678,11 @@ const renderRestockModal = () => {
 
   // ✅ CORRECTION : Déclarer les états à l'intérieur du composant principal
   return (
-    <RestockModalContent 
+    <RestockModalContent
       product={restockingProduct}
       onClose={() => setShowRestockModal(false)}
       onRestock={handleRestock}
-      currentStock={(stockByStore[currentStoreId] || {})[restockingProduct.id] || 0}
+      currentStock={restockingProduct.stock || 0}
     />
   );
 };

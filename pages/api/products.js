@@ -68,26 +68,31 @@ async function handler(req, res) {
     }
 
     const { name, category, barcode, costPrice, sellingPrice, stock, image } = validation.data;
-    
-    // Récupérer le premier magasin
-    let store = await prisma.store.findFirst();
-    
-    if (!store) {
-      console.log('Aucun magasin trouvé, création...');
-      store = await prisma.store.create({
-        data: {
-          code: 'MAG001',
-          name: 'Superette Centre',
-          currency: 'FCFA',
-          taxRate: 18
-        }
-      });
+
+    // Utiliser le storeId fourni dans le body, sinon récupérer le premier magasin
+    let storeId = req.body.storeId;
+
+    if (!storeId) {
+      let store = await prisma.store.findFirst();
+
+      if (!store) {
+        console.log('Aucun magasin trouvé, création...');
+        store = await prisma.store.create({
+          data: {
+            code: 'MAG001',
+            name: 'Superette Centre',
+            currency: 'FCFA',
+            taxRate: 18
+          }
+        });
+      }
+      storeId = store.id;
     }
-    
+
     // Créer le produit avec l'image (données déjà validées par Zod)
     const product = await prisma.product.create({
       data: {
-        storeId: store.id,
+        storeId: storeId,
         name,
         category,
         barcode,
