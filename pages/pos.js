@@ -30,6 +30,7 @@ export default function POSPage() {
     addSaleOptimistic,
     updateMultipleProductStocksOptimistic,
     addCreditOptimistic,
+    setCredits,
     reloadData,
     currentStore,
     salesHistory: currentStoreSales,
@@ -366,9 +367,10 @@ export default function POSPage() {
           };
 
           // 🚀 OPTIMISTIC UI - Créer le crédit local immédiatement
+          const tempCreditId = `temp-credit-${Date.now()}`;
           const optimisticCredit = {
             ...creditData,
-            id: `temp-credit-${Date.now()}`,
+            id: tempCreditId,
             createdAt: new Date().toISOString(),
             payments: [],
             originalAmount: total,
@@ -385,7 +387,9 @@ export default function POSPage() {
             if (creditResponse.ok) {
               const credit = await creditResponse.json();
               // Remplacer le crédit temporaire par le crédit réel de l'API
-              addCreditOptimistic(credit);
+              setCredits(prev => prev.map(c =>
+                c.id === tempCreditId ? credit : c
+              ));
               console.log("✅ Crédit enregistré en ligne:", credit);
             } else {
               console.warn("⚠️ Erreur API crédit, crédit conservé localement");
