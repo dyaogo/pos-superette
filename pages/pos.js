@@ -452,7 +452,10 @@ export default function POSPage() {
   };
 
   const loadActiveSession = async () => {
-    if (!currentStore) return;
+    if (!currentStore) {
+      setCashSession(null); // Réinitialiser si pas de magasin
+      return;
+    }
 
     // ✅ NOUVEAU: Ne pas charger si offline
     if (!isOnline) {
@@ -466,9 +469,12 @@ export default function POSPage() {
         );
         if (storedSession) {
           setCashSession(JSON.parse(storedSession));
+        } else {
+          setCashSession(null); // ✅ FIX: Réinitialiser si pas de session locale
         }
       } catch (error) {
         console.log("Aucune session de caisse locale");
+        setCashSession(null); // ✅ FIX: Réinitialiser en cas d'erreur
       }
       return;
     }
@@ -486,6 +492,9 @@ export default function POSPage() {
           `cash_session_${currentStore.id}`,
           JSON.stringify(sessions[0])
         );
+      } else {
+        // ✅ FIX: Réinitialiser la session si aucune session ouverte trouvée
+        setCashSession(null);
       }
     } catch (error) {
       console.error("Erreur chargement session:", error);
@@ -496,9 +505,12 @@ export default function POSPage() {
         );
         if (storedSession) {
           setCashSession(JSON.parse(storedSession));
+        } else {
+          setCashSession(null); // ✅ FIX: Réinitialiser si pas de session locale
         }
       } catch (localError) {
         console.log("Aucune session de caisse disponible");
+        setCashSession(null); // ✅ FIX: Réinitialiser en cas d'erreur
       }
     }
   };

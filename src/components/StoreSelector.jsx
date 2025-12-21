@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Store, ChevronDown, Eye, Grid } from 'lucide-react';
 import { useApp } from '../contexts/AppContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const StoreSelector = ({ modal = false }) => {
   const {
@@ -13,10 +14,16 @@ const StoreSelector = ({ modal = false }) => {
     appSettings
   } = useApp();
 
+  const { currentUser } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const isDark = appSettings?.darkMode;
 
   const currentStore = getCurrentStore();
+
+  // ✅ FIX: Filtrer les magasins selon les permissions de l'utilisateur
+  const availableStores = currentUser?.storeId
+    ? stores.filter(s => s.id === currentUser.storeId) // Caissier: seulement son magasin
+    : stores; // Admin/Manager: tous les magasins
 
   const handleStoreChange = (storeId) => {
     if (storeId !== currentStoreId) {
@@ -59,7 +66,7 @@ const StoreSelector = ({ modal = false }) => {
           <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px' }}>
             Sélection du magasin
           </div>
-          {stores.map(store => (
+          {availableStores.map(store => (
             <button
               key={store.id}
               onClick={() => handleStoreChange(store.id)}
@@ -211,10 +218,11 @@ const StoreSelector = ({ modal = false }) => {
               </div>
             </div>
 
-            {/* Vue consolidée */}
-            <button
-              onClick={() => handleViewModeChange('consolidated')}
-              style={{
+            {/* Vue consolidée - Seulement pour Admin/Manager */}
+            {!currentUser?.storeId && (
+              <button
+                onClick={() => handleViewModeChange('consolidated')}
+                style={{
                 width: '100%',
                 padding: '12px 16px',
                 border: 'none',
@@ -263,18 +271,21 @@ const StoreSelector = ({ modal = false }) => {
                 />
               )}
             </button>
+            )}
 
-            {/* Séparateur */}
-            <div
-              style={{
-                height: '1px',
-                background: isDark ? '#4a5568' : '#e2e8f0',
-                margin: '4px 0'
-              }}
-            />
+            {/* Séparateur - Seulement si vue consolidée affichée */}
+            {!currentUser?.storeId && (
+              <div
+                style={{
+                  height: '1px',
+                  background: isDark ? '#4a5568' : '#e2e8f0',
+                  margin: '4px 0'
+                }}
+              />
+            )}
 
             {/* Liste des magasins */}
-            {stores.map(store => (
+            {availableStores.map(store => (
               <button
                 key={store.id}
                 onClick={() => handleStoreChange(store.id)}

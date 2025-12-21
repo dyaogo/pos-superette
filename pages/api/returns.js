@@ -4,7 +4,13 @@ const prisma = new PrismaClient();
 export default async function handler(req, res) {
   if (req.method === 'GET') {
     try {
+      // ✅ FIX: Filtrer par storeId si fourni
+      const { storeId } = req.query;
+      const where = {};
+      if (storeId) where.storeId = storeId;
+
       const returns = await prisma.return.findMany({
+        where,
         include: {
           items: true
         },
@@ -23,12 +29,29 @@ export default async function handler(req, res) {
     }
   } else if (req.method === 'POST') {
     try {
-      const { saleId, reason, refundMethod, items } = req.body;
-      
+      const { storeId, saleId, reason, refundMethod, items } = req.body;
+
+      // ✅ FIX: Récupérer le storeId de la vente si non fourni
+      let finalStoreId = storeId;
+      if (!finalStoreId && saleId && saleId !== 'DIRECT_RETURN') {
+        const sale = await prisma.sale.findUnique({
+          where: { id: saleId },
+          select: { storeId: true }
+        });
+        finalStoreId = sale?.storeId;
+      }
+
+      // Si toujours pas de storeId, utiliser le premier magasin
+      if (!finalStoreId) {
+        const store = await prisma.store.findFirst();
+        finalStoreId = store?.id;
+      }
+
       const totalAmount = items.reduce((sum, item) => sum + item.total, 0);
-      
+
       const returnRecord = await prisma.return.create({
         data: {
+          storeId: finalStoreId, // ✅ FIX: Enregistrer le storeId
           saleId,
           reason,
           amount: totalAmount,

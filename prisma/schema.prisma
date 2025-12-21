@@ -87,6 +87,7 @@ model Credit {
 }
 model Return {
   id          String   @id @default(cuid())
+  storeId     String   // ✅ AJOUTÉ: Magasin où le retour a été effectué
   saleId      String
   reason      String
   amount      Float
