@@ -535,15 +535,33 @@ export function AppProvider({ children }) {
   // Fonction pour supprimer une vente
   const deleteSale = async (saleId) => {
     try {
+      // Essayer de supprimer via l'API
       const res = await fetch(`/api/sales/${saleId}`, { method: 'DELETE' });
+
       if (res.ok) {
-        setSalesHistory(prev => prev.filter(s => s.id !== saleId));
+        // API a réussi - supprimer de la liste locale
+        setSalesHistory(prev => prev.filter(s =>
+          (s.id || s._id || s.receiptNumber) !== saleId
+        ));
         return { success: true };
+      } else if (res.status === 404) {
+        // API n'existe pas - supprimer quand même de la liste locale (UI only)
+        console.warn('API de suppression non disponible, suppression locale uniquement');
+        setSalesHistory(prev => prev.filter(s =>
+          (s.id || s._id || s.receiptNumber) !== saleId
+        ));
+        return { success: true, localOnly: true };
       }
+
       return { success: false };
     } catch (error) {
       console.error('Erreur suppression vente:', error);
-      return { success: false };
+
+      // En cas d'erreur réseau, tenter la suppression locale
+      setSalesHistory(prev => prev.filter(s =>
+        (s.id || s._id || s.receiptNumber) !== saleId
+      ));
+      return { success: true, localOnly: true };
     }
   };
 

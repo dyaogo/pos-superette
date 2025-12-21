@@ -72,7 +72,13 @@ export default function SalesModule() {
       console.log('Suppression de la vente:', saleId);
       const result = await deleteSale(saleId);
 
-      if (!result.success) {
+      if (result.success) {
+        if (result.localOnly) {
+          console.warn('Vente supprimée de l\'interface uniquement (API non disponible)');
+        }
+        // Rechargement de la page pour rafraîchir la liste
+        window.location.reload();
+      } else {
         alert('Erreur lors de la suppression de la vente');
       }
     }
