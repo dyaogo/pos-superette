@@ -94,7 +94,7 @@ const useProductSearch = (products, searchQuery, selectedCategory, filters) => {
 
     if (filters.profitability !== 'all') {
       filtered = filtered.filter(p => {
-        const margin = ((p.price - p.costPrice) / p.price) * 100;
+        const margin = ((p.sellingPrice - p.costPrice) / p.sellingPrice) * 100;
         switch (filters.profitability) {
           case 'high': return margin >= 50;
           case 'medium': return margin >= 20 && margin < 50;
@@ -288,7 +288,7 @@ const EditModal = ({ product, onClose, onSave, appSettings }) => {
   const [formData, setFormData] = useState({
     name: product?.name || '',
     category: product?.category || '',
-    price: product?.price || '',
+    price: product?.sellingPrice || '',
     costPrice: product?.costPrice || '',
     minStock: product?.minStock || '',
     maxStock: product?.maxStock || '',
@@ -663,17 +663,12 @@ const InventoryModule = () => {
 
   // Analytics basés sur les vraies données
   const analytics = useMemo(() => {
-    const currentStoreStock = stockByStore[currentStoreId] || {};
-    
-    // Créer la liste des produits avec les stocks du magasin actuel
-    const productsWithStock = globalProducts.map(product => ({
-      ...product,
-      stock: currentStoreStock[product.id] || 0
-    }));
+    // Utiliser directement les produits du magasin actuel (déjà filtrés)
+    const productsWithStock = globalProducts.filter(p => p.storeId === currentStoreId);
 
     const totalProducts = productsWithStock.length;
     const totalValue = productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0);
-    const totalSalesValue = productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.price || 0)), 0);
+    const totalSalesValue = productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.sellingPrice || 0)), 0);
     const potentialProfit = totalSalesValue - totalValue;
     
     const alerts = {
@@ -725,7 +720,7 @@ const InventoryModule = () => {
         id: Date.now(),
         name: productData.name,
         category: productData.category || 'Divers',
-        price: price,
+        sellingPrice: price,
         costPrice: costPrice,
         minStock: parseInt(productData.minStock) || 5,
         maxStock: parseInt(productData.maxStock) || 100,
@@ -767,7 +762,7 @@ const InventoryModule = () => {
         ...editingProduct,
         name: productData.name,
         category: productData.category || 'Divers',
-        price: price,
+        sellingPrice: price,
         costPrice: costPrice,
         minStock: parseInt(productData.minStock) || 5,
         maxStock: parseInt(productData.maxStock) || 100,
@@ -1214,10 +1209,10 @@ if (success) {
          gap: '16px'
        }}>
          {filteredProducts.map(product => {
-         const currentStock = (stockByStore[currentStoreId] || {})[product.id] || 0;
+         const currentStock = product.stock || 0;
          const isLowStock = currentStock <= (product.minStock || 5);
          const isOutOfStock = currentStock === 0;
-         const margin = calculateMargin(product.price, product.costPrice);
+         const margin = calculateMargin(product.sellingPrice, product.costPrice);
 
          return (
            <Card key={product.id} style={{
@@ -1267,7 +1262,7 @@ if (success) {
                <div>
                  <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Prix de vente</span>
                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#059669' }}>
-                   {product.price?.toLocaleString()} {appSettings?.currency || 'FCFA'}
+                   {product.sellingPrice?.toLocaleString()} {appSettings?.currency || 'FCFA'}
                  </span>
                </div>
                <div>
@@ -1298,7 +1293,7 @@ if (success) {
                    setEditProduct({
                      name: product.name,
                      category: product.category,
-                     price: product.price,
+                     price: product.sellingPrice,
                      costPrice: product.costPrice,
                      minStock: product.minStock,
                      maxStock: product.maxStock,
