@@ -351,13 +351,24 @@ export default function POSPage() {
         if (paymentMethodSnapshot === "credit" && customerSnapshot) {
           const creditData = {
             customerId: customerSnapshot.id,
-            amount: total,
-            remainingAmount: total,
+            amount: Math.round(total),
+            originalAmount: Math.round(total),
+            remainingAmount: Math.round(total),
             description: `Vente ${saleData.receiptNumber}`,
-            dueDate: creditDueDate,
+            dueDate: creditDueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
             status: "pending",
           };
 
+          // Créer le crédit localement d'abord (optimistic update)
+          const localCredit = {
+            ...creditData,
+            id: `temp-credit-${Date.now()}`,
+            createdAt: new Date().toISOString(),
+            payments: [],
+          };
+          addCreditOptimistic(localCredit);
+
+          // Puis essayer de synchroniser avec l'API
           try {
             const creditResponse = await fetch("/api/credits", {
               method: "POST",
@@ -367,10 +378,13 @@ export default function POSPage() {
 
             if (creditResponse.ok) {
               const credit = await creditResponse.json();
-              addCreditOptimistic(credit); // Mise à jour optimiste
+              // Remplacer le crédit temporaire par celui de l'API si nécessaire
+              console.log("✅ Crédit enregistré en ligne:", credit);
+            } else {
+              console.log("💾 Crédit enregistré localement uniquement");
             }
           } catch (error) {
-            console.error("Erreur création crédit:", error);
+            console.log("💾 Crédit enregistré localement, sera synchronisé plus tard");
           }
         }
 
