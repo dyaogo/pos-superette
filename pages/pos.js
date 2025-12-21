@@ -357,10 +357,13 @@ export default function POSPage() {
             return date.toISOString().split('T')[0];
           };
 
+          // Arrondir le total pour éliminer les décimales
+          const roundedTotal = Math.round(total);
+
           const creditData = {
             customerId: customerSnapshot.id,
-            amount: total,
-            remainingAmount: total,
+            amount: roundedTotal,
+            remainingAmount: roundedTotal,
             description: `Vente ${saleData.receiptNumber}`,
             dueDate: creditDueDate || getDefaultDueDate(),
             status: "pending",
@@ -373,7 +376,7 @@ export default function POSPage() {
             id: tempCreditId,
             createdAt: new Date().toISOString(),
             payments: [],
-            originalAmount: total,
+            originalAmount: roundedTotal,
           };
           addCreditOptimistic(optimisticCredit);
 
@@ -387,10 +390,17 @@ export default function POSPage() {
             if (creditResponse.ok) {
               const credit = await creditResponse.json();
               // Remplacer le crédit temporaire par le crédit réel de l'API
+              // S'assurer que tous les champs nécessaires sont présents
+              const fullCredit = {
+                ...credit,
+                payments: credit.payments || [],
+                originalAmount: credit.originalAmount || credit.amount,
+                remainingAmount: credit.remainingAmount || credit.amount,
+              };
               setCredits(prev => prev.map(c =>
-                c.id === tempCreditId ? credit : c
+                c.id === tempCreditId ? fullCredit : c
               ));
-              console.log("✅ Crédit enregistré en ligne:", credit);
+              console.log("✅ Crédit enregistré en ligne:", fullCredit);
             } else {
               console.warn("⚠️ Erreur API crédit, crédit conservé localement");
             }
