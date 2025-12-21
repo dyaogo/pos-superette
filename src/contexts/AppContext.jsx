@@ -280,6 +280,11 @@ export function AppProvider({ children }) {
     s => !currentStore || s.storeId === currentStore.id
   );
 
+  // ✅ FIX: Filtrer les retours par magasin actif
+  const currentStoreReturns = returnsHistory.filter(
+    r => !currentStore || r.storeId === currentStore.id
+  );
+
   // Actions produits
   const addProduct = async (productData) => {
     try {
@@ -440,6 +445,7 @@ export function AppProvider({ children }) {
       // Enregistrer dans la DB via API
       try {
         const returnData = {
+          storeId: currentStore?.id, // ✅ FIX: Ajouter le storeId
           saleId: 'DIRECT_RETURN', // ID spécial pour les retours directs (sans vente)
           reason: reason || 'Retour de marchandise',
           refundMethod: 'stock', // Remis en stock
@@ -697,7 +703,7 @@ export function AppProvider({ children }) {
         customers,
         credits,
         employees,
-        returnsHistory,
+        returnsHistory: currentStoreReturns, // ✅ FIX: Filtrés par magasin
 
         // Données complètes (pour admin)
         allProducts: productCatalog,
