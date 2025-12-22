@@ -107,7 +107,10 @@ export function AuthProvider({ children }) {
         'manage_pos',
         'view_inventory',
         'view_sales',
-        'view_customers'
+        'view_customers',
+        'manage_customers',  // ✅ Ajouté pour accès module Clients
+        'manage_credits',    // ✅ Ajouté pour accès module Crédits
+        'view_returns'       // ✅ Ajouté pour accès module Retours
       ]
     };
 
