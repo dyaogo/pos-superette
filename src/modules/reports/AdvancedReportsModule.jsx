@@ -104,11 +104,31 @@ export default function AdvancedReportsModule() {
   const metrics = useMemo(() => {
     const totalRevenue = filteredData.sales.reduce((sum, s) => sum + (s.total || 0), 0);
     const totalExpenses = filteredData.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-    const profit = totalRevenue - totalExpenses;
-    const margin = totalRevenue > 0 ? (profit / totalRevenue) * 100 : 0;
 
-    return { totalRevenue, totalExpenses, profit, margin };
-  }, [filteredData]);
+    // ✅ Calculer la marge brute réelle basée sur les coûts des produits
+    let totalCost = 0;
+    filteredData.sales.forEach(sale => {
+      sale.items?.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        const costPrice = product?.costPrice || 0;
+        const quantity = item.quantity || 0;
+        totalCost += costPrice * quantity;
+      });
+    });
+
+    const grossMargin = totalRevenue - totalCost;
+    const grossMarginRate = totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0;
+    const profit = totalRevenue - totalExpenses;
+
+    return {
+      totalRevenue,
+      totalExpenses,
+      profit,
+      grossMargin,
+      grossMarginRate,
+      totalCost
+    };
+  }, [filteredData, products]);
 
   // Préparer données pour graphique des ventes par jour
   const salesByDay = useMemo(() => {
@@ -208,9 +228,11 @@ export default function AdvancedReportsModule() {
       [''],
       ['Métriques Principales', ''],
       ['Chiffre d\'affaires', Math.round(metrics.totalRevenue).toLocaleString('fr-FR') + ' FCFA'],
+      ['Coût des marchandises vendues', Math.round(metrics.totalCost).toLocaleString('fr-FR') + ' FCFA'],
+      ['Marge Brute', Math.round(metrics.grossMargin).toLocaleString('fr-FR') + ' FCFA'],
+      ['Taux de Marge Brute', metrics.grossMarginRate.toFixed(1) + '%'],
       ['Dépenses', Math.round(metrics.totalExpenses).toLocaleString('fr-FR') + ' FCFA'],
-      ['Bénéfice', Math.round(metrics.profit).toLocaleString('fr-FR') + ' FCFA'],
-      ['Marge', metrics.margin.toFixed(1) + '%'],
+      ['Bénéfice Net', Math.round(metrics.profit).toLocaleString('fr-FR') + ' FCFA'],
     ];
     const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, 'Résumé');
@@ -251,16 +273,17 @@ export default function AdvancedReportsModule() {
     doc.text('Métriques Principales', 14, 50);
     doc.setFontSize(10);
     doc.text(`Chiffre d'affaires: ${Math.round(metrics.totalRevenue).toLocaleString('fr-FR')} FCFA`, 14, 58);
-    doc.text(`Dépenses: ${Math.round(metrics.totalExpenses).toLocaleString('fr-FR')} FCFA`, 14, 64);
-    doc.text(`Bénéfice: ${Math.round(metrics.profit).toLocaleString('fr-FR')} FCFA`, 14, 70);
-    doc.text(`Marge: ${metrics.margin.toFixed(1)}%`, 14, 76);
+    doc.text(`Coût marchandises vendues: ${Math.round(metrics.totalCost).toLocaleString('fr-FR')} FCFA`, 14, 64);
+    doc.text(`Marge Brute: ${Math.round(metrics.grossMargin).toLocaleString('fr-FR')} FCFA (${metrics.grossMarginRate.toFixed(1)}%)`, 14, 70);
+    doc.text(`Dépenses: ${Math.round(metrics.totalExpenses).toLocaleString('fr-FR')} FCFA`, 14, 76);
+    doc.text(`Bénéfice Net: ${Math.round(metrics.profit).toLocaleString('fr-FR')} FCFA`, 14, 82);
 
     // Top Produits Table
     doc.setFontSize(14);
-    doc.text('Top 5 Produits', 14, 90);
+    doc.text('Top 5 Produits', 14, 96);
 
     autoTable(doc, {
-      startY: 95,
+      startY: 101,
       head: [['Produit', 'Quantité', 'CA (FCFA)']],
       body: topProducts.map(p => [p.name, p.quantity, Math.round(p.revenue).toLocaleString('fr-FR')]),
     });
@@ -408,8 +431,11 @@ export default function AdvancedReportsModule() {
               <Award size={24} color="#8b5cf6" />
             </div>
             <div>
-              <div className="text-sm text-muted">Marge Bénéficiaire</div>
-              <div className="text-2xl font-bold">{metrics.margin.toFixed(1)}%</div>
+              <div className="text-sm text-muted">Marge Brute</div>
+              <div className="text-2xl font-bold" style={{ color: 'var(--color-success)' }}>
+                {formatCFA(metrics.grossMargin)}
+              </div>
+              <div className="text-xs text-muted mt-1">{metrics.grossMarginRate.toFixed(1)}% du CA</div>
             </div>
           </div>
         </div>
