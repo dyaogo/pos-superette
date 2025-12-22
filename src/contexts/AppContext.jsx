@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useOnline } from './OnlineContext';
+import { useAuth } from './AuthContext';
 import { offlineDB } from '../utils/offlineDB';
 
 const AppContext = createContext();
 
 export function AppProvider({ children }) {
   const { isOnline, cacheData } = useOnline();
+  const { currentUser } = useAuth();
 
   const [stores, setStores] = useState([]);
   const [currentStore, setCurrentStore] = useState(null);
@@ -32,6 +34,25 @@ export function AppProvider({ children }) {
       setInitialized(true);
     }
   }, [initialized]);
+
+  // ✅ FIX: Forcer le bon magasin pour les caissiers
+  useEffect(() => {
+    if (!currentUser || !stores.length) return;
+
+    // Si l'utilisateur est un caissier (a un storeId assigné)
+    if (currentUser.storeId) {
+      const assignedStore = stores.find(s => s.id === currentUser.storeId);
+
+      // Si le magasin assigné existe et n'est pas déjà sélectionné
+      if (assignedStore && currentStore?.id !== assignedStore.id) {
+        console.log('🔒 Forçage du magasin assigné pour le caissier:', assignedStore.name);
+        setCurrentStore(assignedStore);
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('currentStoreId', assignedStore.id);
+        }
+      }
+    }
+  }, [currentUser, stores, currentStore]);
 
   const initializeApp = async () => {
     setLoading(true);
@@ -180,21 +201,27 @@ export function AppProvider({ children }) {
     }
   };
 
-  // ✅ Changer de magasin - OFFLINE COMPATIBLE
+  // ✅ Changer de magasin - OFFLINE COMPATIBLE + PERMISSIONS
   const changeStore = async (store) => {
     if (currentStore?.id === store.id) return;
-    
+
+    // ✅ FIX: Vérifier les permissions avant de changer de magasin
+    if (currentUser?.storeId && currentUser.storeId !== store.id) {
+      console.warn('🚫 Permission refusée: Caissier ne peut pas changer de magasin');
+      return;
+    }
+
     setCurrentStore(store);
     if (typeof window !== 'undefined') {
       localStorage.setItem('currentStoreId', store.id);
     }
-    
+
     // Ne pas recharger si offline - les données filtrées se mettront à jour automatiquement
     if (!isOnline) {
       console.log('📍 Changement de magasin en mode offline - utilisation du cache');
       return;
     }
-    
+
     await loadData();
   };
 
