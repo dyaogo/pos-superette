@@ -1,28 +1,60 @@
-// 📁 REMPLACER COMPLÈTEMENT : src/modules/dashboard/DashboardModule.jsx
+// 📁 src/modules/dashboard/DashboardModule.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useApp } from '../../contexts/AppContext';
 import {
-  ShoppingCart, Package, Users, TrendingUp, TrendingDown, 
-  ArrowUp, ArrowDown, DollarSign, AlertTriangle, 
+  ShoppingCart, Package, Users, TrendingUp, TrendingDown,
+  ArrowUp, ArrowDown, DollarSign, AlertTriangle,
   Calendar, Clock, Zap, Star, Target, Activity,
   PlusCircle, Search, Filter, Download, RefreshCw, Award
 } from 'lucide-react';
 
 const DashboardModule = () => {
-  const {
-    globalProducts = [],
-    salesHistory = [],
-    customers = [],
-    credits = [],
-    appSettings = {},
-    currentStoreId,
-    stats = {}
-  } = useApp();
+  const { appSettings = {} } = useApp();
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('today');
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [productCatalog, setProductCatalog] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const isDark = appSettings?.darkMode;
+
+  // ✅ Charger les données depuis l'API au montage (comme dashboard.js)
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      setLoading(true);
+      try {
+        const [salesRes, productsRes, customersRes] = await Promise.all([
+          fetch('/api/sales?limit=1000'),
+          fetch('/api/products'),
+          fetch('/api/customers'),
+        ]);
+
+        const salesData = await salesRes.json();
+        const productsData = await productsRes.json();
+        const customersData = await customersRes.json();
+
+        setSalesHistory(
+          Array.isArray(salesData?.data) ? salesData.data :
+          Array.isArray(salesData) ? salesData : []
+        );
+        setProductCatalog(
+          Array.isArray(productsData?.data) ? productsData.data :
+          Array.isArray(productsData) ? productsData : []
+        );
+        setCustomers(
+          Array.isArray(customersData?.data) ? customersData.data :
+          Array.isArray(customersData) ? customersData : []
+        );
+      } catch (error) {
+        console.error('Erreur chargement dashboard:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
 
   // Fonction utilitaire pour formater les nombres
   const formatNumber = (number) => {
@@ -73,7 +105,7 @@ const DashboardModule = () => {
     }
 
     const periodSales = (salesHistory || []).filter(sale => {
-      const saleDate = new Date(sale.date);
+      const saleDate = new Date(sale.createdAt || sale.date);
       return saleDate >= startDate && saleDate <= endDate;
     });
 
@@ -124,7 +156,7 @@ const DashboardModule = () => {
       }
 
       const previousSales = (salesHistory || []).filter(sale => {
-        const saleDate = new Date(sale.date);
+        const saleDate = new Date(sale.createdAt || sale.date);
         return saleDate >= previousStart && saleDate <= previousEnd;
       });
 
@@ -162,8 +194,8 @@ const DashboardModule = () => {
         const todayData = [];
         for (let hour = 0; hour < 24; hour++) {
           const hourSales = salesHistory.filter(sale => {
-            const saleDate = new Date(sale.date);
-            return saleDate.toDateString() === now.toDateString() && 
+            const saleDate = new Date(sale.createdAt || sale.date);
+            return saleDate.toDateString() === now.toDateString() &&
                    saleDate.getHours() === hour;
           });
           
@@ -190,7 +222,7 @@ const DashboardModule = () => {
           day.setDate(weekStart.getDate() + i);
           
           const daySales = salesHistory.filter(sale => {
-            const saleDate = new Date(sale.date);
+            const saleDate = new Date(sale.createdAt || sale.date);
             return saleDate.toDateString() === day.toDateString();
           });
           
@@ -217,7 +249,7 @@ const DashboardModule = () => {
           weekEnd.setDate(weekStart.getDate() + 6);
           
           const weekSales = salesHistory.filter(sale => {
-            const saleDate = new Date(sale.date);
+            const saleDate = new Date(sale.createdAt || sale.date);
             return saleDate >= weekStart && saleDate <= weekEnd;
           });
           
@@ -239,8 +271,8 @@ const DashboardModule = () => {
         
         for (let month = 0; month < 12; month++) {
           const monthSales = salesHistory.filter(sale => {
-            const saleDate = new Date(sale.date);
-            return saleDate.getFullYear() === now.getFullYear() && 
+            const saleDate = new Date(sale.createdAt || sale.date);
+            return saleDate.getFullYear() === now.getFullYear() &&
                    saleDate.getMonth() === month;
           });
           
@@ -513,29 +545,75 @@ const DashboardModule = () => {
   // Top produits vendus
   const topProducts = useMemo(() => {
     const productSales = {};
-    
-    salesHistory.forEach(sale => {
-      sale.items?.forEach(item => {
+
+    salesHistory.forEach((sale) => {
+      (sale.items || []).forEach((item) => {
         const productId = item.productId || item.id;
+        const unitPrice = item.unitPrice || item.price || item.total / (item.quantity || 1);
+
         if (!productSales[productId]) {
           productSales[productId] = {
-            name: item.name,
+            id: productId,
             sales: 0,
-            revenue: 0
+            revenue: 0,
           };
         }
         productSales[productId].sales += item.quantity || 0;
-        productSales[productId].revenue += (item.price || 0) * (item.quantity || 0);
+        productSales[productId].revenue += unitPrice * (item.quantity || 0);
       });
     });
 
+    // Enrichir avec les informations du catalogue
     return Object.values(productSales)
+      .map((productSale) => {
+        const catalogProduct = productCatalog.find(p => p.id === productSale.id);
+        return {
+          ...productSale,
+          name: catalogProduct ? catalogProduct.name : `Produit #${productSale.id?.slice(-6) || 'inconnu'}`,
+        };
+      })
       .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 5);
+  }, [salesHistory, productCatalog]);
+
+  // Ventes récentes
+  const recentSales = useMemo(() => {
+    return [...salesHistory]
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date))
       .slice(0, 5);
   }, [salesHistory]);
 
-  // Ventes récentes
-  const recentSales = salesHistory.slice(0, 5);
+  // Produits en stock faible
+  const lowStockProducts = useMemo(() => {
+    return productCatalog.filter((p) => p.stock <= (p.minStock || 5));
+  }, [productCatalog]);
+
+  // ✅ Afficher un loader pendant le chargement
+  if (loading) {
+    return (
+      <div style={{
+        padding: '24px',
+        background: isDark ? '#1a202c' : '#f7fafc',
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexDirection: 'column',
+        gap: '20px'
+      }}>
+        <RefreshCw size={48} style={{ animation: 'spin 1s linear infinite', color: '#3b82f6' }} />
+        <p style={{ color: isDark ? '#a0aec0' : '#64748b', fontSize: '16px' }}>Chargement des données...</p>
+        <style>
+          {`
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+          `}
+        </style>
+      </div>
+    );
+  }
 
   return (
     <div style={{
@@ -778,7 +856,13 @@ const DashboardModule = () => {
                       fontSize: '12px',
                       color: isDark ? '#a0aec0' : '#64748b'
                     }}>
-                      {new Date(sale.date).toLocaleString('fr-FR')}
+                      {new Date(sale.createdAt || sale.date).toLocaleString('fr-FR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
                     </div>
                   </div>
                   
@@ -982,7 +1066,7 @@ const DashboardModule = () => {
       </div>
 
       {/* Alertes si stock faible */}
-      {globalProducts.filter(p => p.stock <= (p.minStock || 5)).length > 0 && (
+      {lowStockProducts.length > 0 && (
         <div style={{
           marginTop: '24px',
           background: 'linear-gradient(135deg, #fef3c7, #fed7af)',
@@ -1008,12 +1092,101 @@ const DashboardModule = () => {
               color: '#d97706',
               margin: 0
             }}>
-              {globalProducts.filter(p => p.stock <= (p.minStock || 5)).length} produit(s) 
+              {lowStockProducts.length} produit(s)
               nécessitent un réapprovisionnement
             </p>
           </div>
         </div>
       )}
+
+      {/* ✅ Vue d'ensemble (comme dashboard.js) */}
+      <div style={{
+        marginTop: '32px',
+        background: isDark ? '#2d3748' : 'white',
+        padding: '24px',
+        borderRadius: '16px',
+        border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+        boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
+      }}>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '700',
+          color: isDark ? '#f7fafc' : '#1a202c',
+          margin: '0 0 20px 0'
+        }}>
+          Vue d'ensemble
+        </h3>
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: '20px'
+        }}>
+          <div>
+            <div style={{
+              fontSize: '14px',
+              color: isDark ? '#a0aec0' : '#64748b',
+              marginBottom: '8px'
+            }}>
+              Total Produits
+            </div>
+            <div style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: isDark ? '#f7fafc' : '#1e293b'
+            }}>
+              {productCatalog.length}
+            </div>
+          </div>
+          <div>
+            <div style={{
+              fontSize: '14px',
+              color: isDark ? '#a0aec0' : '#64748b',
+              marginBottom: '8px'
+            }}>
+              Total Clients
+            </div>
+            <div style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: isDark ? '#f7fafc' : '#1e293b'
+            }}>
+              {customers.length}
+            </div>
+          </div>
+          <div>
+            <div style={{
+              fontSize: '14px',
+              color: isDark ? '#a0aec0' : '#64748b',
+              marginBottom: '8px'
+            }}>
+              Toutes Ventes
+            </div>
+            <div style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: isDark ? '#f7fafc' : '#1e293b'
+            }}>
+              {salesHistory.length}
+            </div>
+          </div>
+          <div>
+            <div style={{
+              fontSize: '14px',
+              color: isDark ? '#a0aec0' : '#64748b',
+              marginBottom: '8px'
+            }}>
+              CA Total
+            </div>
+            <div style={{
+              fontSize: '24px',
+              fontWeight: 'bold',
+              color: '#10b981'
+            }}>
+              {formatNumber(salesHistory.reduce((sum, s) => sum + (s.total || 0), 0))} FCFA
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
