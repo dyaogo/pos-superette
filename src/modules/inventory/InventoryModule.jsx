@@ -668,10 +668,11 @@ const InventoryModule = () => {
     const productsWithStock = productCatalog;
 
     const totalProducts = productsWithStock.length;
-    const totalValue = productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0);
-    const totalSalesValue = productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.sellingPrice || 0)), 0);
-    const potentialProfit = totalSalesValue - totalValue;
-    
+    // ✅ Arrondir les montants pour éviter les décimales
+    const totalValue = Math.round(productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.costPrice || 0)), 0));
+    const totalSalesValue = Math.round(productsWithStock.reduce((sum, p) => sum + ((p.stock || 0) * (p.sellingPrice || 0)), 0));
+    const potentialProfit = Math.round(totalSalesValue - totalValue);
+
     const alerts = {
       outOfStock: productsWithStock.filter(p => (p.stock || 0) === 0),
       lowStock: productsWithStock.filter(p => {
@@ -691,7 +692,7 @@ const InventoryModule = () => {
       totalValue,
       totalSalesValue,
       potentialProfit,
-      averageStockValue: totalProducts > 0 ? totalValue / totalProducts : 0
+      averageStockValue: Math.round(totalProducts > 0 ? totalValue / totalProducts : 0)
     };
 
     return { alerts, totals, productsWithStock };
