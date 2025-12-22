@@ -3,21 +3,13 @@ import { useRouter } from "next/router";
 import { useAuth } from "../src/contexts/AuthContext";
 import ModuleErrorBoundary from "../src/components/ErrorBoundary/ModuleErrorBoundary";
 import dynamic from "next/dynamic";
-import { Package, ClipboardList, PackagePlus, ArrowRightLeft } from "lucide-react";
+import { Package, PackagePlus, ArrowRightLeft } from "lucide-react";
 
 // Lazy load des modules de stock
 const InventoryModule = dynamic(() => import("../src/modules/inventory/InventoryModule"), {
   loading: () => <LoadingSpinner />,
   ssr: false,
 });
-
-const PhysicalInventoryModule = dynamic(
-  () => import("../src/modules/inventory/PhysicalInventoryModule"),
-  {
-    loading: () => <LoadingSpinner />,
-    ssr: false,
-  }
-);
 
 const ReceptionModule = dynamic(() => import("../src/modules/reception/ReceptionModule"), {
   loading: () => <LoadingSpinner />,
@@ -74,12 +66,6 @@ export default function StocksPage() {
       id: "inventory",
       label: "Inventaire",
       icon: Package,
-      permission: "manage_inventory",
-    },
-    {
-      id: "physical",
-      label: "Inventaire Physique",
-      icon: ClipboardList,
       permission: "manage_inventory",
     },
     {
@@ -171,7 +157,6 @@ export default function StocksPage() {
         onReset={() => router.reload()}
       >
         {activeTab === "inventory" && <InventoryModule />}
-        {activeTab === "physical" && <PhysicalInventoryModule />}
         {activeTab === "reception" && <ReceptionModule />}
         {activeTab === "transfers" && <TransferModule />}
       </ModuleErrorBoundary>
