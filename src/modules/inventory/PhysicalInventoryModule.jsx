@@ -11,13 +11,12 @@ import { useApp } from '../../contexts/AppContext';
 import { addInventoryRecord } from '../../services/inventory.service';
 
 const PhysicalInventoryModule = () => {
-  const { 
-    globalProducts = [], 
-    stockByStore = {}, 
-    currentStoreId, 
-    setStockForStore, 
-    appSettings = {},
-    employees = []
+  const {
+    globalProducts = [],
+    stockByStore = {},
+    currentStoreId,
+    setStockForStore,
+    appSettings = {}
   } = useApp();
 
   // ✅ TOUS LES HOOKS DÉCLARÉS AU DÉBUT
@@ -40,6 +39,7 @@ const PhysicalInventoryModule = () => {
   const [currentProductIndex, setCurrentProductIndex] = useState(0);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(true);
   const [compactView, setCompactView] = useState(false);
+  const [employees, setEmployees] = useState([]); // ✅ Charger les employés localement
 
   const [sessionData, setSessionData] = useState({
     id: null,
@@ -59,6 +59,24 @@ const PhysicalInventoryModule = () => {
   });
 
   const isDark = appSettings?.darkMode || false;
+
+  // ✅ EFFET POUR CHARGER LES EMPLOYÉS
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (response.ok) {
+          const data = await response.json();
+          // L'API retourne directement un tableau d'utilisateurs
+          const users = Array.isArray(data) ? data : [];
+          setEmployees(users);
+        }
+      } catch (error) {
+        console.error('Erreur chargement employés:', error);
+      }
+    };
+    loadEmployees();
+  }, []);
 
   // ✅ EFFET POUR CHARGER LES SESSIONS D'INVENTAIRE
   useEffect(() => {
@@ -234,7 +252,7 @@ const PhysicalInventoryModule = () => {
       countedProducts,
       progressPercent: Math.round(progressPercent),
       discrepancies: discrepancies.length,
-      totalDiscrepancyValue,
+      totalDiscrepancyValue: Math.round(totalDiscrepancyValue), // ✅ Arrondir pour éviter les décimales
       positiveAdjustments,
       negativeAdjustments,
       accuracy: discrepancies.length === 0 && countedProducts > 0 ? 100 : 
@@ -381,7 +399,7 @@ const PhysicalInventoryModule = () => {
           currentStock,
           countedStock,
           difference,
-          valueImpact: difference * (product.costPrice || 0),
+          valueImpact: Math.round(difference * (product.costPrice || 0)), // ✅ Arrondir l'impact
           note: sessionData.productNotes[product.id] || ''
         };
       });
@@ -766,7 +784,7 @@ const PhysicalInventoryModule = () => {
                  >
                    <option value="">Sélectionner un employé</option>
                    {employees.map(emp => (
-                     <option key={emp.id} value={emp.name}>{emp.name}</option>
+                     <option key={emp.id} value={emp.fullName}>{emp.fullName}</option>
                    ))}
                    <option value="Responsable Stock">Responsable Stock</option>
                    <option value="Manager">Manager</option>
