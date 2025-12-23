@@ -144,13 +144,10 @@ export default function ReceptionModule() {
     if (!confirmation) return;
 
     try {
-      let successCount = 0;
-      let errorCount = 0;
-
-      // Mettre à jour le stock de chaque produit
-      for (const item of receptionItems) {
+      // ✅ OPTIMISATION: Traiter tous les produits EN PARALLÈLE au lieu de séquentiellement
+      const updatePromises = receptionItems.map(async (item) => {
         const product = productCatalog.find(p => p.id === item.productId);
-        if (!product) continue;
+        if (!product) return { success: false, item };
 
         const updatedProduct = {
           stock: product.stock + item.quantity,
@@ -158,13 +155,14 @@ export default function ReceptionModule() {
         };
 
         const result = await updateProduct(item.productId, updatedProduct);
-        
-        if (result.success) {
-          successCount++;
-        } else {
-          errorCount++;
-        }
-      }
+        return { success: result.success, item };
+      });
+
+      // Attendre que toutes les mises à jour se terminent
+      const results = await Promise.all(updatePromises);
+
+      const successCount = results.filter(r => r.success).length;
+      const errorCount = results.filter(r => !r.success).length;
 
       // Enregistrer dans l'historique
       const reception = {
@@ -180,7 +178,7 @@ export default function ReceptionModule() {
       };
 
       setReceptionHistory(prev => [reception, ...prev]);
-      
+
       // Sauvegarder dans localStorage
       const storedHistory = JSON.parse(localStorage.getItem('receptionHistory') || '[]');
       localStorage.setItem('receptionHistory', JSON.stringify([reception, ...storedHistory]));
