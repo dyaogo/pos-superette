@@ -819,7 +819,7 @@ if (success) {
 
   // ==================== EXPORT & WHATSAPP ====================
 
-  const exportToExcel = useCallback(() => {
+  const exportToPDF = useCallback(async () => {
     try {
       const productsToExport = [
         ...analytics.alerts.outOfStock,
@@ -831,45 +831,146 @@ if (success) {
         return;
       }
 
-      // Créer le contenu CSV
-      const headers = ['Nom', 'Catégorie', 'Stock Actuel', 'Stock Min', 'À Commander', 'Prix Achat', 'Fournisseur'];
-      const rows = productsToExport.map(p => {
+      // Importer jsPDF et autotable dynamiquement
+      const { jsPDF } = await import('jspdf');
+      await import('jspdf-autotable');
+
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.width;
+      let yPosition = 20;
+
+      // En-tête du document
+      doc.setFontSize(20);
+      doc.setTextColor(59, 130, 246);
+      doc.text('RÉAPPROVISIONNEMENT', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 10;
+
+      doc.setFontSize(16);
+      doc.setTextColor(0, 0, 0);
+      doc.text(currentStore?.name || 'Magasin', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 8;
+
+      doc.setFontSize(11);
+      doc.setTextColor(100, 100, 100);
+      const dateStr = new Date().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(`Généré le ${dateStr}`, pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 5;
+
+      // Ligne de séparation
+      doc.setDrawColor(59, 130, 246);
+      doc.setLineWidth(0.5);
+      doc.line(15, yPosition, pageWidth - 15, yPosition);
+      yPosition += 10;
+
+      // Résumé
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      doc.text(`Total produits à commander: ${productsToExport.length}`, 15, yPosition);
+      yPosition += 6;
+      doc.setTextColor(220, 38, 38);
+      doc.text(`Ruptures: ${analytics.alerts.outOfStock.length}`, 15, yPosition);
+      yPosition += 6;
+      doc.setTextColor(217, 119, 6);
+      doc.text(`Stock faible: ${analytics.alerts.lowStock.length}`, 15, yPosition);
+      yPosition += 12;
+
+      // Préparer les données pour le tableau
+      const tableData = [];
+
+      // Ajouter les ruptures en premier
+      analytics.alerts.outOfStock.forEach(p => {
+        const toOrder = (p.minStock || 5) * 2;
+        tableData.push([
+          p.name || '',
+          p.category || '-',
+          '0',
+          (p.minStock || 5).toString(),
+          toOrder.toString(),
+          (p.costPrice || 0).toLocaleString(),
+          p.supplier || '-',
+          'Rupture'
+        ]);
+      });
+
+      // Ajouter les produits en stock faible
+      analytics.alerts.lowStock.forEach(p => {
         const stock = p.stock || 0;
         const minStock = p.minStock || 5;
         const toOrder = Math.max(minStock * 2 - stock, minStock);
-
-        return [
+        tableData.push([
           p.name || '',
-          p.category || '',
-          stock,
-          minStock,
-          toOrder,
-          p.costPrice || 0,
-          p.supplier || ''
-        ].map(val => `"${val}"`).join(',');
+          p.category || '-',
+          stock.toString(),
+          minStock.toString(),
+          toOrder.toString(),
+          (p.costPrice || 0).toLocaleString(),
+          p.supplier || '-',
+          'Stock faible'
+        ]);
       });
 
-      const csv = [headers.join(','), ...rows].join('\n');
+      // Créer le tableau avec autotable
+      doc.autoTable({
+        startY: yPosition,
+        head: [['Produit', 'Catégorie', 'Stock', 'Min', 'À Commander', 'Prix Achat', 'Fournisseur', 'Statut']],
+        body: tableData,
+        styles: {
+          fontSize: 8,
+          cellPadding: 3,
+        },
+        headStyles: {
+          fillColor: [59, 130, 246],
+          textColor: 255,
+          fontStyle: 'bold',
+          halign: 'center'
+        },
+        columnStyles: {
+          0: { cellWidth: 35 },  // Produit
+          1: { cellWidth: 25 },  // Catégorie
+          2: { cellWidth: 15, halign: 'center' },  // Stock
+          3: { cellWidth: 15, halign: 'center' },  // Min
+          4: { cellWidth: 20, halign: 'center', fontStyle: 'bold' },  // À Commander
+          5: { cellWidth: 20, halign: 'right' },   // Prix
+          6: { cellWidth: 25 },  // Fournisseur
+          7: { cellWidth: 20, halign: 'center' }   // Statut
+        },
+        didParseCell: function(data) {
+          // Colorer les lignes selon le statut
+          if (data.row.index >= 0 && data.column.index === 7) {
+            if (data.cell.raw === 'Rupture') {
+              data.cell.styles.textColor = [220, 38, 38];
+              data.cell.styles.fontStyle = 'bold';
+            } else if (data.cell.raw === 'Stock faible') {
+              data.cell.styles.textColor = [217, 119, 6];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        },
+        margin: { left: 15, right: 15 }
+      });
 
-      // Télécharger le fichier
-      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
-      const url = URL.createObjectURL(blob);
+      // Pied de page
+      const pageHeight = doc.internal.pageSize.height;
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text('Généré par POS Superette', pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+      // Télécharger le PDF
       const date = new Date().toISOString().split('T')[0];
+      doc.save(`reapprovisionnement_${date}.pdf`);
 
-      link.setAttribute('href', url);
-      link.setAttribute('download', `reapprovisionnement_${date}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      Toast.success(`${productsToExport.length} produits exportés avec succès`);
+      Toast.success(`PDF généré: ${productsToExport.length} produits`);
     } catch (error) {
-      console.error('Erreur export:', error);
-      Toast.error('Erreur lors de l\'export');
+      console.error('Erreur export PDF:', error);
+      Toast.error('Erreur lors de la génération du PDF');
     }
-  }, [analytics]);
+  }, [analytics, currentStore]);
 
   const shareWhatsApp = useCallback(() => {
     try {
@@ -1183,14 +1284,14 @@ if (success) {
                 gap: '8px'
               }}>
                 <button
-                  onClick={exportToExcel}
+                  onClick={exportToPDF}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                     padding: '10px 16px',
-                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    background: 'linear-gradient(135deg, #ef4444, #dc2626)',
                     color: 'white',
                     border: 'none',
                     borderRadius: '8px',
@@ -1202,10 +1303,10 @@ if (success) {
                   }}
                   onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
                   onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                  title="Exporter la liste au format CSV/Excel"
+                  title="Exporter la liste au format PDF"
                 >
                   <Download style={{ width: '16px', height: '16px' }} />
-                  Export Excel
+                  Export PDF
                 </button>
 
                 <button
