@@ -30,29 +30,39 @@ export default function Layout({ children }) {
   const { currentUser, logout, hasPermission } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
+  const [isTablet, setIsTablet] = useState(false);
 
-  // Detect mobile screen size
+  // Detect screen size (mobile/tablet/desktop)
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 768;
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      const mobile = width < 768;
+      const tablet = width >= 768 && width < 1024;
+
       setIsMobile(mobile);
+      setIsTablet(tablet);
+
       // Auto-close sidebar on mobile
       if (mobile) {
         setSidebarOpen(false);
       }
+      // Auto-collapse sidebar on tablet for more content space
+      else if (tablet) {
+        setSidebarOpen(false);
+      }
     };
 
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
 
-  // Close mobile sidebar when route changes
+  // Close sidebar when route changes on mobile/tablet
   useEffect(() => {
-    if (isMobile) {
+    if (isMobile || isTablet) {
       setSidebarOpen(false);
     }
-  }, [router.pathname, isMobile]);
+  }, [router.pathname, isMobile, isTablet]);
 
   // Pages publiques (sans authentification requise)
   const publicPages = ["/", "/login", "/unauthorized"];
@@ -153,7 +163,11 @@ export default function Layout({ children }) {
       {/* Sidebar */}
       <aside
         style={{
-          width: isMobile ? "250px" : (sidebarOpen ? "250px" : "70px"),
+          width: isMobile
+            ? "250px"
+            : isTablet
+              ? (sidebarOpen ? "200px" : "60px")
+              : (sidebarOpen ? "250px" : "70px"),
           background: "var(--color-surface)",
           borderRight: "1px solid var(--color-border)",
           transition: isMobile ? "transform 0.3s" : "width 0.3s",
@@ -178,11 +192,11 @@ export default function Layout({ children }) {
           }}
         >
           {(isMobile || sidebarOpen) && (
-            <h2 style={{ margin: 0, color: "var(--color-primary)", fontSize: isMobile ? "18px" : "24px" }}>
+            <h2 style={{ margin: 0, color: "var(--color-primary)", fontSize: isMobile ? "18px" : isTablet ? "20px" : "24px" }}>
               POS Superette
             </h2>
           )}
-          {!isMobile && (
+          {!isMobile && !isTablet && (
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{
@@ -398,7 +412,11 @@ export default function Layout({ children }) {
       {/* Main content */}
       <main
         style={{
-          marginLeft: isMobile ? "0" : (sidebarOpen ? "250px" : "70px"),
+          marginLeft: isMobile
+            ? "0"
+            : isTablet
+              ? (sidebarOpen ? "200px" : "60px")
+              : (sidebarOpen ? "250px" : "70px"),
           flex: 1,
           transition: isMobile ? "none" : "margin-left 0.3s",
           minHeight: "100vh",
@@ -420,21 +438,25 @@ export default function Layout({ children }) {
             gap: "10px",
           }}
         >
-          {isMobile && (
+          {(isMobile || isTablet) && (
             <button
-              onClick={() => setSidebarOpen(true)}
+              onClick={() => setSidebarOpen(!sidebarOpen)}
               style={{
                 background: "none",
                 border: "none",
                 cursor: "pointer",
-                padding: "8px",
+                padding: isTablet ? "12px" : "8px",
                 color: "var(--color-text-primary)",
                 display: "flex",
                 alignItems: "center",
+                minWidth: "44px",
+                minHeight: "44px",
+                justifyContent: "center",
+                touchAction: "manipulation",
               }}
-              aria-label="Ouvrir le menu"
+              aria-label={sidebarOpen ? "Fermer le menu" : "Ouvrir le menu"}
             >
-              <Menu size={24} />
+              {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           )}
           <StoreSelector />
