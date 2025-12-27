@@ -7,14 +7,10 @@ export default function OnlineStatusBadge() {
   return (
     <div
       style={{
-        position: "fixed",
-        top: "80px",
-        right: "20px",
-        zIndex: 1000,
         display: "flex",
-        flexDirection: "column",
-        gap: "10px",
-        alignItems: "flex-end",
+        alignItems: "center",
+        gap: "8px",
+        flexWrap: "wrap",
       }}
     >
       {/* Badge de statut */}
@@ -22,27 +18,26 @@ export default function OnlineStatusBadge() {
         style={{
           display: "flex",
           alignItems: "center",
-          gap: "8px",
-          padding: "8px 16px",
-          borderRadius: "20px",
+          gap: "6px",
+          padding: "6px 12px",
+          borderRadius: "16px",
           background: isOnline
             ? "linear-gradient(135deg, #10b981, #059669)"
             : "linear-gradient(135deg, #ef4444, #dc2626)",
           color: "white",
-          fontSize: "14px",
+          fontSize: "12px",
           fontWeight: "600",
-          boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-          animation: "slideIn 0.3s ease-out",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
         }}
       >
         {isOnline ? (
           <>
-            <Wifi size={18} />
+            <Wifi size={14} />
             En ligne
           </>
         ) : (
           <>
-            <WifiOff size={18} />
+            <WifiOff size={14} />
             Hors ligne
           </>
         )}
@@ -54,22 +49,22 @@ export default function OnlineStatusBadge() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            padding: "8px 16px",
-            borderRadius: "20px",
+            gap: "6px",
+            padding: "6px 12px",
+            borderRadius: "16px",
             background: "linear-gradient(135deg, #3b82f6, #2563eb)",
             color: "white",
-            fontSize: "13px",
+            fontSize: "11px",
             fontWeight: "600",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
             animation: "pulse 1.5s ease-in-out infinite",
           }}
         >
           <RefreshCw
-            size={16}
+            size={14}
             style={{ animation: "spin 1s linear infinite" }}
           />
-          Synchronisation...
+          Sync...
         </div>
       )}
 
@@ -79,20 +74,20 @@ export default function OnlineStatusBadge() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            padding: "8px 16px",
-            borderRadius: "20px",
+            gap: "4px",
+            padding: "4px 10px",
+            borderRadius: "12px",
             background: isOnline
               ? "linear-gradient(135deg, #3b82f6, #2563eb)"
               : "linear-gradient(135deg, #f59e0b, #d97706)",
             color: "white",
-            fontSize: "13px",
+            fontSize: "11px",
             fontWeight: "600",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
             animation: "pulse 2s ease-in-out infinite",
           }}
         >
-          📊 {pendingCount} en attente
+          {pendingCount}
         </div>
       )}
 
@@ -103,17 +98,18 @@ export default function OnlineStatusBadge() {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            padding: "8px 16px",
-            borderRadius: "20px",
+            gap: "4px",
+            padding: "6px 10px",
+            borderRadius: "12px",
             background: "linear-gradient(135deg, #8b5cf6, #7c3aed)",
             color: "white",
-            fontSize: "13px",
+            fontSize: "11px",
             fontWeight: "600",
             border: "none",
             cursor: "pointer",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
             transition: "transform 0.2s",
+            touchAction: "manipulation",
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = "scale(1.05)";
@@ -121,24 +117,13 @@ export default function OnlineStatusBadge() {
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = "scale(1)";
           }}
+          title={`Synchroniser ${pendingCount} élément(s)`}
         >
-          <RefreshCw size={16} />
-          Synchroniser ({pendingCount})
+          <RefreshCw size={12} />
         </button>
       )}
 
       <style jsx>{`
-        @keyframes slideIn {
-          from {
-            transform: translateX(100px);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-
         @keyframes pulse {
           0%,
           100% {
