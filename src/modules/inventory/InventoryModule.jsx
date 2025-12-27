@@ -280,6 +280,27 @@ const Toast = {
         document.body.removeChild(toast);
       }
     }, 3000);
+  },
+  info: (message) => {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: #3b82f6;
+      color: white;
+      padding: 16px;
+      border-radius: 8px;
+      z-index: 10000;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      if (document.body.contains(toast)) {
+        document.body.removeChild(toast);
+      }
+    }, 3000);
   }
 };
 
@@ -625,6 +646,11 @@ const InventoryModule = () => {
     stores = []
   } = useApp();
 
+  // Obtenir le magasin actuel
+  const currentStore = useMemo(() => {
+    return stores.find(s => s.id === currentStoreId);
+  }, [stores, currentStoreId]);
+
   // États locaux du module
   const [activeTab, setActiveTab] = useState('dashboard');
   const [searchQuery, setSearchQuery] = useState('');
@@ -790,6 +816,119 @@ if (success) {
       Toast.error('Erreur lors de la modification du produit');
     }
   }, [editingProduct, updateProduct]);
+
+  // ==================== EXPORT & WHATSAPP ====================
+
+  const exportToExcel = useCallback(() => {
+    try {
+      const productsToExport = [
+        ...analytics.alerts.outOfStock,
+        ...analytics.alerts.lowStock
+      ];
+
+      if (productsToExport.length === 0) {
+        Toast.info('Aucun produit à exporter');
+        return;
+      }
+
+      // Créer le contenu CSV
+      const headers = ['Nom', 'Catégorie', 'Stock Actuel', 'Stock Min', 'À Commander', 'Prix Achat', 'Fournisseur'];
+      const rows = productsToExport.map(p => {
+        const stock = p.stock || 0;
+        const minStock = p.minStock || 5;
+        const toOrder = Math.max(minStock * 2 - stock, minStock);
+
+        return [
+          p.name || '',
+          p.category || '',
+          stock,
+          minStock,
+          toOrder,
+          p.costPrice || 0,
+          p.supplier || ''
+        ].map(val => `"${val}"`).join(',');
+      });
+
+      const csv = [headers.join(','), ...rows].join('\n');
+
+      // Télécharger le fichier
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      const date = new Date().toISOString().split('T')[0];
+
+      link.setAttribute('href', url);
+      link.setAttribute('download', `reapprovisionnement_${date}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      Toast.success(`${productsToExport.length} produits exportés avec succès`);
+    } catch (error) {
+      console.error('Erreur export:', error);
+      Toast.error('Erreur lors de l\'export');
+    }
+  }, [analytics]);
+
+  const shareWhatsApp = useCallback(() => {
+    try {
+      const outOfStock = analytics.alerts.outOfStock;
+      const lowStock = analytics.alerts.lowStock;
+
+      if (outOfStock.length === 0 && lowStock.length === 0) {
+        Toast.info('Aucun produit à partager');
+        return;
+      }
+
+      const storeName = currentStore?.name || 'Magasin';
+      const date = new Date().toLocaleDateString('fr-FR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      let message = `📦 *RÉAPPROVISIONNEMENT ${storeName.toUpperCase()}*\n`;
+      message += `📅 ${date}\n\n`;
+
+      if (outOfStock.length > 0) {
+        message += `🔴 *RUPTURES (${outOfStock.length}):*\n`;
+        outOfStock.forEach(p => {
+          const toOrder = (p.minStock || 5) * 2;
+          message += `• ${p.name} - Commander: *${toOrder}*\n`;
+        });
+        message += '\n';
+      }
+
+      if (lowStock.length > 0) {
+        message += `🟠 *STOCK FAIBLE (${lowStock.length}):*\n`;
+        lowStock.forEach(p => {
+          const stock = p.stock || 0;
+          const minStock = p.minStock || 5;
+          const toOrder = Math.max(minStock * 2 - stock, minStock);
+          message += `• ${p.name} - Stock: ${stock} - Commander: *${toOrder}*\n`;
+        });
+        message += '\n';
+      }
+
+      const totalProducts = outOfStock.length + lowStock.length;
+      message += `📊 *Total: ${totalProducts} produits*\n`;
+      message += `\n_Généré par POS Superette_`;
+
+      // Encoder et ouvrir WhatsApp
+      const encodedMessage = encodeURIComponent(message);
+      const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+
+      window.open(whatsappUrl, '_blank');
+
+      Toast.success('Message WhatsApp préparé');
+    } catch (error) {
+      console.error('Erreur WhatsApp:', error);
+      Toast.error('Erreur lors du partage WhatsApp');
+    }
+  }, [analytics, currentStore]);
 
   const handleDeleteProduct = useCallback(async (productId) => {
     try {
@@ -1031,6 +1170,78 @@ if (success) {
               <p style={{ color: '#059669', fontSize: '14px' }}>
                 ✅ Aucune alerte stock
               </p>
+            )}
+
+            {/* Boutons d'export et partage */}
+            {(analytics.alerts.outOfStock.length > 0 || analytics.alerts.lowStock.length > 0) && (
+              <div style={{
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid #e5e7eb',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '8px'
+              }}>
+                <button
+                  onClick={exportToExcel}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    background: 'linear-gradient(135deg, #10b981, #059669)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    touchAction: 'manipulation',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  title="Exporter la liste au format CSV/Excel"
+                >
+                  <Download style={{ width: '16px', height: '16px' }} />
+                  Export Excel
+                </button>
+
+                <button
+                  onClick={shareWhatsApp}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '10px 16px',
+                    background: 'linear-gradient(135deg, #25D366, #128C7E)',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: '600',
+                    cursor: 'pointer',
+                    transition: 'transform 0.2s',
+                    touchAction: 'manipulation',
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  title="Partager la liste via WhatsApp"
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 24 24"
+                    fill="currentColor"
+                  >
+                    <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                  </svg>
+                  Partager WhatsApp
+                </button>
+              </div>
             )}
           </Card>
         </div>
