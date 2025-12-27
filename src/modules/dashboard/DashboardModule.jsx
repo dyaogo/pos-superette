@@ -804,7 +804,7 @@ const DashboardModule = () => {
       {/* Section ventes récentes et top produits */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: '24px'
       }}>
         {/* Ventes récentes */}

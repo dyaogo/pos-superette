@@ -445,7 +445,7 @@ export default function AdvancedReportsModule() {
       {/* Graphiques */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(450px, 1fr))',
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(320px, 1fr))',
         gap: 'var(--space-lg)',
         marginBottom: 'var(--space-xl)'
       }}>
@@ -491,7 +491,7 @@ export default function AdvancedReportsModule() {
       {/* Top Produits & Clients */}
       <div style={{
         display: 'grid',
-        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(350px, 1fr))',
+        gridTemplateColumns: window.innerWidth < 768 ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))',
         gap: 'var(--space-lg)'
       }}>
         {/* Top Produits */}

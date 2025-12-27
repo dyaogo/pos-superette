@@ -103,6 +103,37 @@ body {
     padding: var(--space-lg);
   }
 
+  /* Touch targets for tablets */
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  .btn,
+  .clickable {
+    min-height: 44px;
+    min-width: 44px;
+    touch-action: manipulation;
+    cursor: pointer;
+  }
+
+  /* Active states for tactile feedback */
+  button:active,
+  .btn:active,
+  .clickable:active {
+    transform: scale(0.98);
+    opacity: 0.9;
+  }
+
+  /* Better spacing for forms */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+    padding: 12px;
+    min-height: 44px;
+  }
+
   /* Grid optimizations */
   .grid-2 {
     grid-template-columns: repeat(2, 1fr);
@@ -110,6 +141,12 @@ body {
 
   .grid-3 {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  /* Modal optimizations for landscape */
+  .modal {
+    max-height: 85vh;
+    overflow-y: auto;
   }
 }
 
