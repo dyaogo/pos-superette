@@ -638,7 +638,7 @@ const InventoryModule = () => {
     addProduct,
     updateProduct,
     addStock,
-    removeProduct,
+    deleteProduct, // ✅ FIX: Utiliser deleteProduct au lieu de removeProduct
     salesHistory = [],
     appSettings = {},
     currentStoreId,
@@ -1033,15 +1033,19 @@ if (success) {
 
   const handleDeleteProduct = useCallback(async (productId) => {
     try {
-      await removeProduct(productId);
-      setDeletingProduct(null);
-      setShowDeleteModal(false);
-      Toast.success('Produit supprimé avec succès');
+      const result = await deleteProduct(productId); // ✅ FIX: Utiliser deleteProduct
+      if (result.success) {
+        setDeletingProduct(null);
+        setShowDeleteModal(false);
+        Toast.success('Produit supprimé avec succès');
+      } else {
+        Toast.error('Erreur lors de la suppression du produit');
+      }
     } catch (error) {
       console.error('Erreur lors de la suppression:', error);
       Toast.error('Erreur lors de la suppression du produit');
     }
-  }, [removeProduct]);
+  }, [deleteProduct]);
 
   const handleRestock = useCallback(async (productId, quantity, reason = 'Réapprovisionnement') => {
     try {
@@ -1063,12 +1067,12 @@ if (success) {
     if (window.confirm('⚠️ Êtes-vous sûr de vouloir supprimer TOUS les produits de ce magasin ? Cette action est irréversible !')) {
       if (window.confirm('🚨 DERNIÈRE CONFIRMATION : Tous les produits du magasin actuel seront définitivement supprimés !')) {
         productCatalog.forEach(product => {
-          removeProduct(product.id);
+          deleteProduct(product.id); // ✅ FIX: Utiliser deleteProduct
         });
         Toast.success('Catalogue du magasin vidé avec succès');
       }
     }
-  }, [productCatalog, removeProduct]);
+  }, [productCatalog, deleteProduct]);
 
   // Gestion de l'image produit
   const handleImageUpload = (e, setProductFunction) => {
