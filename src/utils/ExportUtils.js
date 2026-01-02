@@ -454,7 +454,7 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
   // ========== COMPTE DE RÉSULTAT ==========
   doc.setFontSize(16);
   doc.setTextColor(102, 126, 234);
-  doc.text('📊 COMPTE DE RÉSULTAT', 20, yPosition);
+  doc.text('COMPTE DE RESULTAT', 20, yPosition);
   yPosition += 12;
 
   // Rectangle de fond pour le compte de résultat
@@ -462,11 +462,12 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
   doc.roundedRect(15, yPosition - 5, pageWidth - 30, 82, 3, 3, 'F');
 
   // Chiffre d'affaires
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(0, 0, 0);
   doc.setFont('helvetica', 'bold');
   doc.text('Chiffre d\'affaires', 20, yPosition);
   doc.setTextColor(16, 185, 129); // Vert
+  doc.setFontSize(10);
   doc.text(`+ ${reportData.revenue.toLocaleString()} FCFA`, pageWidth - 20, yPosition, { align: 'right' });
   yPosition += 8;
 
@@ -478,9 +479,11 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
 
   // Coût des marchandises vendues
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   doc.setTextColor(107, 114, 128);
-  doc.text('Coût des marchandises vendues', 25, yPosition);
+  doc.text('Cout des marchandises vendues', 25, yPosition);
   doc.setTextColor(239, 68, 68); // Rouge
+  doc.setFontSize(10);
   doc.text(`- ${reportData.cogs.toLocaleString()} FCFA`, pageWidth - 20, yPosition, { align: 'right' });
   yPosition += 8;
 
@@ -494,9 +497,11 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
   doc.setFillColor(102, 126, 234, 20);
   doc.roundedRect(18, yPosition - 6, pageWidth - 36, 10, 2, 2, 'F');
   doc.setTextColor(0, 0, 0);
+  doc.setFontSize(10);
   doc.text('= MARGE BRUTE', 20, yPosition);
   const grossProfitColor = reportData.grossProfit >= 0 ? [16, 185, 129] : [239, 68, 68];
   doc.setTextColor(...grossProfitColor);
+  doc.setFontSize(10);
   doc.text(`${reportData.grossProfit.toLocaleString()} FCFA (${reportData.grossMargin.toFixed(1)}%)`, pageWidth - 20, yPosition, { align: 'right' });
   yPosition += 12;
 
@@ -507,9 +512,11 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
 
   // Dépenses d'exploitation
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
   doc.setTextColor(107, 114, 128);
-  doc.text('Dépenses d\'exploitation', 25, yPosition);
+  doc.text('Depenses d\'exploitation', 25, yPosition);
   doc.setTextColor(239, 68, 68);
+  doc.setFontSize(10);
   doc.text(`- ${reportData.expenses.toLocaleString()} FCFA`, pageWidth - 20, yPosition, { align: 'right' });
   yPosition += 8;
 
@@ -524,24 +531,25 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
   const netProfitColor = reportData.netProfit >= 0 ? [16, 185, 129] : [239, 68, 68];
   doc.setFillColor(...netProfitBg);
   doc.roundedRect(18, yPosition - 8, pageWidth - 36, 14, 3, 3, 'F');
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(0, 0, 0);
-  doc.text('= BÉNÉFICE NET', 20, yPosition);
+  doc.text('= BENEFICE NET', 20, yPosition);
   doc.setTextColor(...netProfitColor);
+  doc.setFontSize(11);
   doc.text(`${reportData.netProfit.toLocaleString()} FCFA (${reportData.netMargin.toFixed(1)}%)`, pageWidth - 20, yPosition, { align: 'right' });
   yPosition += 20;
 
   // ========== INDICATEURS CLÉS ==========
   doc.setFontSize(16);
   doc.setTextColor(102, 126, 234);
-  doc.text('📈 INDICATEURS CLÉS', 20, yPosition);
+  doc.text('INDICATEURS CLES', 20, yPosition);
   yPosition += 12;
 
   const metrics = [
-    { label: 'Nombre de ventes', value: reportData.salesCount.toString(), icon: '🛒' },
-    { label: 'Articles vendus', value: reportData.itemsSold.toString(), icon: '📦' },
-    { label: 'Panier moyen', value: `${reportData.averageBasket.toLocaleString()} FCFA`, icon: '💰' }
+    { label: 'Nombre de ventes', value: reportData.salesCount.toString() },
+    { label: 'Articles vendus', value: reportData.itemsSold.toString() },
+    { label: 'Panier moyen', value: `${reportData.averageBasket.toLocaleString()} FCFA` }
   ];
 
   doc.setFontSize(10);
@@ -558,13 +566,15 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
     doc.setFillColor(249, 250, 251);
     doc.roundedRect(xPosition, yPosition - 3, metricWidth - 5, 16, 2, 2, 'FD');
 
-    // Icône et label
+    // Label
     doc.setTextColor(107, 114, 128);
-    doc.text(metric.icon + ' ' + metric.label, xPosition + 3, yPosition + 3);
+    doc.setFontSize(9);
+    doc.text(metric.label, xPosition + 3, yPosition + 3);
 
     // Valeur
     doc.setTextColor(17, 24, 39);
     doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
     doc.text(metric.value, xPosition + 3, yPosition + 10);
     doc.setFont('helvetica', 'normal');
 
@@ -592,7 +602,7 @@ const generateAccountingReportPDF = async (reportData, periodLabel, periodType, 
 
     doc.setFontSize(16);
     doc.setTextColor(102, 126, 234);
-    doc.text('💼 DÉPENSES PAR CATÉGORIE', 20, yPosition);
+    doc.text('DEPENSES PAR CATEGORIE', 20, yPosition);
     yPosition += 12;
 
     doc.setFontSize(10);
