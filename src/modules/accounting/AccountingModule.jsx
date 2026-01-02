@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Calculator, TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Edit2, Trash2, Download, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '../../contexts/AuthContext';
-import { useExpenseCategories } from '../../hooks/useExpenseCategories';
+import { useExpenseCategories, EXPENSE_CATEGORIES_KEY } from '../../hooks/useExpenseCategories';
 import { useStores } from '../../hooks/useStores';
 import { generateAccountingReportPDF } from '../../utils/ExportUtils';
 
@@ -990,6 +991,8 @@ function ReportsView({ reportData, loading, period, setPeriod, periodOffset, set
 // Categories View Component
 function CategoriesView({ categories, loading }) {
   const [initializing, setInitializing] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleInitializeCategories = async () => {
     if (!confirm('Voulez-vous créer les catégories de dépenses par défaut ?')) return;
@@ -999,7 +1002,7 @@ function CategoriesView({ categories, loading }) {
       const res = await fetch('/api/accounting/categories/initialize', { method: 'POST' });
       if (res.ok) {
         toast.success('Catégories initialisées avec succès');
-        window.location.reload(); // Recharger pour voir les catégories
+        queryClient.invalidateQueries(EXPENSE_CATEGORIES_KEY);
       } else {
         throw new Error('Erreur lors de l\'initialisation');
       }
@@ -1007,6 +1010,28 @@ function CategoriesView({ categories, loading }) {
       toast.error('Erreur lors de l\'initialisation des catégories');
     } finally {
       setInitializing(false);
+    }
+  };
+
+  const handleSaveCategory = async (categoryData) => {
+    try {
+      const res = await fetch('/api/accounting/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(categoryData)
+      });
+
+      if (res.ok) {
+        toast.success('Catégorie créée avec succès');
+        setShowCategoryModal(false);
+        queryClient.invalidateQueries(EXPENSE_CATEGORIES_KEY);
+      } else {
+        const errorData = await res.json();
+        toast.error(errorData.error || 'Erreur lors de la création de la catégorie');
+      }
+    } catch (error) {
+      console.error('Error saving category:', error);
+      toast.error('Erreur de connexion au serveur');
     }
   };
 
@@ -1046,6 +1071,37 @@ function CategoriesView({ categories, loading }) {
 
   return (
     <div>
+      {/* Header with New Category button */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '24px'
+      }}>
+        <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: 0 }}>
+          Catégories de dépenses ({categories.length})
+        </h2>
+        <button
+          onClick={() => setShowCategoryModal(true)}
+          style={{
+            padding: '10px 20px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            fontSize: '14px'
+          }}
+        >
+          <Plus size={18} />
+          Nouvelle catégorie
+        </button>
+      </div>
+
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
@@ -1097,8 +1153,219 @@ function CategoriesView({ categories, loading }) {
         color: '#6b7280',
         fontSize: '14px'
       }}>
-        💡 Les catégories de dépenses vous permettent de mieux organiser vos finances.<br />
-        Pour créer de nouvelles catégories, contactez l'administrateur système.
+        Les catégories de dépenses vous permettent de mieux organiser vos finances.
+      </div>
+
+      {/* Category Modal */}
+      {showCategoryModal && (
+        <CategoryModal
+          onClose={() => setShowCategoryModal(false)}
+          onSave={handleSaveCategory}
+        />
+      )}
+    </div>
+  );
+}
+
+// Category Modal Component
+function CategoryModal({ onClose, onSave }) {
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    color: '#667eea'
+  });
+
+  const predefinedColors = [
+    '#667eea', '#f59e0b', '#10b981', '#ef4444', '#8b5cf6',
+    '#06b6d4', '#ec4899', '#84cc16', '#f97316', '#6366f1'
+  ];
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!formData.name || !formData.color) {
+      toast.error('Veuillez remplir tous les champs requis');
+      return;
+    }
+
+    onSave(formData);
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0,0,0,0.5)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: '20px'
+    }} onClick={onClose}>
+      <div style={{
+        background: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        maxWidth: '500px',
+        width: '100%',
+        boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+      }} onClick={(e) => e.stopPropagation()}>
+        <h2 style={{ fontSize: '20px', fontWeight: '600', marginBottom: '20px' }}>
+          Nouvelle catégorie
+        </h2>
+
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
+              Nom de la catégorie *
+            </label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+              placeholder="Ex: Loyer, Électricité, Fournitures..."
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              rows={3}
+              placeholder="Description de la catégorie (optionnel)"
+              style={{
+                width: '100%',
+                padding: '10px 12px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '8px',
+                fontSize: '14px',
+                resize: 'vertical'
+              }}
+            />
+          </div>
+
+          <div>
+            <label style={{ display: 'block', marginBottom: '8px', fontSize: '14px', fontWeight: '500' }}>
+              Couleur *
+            </label>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {predefinedColors.map(color => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, color })}
+                  style={{
+                    width: '40px',
+                    height: '40px',
+                    borderRadius: '8px',
+                    background: color,
+                    border: formData.color === color ? '3px solid #111827' : '2px solid #e5e7eb',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    transform: formData.color === color ? 'scale(1.1)' : 'scale(1)'
+                  }}
+                  title={color}
+                />
+              ))}
+            </div>
+            <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '14px', color: '#6b7280' }}>Ou choisir une couleur personnalisée:</span>
+              <input
+                type="color"
+                value={formData.color}
+                onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                style={{
+                  width: '50px',
+                  height: '35px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  cursor: 'pointer'
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Preview */}
+          <div style={{
+            padding: '16px',
+            background: '#f9fafb',
+            borderRadius: '8px',
+            border: '1px solid #e5e7eb'
+          }}>
+            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Aperçu:</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                background: `${formData.color}20`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: formData.color }} />
+              </div>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: '#111827' }}>
+                  {formData.name || 'Nom de la catégorie'}
+                </h3>
+                <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                  {formData.description || 'Description de la catégorie'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', marginTop: '8px' }}>
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '14px'
+              }}
+            >
+              Annuler
+            </button>
+            <button
+              type="submit"
+              style={{
+                flex: 1,
+                padding: '10px',
+                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                fontWeight: '500',
+                fontSize: '14px'
+              }}
+            >
+              Créer
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   );
