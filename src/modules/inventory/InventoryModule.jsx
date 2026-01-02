@@ -661,6 +661,9 @@ const InventoryModule = () => {
     profitability: 'all'
   });
 
+  // ✅ NOUVEAU: État pour la sélection multiple
+  const [selectedProducts, setSelectedProducts] = useState([]);
+
   // États des modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [showRestockModal, setShowRestockModal] = useState(false);
@@ -1074,6 +1077,58 @@ if (success) {
     }
   }, [productCatalog, deleteProduct]);
 
+  // ✅ NOUVEAU: Gestion de la sélection multiple
+  const toggleProductSelection = (productId) => {
+    setSelectedProducts(prev =>
+      prev.includes(productId)
+        ? prev.filter(id => id !== productId)
+        : [...prev, productId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedProducts.length === filteredProducts.length) {
+      setSelectedProducts([]);
+    } else {
+      setSelectedProducts(filteredProducts.map(p => p.id));
+    }
+  };
+
+  const handleDeleteSelected = useCallback(async () => {
+    if (selectedProducts.length === 0) {
+      Toast.info('Aucun produit sélectionné');
+      return;
+    }
+
+    if (window.confirm(`⚠️ Êtes-vous sûr de vouloir supprimer ${selectedProducts.length} produit(s) ?`)) {
+      let successCount = 0;
+      let errorCount = 0;
+
+      for (const productId of selectedProducts) {
+        try {
+          const result = await deleteProduct(productId);
+          if (result.success) {
+            successCount++;
+          } else {
+            errorCount++;
+          }
+        } catch (error) {
+          errorCount++;
+        }
+      }
+
+      setSelectedProducts([]);
+
+      if (errorCount === 0) {
+        Toast.success(`${successCount} produit(s) supprimé(s) avec succès`);
+      } else if (successCount === 0) {
+        Toast.error(`Erreur lors de la suppression des produits`);
+      } else {
+        Toast.warning(`${successCount} supprimé(s), ${errorCount} échec(s)`);
+      }
+    }
+  }, [selectedProducts, deleteProduct]);
+
   // Gestion de l'image produit
   const handleImageUpload = (e, setProductFunction) => {
     const file = e.target.files[0];
@@ -1376,6 +1431,36 @@ if (success) {
         </div>
         
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {/* ✅ NOUVEAU: Boutons de sélection multiple */}
+          {selectedProducts.length > 0 && (
+            <>
+              <Button
+                variant="danger"
+                onClick={handleDeleteSelected}
+                leftIcon={<Trash2 style={{ width: '16px', height: '16px' }} />}
+              >
+                Supprimer ({selectedProducts.length})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setSelectedProducts([])}
+                leftIcon={<X style={{ width: '16px', height: '16px' }} />}
+              >
+                Annuler sélection
+              </Button>
+            </>
+          )}
+
+          <Button
+            variant="outline"
+            onClick={toggleSelectAll}
+            leftIcon={<CheckCircle style={{ width: '16px', height: '16px' }} />}
+          >
+            {selectedProducts.length === filteredProducts.length && filteredProducts.length > 0
+              ? 'Tout désélectionner'
+              : 'Tout sélectionner'}
+          </Button>
+
           <Button
             variant="outline"
             onClick={() => setShowFilters(!showFilters)}
@@ -1535,11 +1620,40 @@ if (success) {
          const isLowStock = currentStock <= (product.minStock || 5);
          const isOutOfStock = currentStock === 0;
          const margin = calculateMargin(product.sellingPrice, product.costPrice);
+         const isSelected = selectedProducts.includes(product.id); // ✅ NOUVEAU
 
          return (
            <Card key={product.id} style={{
-             border: isOutOfStock ? '2px solid #dc2626' : isLowStock ? '2px solid #f59e0b' : '1px solid #e5e7eb'
+             position: 'relative', // ✅ NOUVEAU
+             border: isSelected
+               ? '2px solid var(--color-primary)'
+               : isOutOfStock ? '2px solid #dc2626' : isLowStock ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+             backgroundColor: isSelected ? '#eff6ff' : 'white', // ✅ NOUVEAU
+             transition: 'all 0.2s' // ✅ NOUVEAU
            }}>
+             {/* ✅ NOUVEAU: Case à cocher en haut à gauche */}
+             <div
+               style={{
+                 position: 'absolute',
+                 top: '12px',
+                 left: '12px',
+                 zIndex: 10,
+               }}
+             >
+               <input
+                 type="checkbox"
+                 checked={isSelected}
+                 onChange={() => toggleProductSelection(product.id)}
+                 style={{
+                   width: '20px',
+                   height: '20px',
+                   cursor: 'pointer',
+                   accentColor: 'var(--color-primary)',
+                 }}
+                 title={isSelected ? 'Désélectionner' : 'Sélectionner'}
+               />
+             </div>
+
              {/* Image du produit */}
              {product.image && (
                <div style={{ marginBottom: '12px' }}>
