@@ -8,24 +8,33 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { storeId, period = 'week' } = req.query;
+    const { storeId, period = 'week', startDate: startDateParam, endDate: endDateParam } = req.query;
 
     // Calculer les dates selon la période
     const now = new Date();
     let startDate;
+    let endDate;
 
-    switch (period) {
-      case 'week':
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        break;
-      case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        break;
-      case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        break;
-      default:
-        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    // Si startDate et endDate sont fournis, les utiliser
+    if (startDateParam && endDateParam) {
+      startDate = new Date(startDateParam);
+      endDate = new Date(endDateParam);
+    } else {
+      // Sinon, calculer selon la période (backward compatibility)
+      switch (period) {
+        case 'week':
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+          break;
+        case 'month':
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          break;
+        case 'year':
+          startDate = new Date(now.getFullYear(), 0, 1);
+          break;
+        default:
+          startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      }
+      endDate = now;
     }
 
     const whereStore = storeId && storeId !== 'all' ? { storeId } : {};
@@ -36,7 +45,7 @@ export default async function handler(req, res) {
         ...whereStore,
         createdAt: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       select: {
@@ -59,7 +68,7 @@ export default async function handler(req, res) {
         ...whereStore,
         createdAt: {
           gte: startDate,
-          lte: now,
+          lte: endDate,
         },
       },
       include: {

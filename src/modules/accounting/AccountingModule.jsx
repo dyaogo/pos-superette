@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Calculator, TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Edit2, Trash2, Download, Filter, Search } from 'lucide-react';
+import { Calculator, TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Edit2, Trash2, Download, Filter, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useExpenseCategories } from '../../hooks/useExpenseCategories';
@@ -17,6 +17,7 @@ export default function AccountingModule() {
   const [reportData, setReportData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [period, setPeriod] = useState('month');
+  const [periodOffset, setPeriodOffset] = useState(0); // 0 = période actuelle, -1 = période précédente, etc.
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
 
@@ -26,6 +27,42 @@ export default function AccountingModule() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
 
+  // Fonction pour calculer les dates de début et de fin selon la période et l'offset
+  const getPeriodDates = (periodType, offset) => {
+    const now = new Date();
+    let startDate, endDate;
+
+    if (periodType === 'week') {
+      // Calculer le début de la semaine (lundi)
+      const currentDay = now.getDay();
+      const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + distanceToMonday + (offset * 7));
+      monday.setHours(0, 0, 0, 0);
+
+      startDate = monday;
+      endDate = new Date(monday);
+      endDate.setDate(monday.getDate() + 6);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (periodType === 'month') {
+      const targetMonth = new Date(now.getFullYear(), now.getMonth() + offset, 1);
+      startDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
+      endDate.setHours(23, 59, 59, 999);
+    } else if (periodType === 'year') {
+      const targetYear = now.getFullYear() + offset;
+      startDate = new Date(targetYear, 0, 1);
+      startDate.setHours(0, 0, 0, 0);
+
+      endDate = new Date(targetYear, 11, 31);
+      endDate.setHours(23, 59, 59, 999);
+    }
+
+    return { startDate, endDate };
+  };
+
   // Charger les données selon l'onglet actif
   useEffect(() => {
     if (activeTab === 'dashboard' || activeTab === 'reports') {
@@ -34,12 +71,19 @@ export default function AccountingModule() {
     if (activeTab === 'expenses') {
       loadExpenses();
     }
-  }, [activeTab, period, currentPage, selectedCategory]);
+  }, [activeTab, period, periodOffset, currentPage, selectedCategory]);
 
   const loadReport = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/accounting/report?period=${period}`);
+      const { startDate, endDate } = getPeriodDates(period, periodOffset);
+      const params = new URLSearchParams({
+        period,
+        startDate: startDate.toISOString(),
+        endDate: endDate.toISOString()
+      });
+
+      const res = await fetch(`/api/accounting/report?${params}`);
       const data = await res.json();
 
       // Vérifier si l'API a retourné une erreur
@@ -244,6 +288,9 @@ export default function AccountingModule() {
           loading={loading}
           period={period}
           setPeriod={setPeriod}
+          periodOffset={periodOffset}
+          setPeriodOffset={setPeriodOffset}
+          getPeriodDates={getPeriodDates}
           categories={categories}
         />
       )}
@@ -281,6 +328,9 @@ export default function AccountingModule() {
           loading={loading}
           period={period}
           setPeriod={setPeriod}
+          periodOffset={periodOffset}
+          setPeriodOffset={setPeriodOffset}
+          getPeriodDates={getPeriodDates}
           categories={categories}
         />
       )}
@@ -310,7 +360,29 @@ export default function AccountingModule() {
 }
 
 // Dashboard View Component
-function DashboardView({ reportData, loading, period, setPeriod, categories }) {
+function DashboardView({ reportData, loading, period, setPeriod, periodOffset, setPeriodOffset, getPeriodDates, categories }) {
+  // Fonction pour obtenir le label de la période actuelle
+  const getPeriodLabel = () => {
+    const { startDate, endDate } = getPeriodDates(period, periodOffset);
+    const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                        'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+    if (period === 'week') {
+      const start = startDate.getDate();
+      const endDay = endDate.getDate();
+      const month = monthNames[startDate.getMonth()];
+      const year = startDate.getFullYear();
+      return `Semaine du ${start}-${endDay} ${month} ${year}`;
+    } else if (period === 'month') {
+      const month = monthNames[startDate.getMonth()];
+      const year = startDate.getFullYear();
+      return `${month} ${year}`;
+    } else if (period === 'year') {
+      return `Année ${startDate.getFullYear()}`;
+    }
+    return '';
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Chargement...</div>;
   }
@@ -337,30 +409,130 @@ function DashboardView({ reportData, loading, period, setPeriod, categories }) {
 
   return (
     <div>
-      {/* Period Selector */}
-      <div style={{ marginBottom: '24px', display: 'flex', gap: '8px' }}>
-        {[
-          { value: 'week', label: 'Semaine' },
-          { value: 'month', label: 'Mois' },
-          { value: 'year', label: 'Année' }
-        ].map(p => (
+      {/* Period Selector with Navigation */}
+      <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Type de période */}
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {[
+            { value: 'week', label: 'Semaine' },
+            { value: 'month', label: 'Mois' },
+            { value: 'year', label: 'Année' }
+          ].map(p => (
+            <button
+              key={p.value}
+              onClick={() => {
+                setPeriod(p.value);
+                setPeriodOffset(0); // Réinitialiser à la période actuelle lors du changement de type
+              }}
+              style={{
+                padding: '8px 16px',
+                background: period === p.value ? '#667eea' : 'white',
+                color: period === p.value ? 'white' : '#374151',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '500'
+              }}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Navigation de période */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '12px 16px',
+          background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
+          borderRadius: '12px',
+          border: '1px solid #e5e7eb'
+        }}>
           <button
-            key={p.value}
-            onClick={() => setPeriod(p.value)}
+            onClick={() => setPeriodOffset(prev => prev - 1)}
             style={{
-              padding: '8px 16px',
-              background: period === p.value ? '#667eea' : 'white',
-              color: period === p.value ? 'white' : '#374151',
+              padding: '8px',
+              background: 'white',
               border: '1px solid #e5e7eb',
               borderRadius: '6px',
               cursor: 'pointer',
-              fontSize: '14px',
-              fontWeight: '500'
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#374151',
+              transition: 'all 0.2s'
             }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            title="Période précédente"
           >
-            {p.label}
+            <ChevronLeft size={20} />
           </button>
-        ))}
+
+          <div style={{
+            flex: 1,
+            textAlign: 'center',
+            fontSize: '16px',
+            fontWeight: '600',
+            color: '#374151'
+          }}>
+            {getPeriodLabel()}
+            {periodOffset !== 0 && (
+              <span style={{
+                marginLeft: '8px',
+                fontSize: '12px',
+                color: '#6b7280',
+                fontWeight: '400'
+              }}>
+                ({periodOffset < 0 ? `${Math.abs(periodOffset)} période${Math.abs(periodOffset) > 1 ? 's' : ''} en arrière` : `Dans ${periodOffset} période${periodOffset > 1 ? 's' : ''}`})
+              </span>
+            )}
+          </div>
+
+          <button
+            onClick={() => setPeriodOffset(prev => prev + 1)}
+            style={{
+              padding: '8px',
+              background: 'white',
+              border: '1px solid #e5e7eb',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#374151',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
+            onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+            title="Période suivante"
+          >
+            <ChevronRight size={20} />
+          </button>
+
+          {periodOffset !== 0 && (
+            <button
+              onClick={() => setPeriodOffset(0)}
+              style={{
+                padding: '8px 16px',
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '13px',
+                fontWeight: '500',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.background = '#5568d3'}
+              onMouseLeave={(e) => e.currentTarget.style.background = '#667eea'}
+            >
+              Aujourd'hui
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Section: Résumé Financier */}
@@ -765,8 +937,8 @@ function ExpensesView({
 }
 
 // Reports View (similar to Dashboard but with more details)
-function ReportsView({ reportData, loading, period, setPeriod, categories }) {
-  return <DashboardView reportData={reportData} loading={loading} period={period} setPeriod={setPeriod} categories={categories} />;
+function ReportsView({ reportData, loading, period, setPeriod, periodOffset, setPeriodOffset, getPeriodDates, categories }) {
+  return <DashboardView reportData={reportData} loading={loading} period={period} setPeriod={setPeriod} periodOffset={periodOffset} setPeriodOffset={setPeriodOffset} getPeriodDates={getPeriodDates} categories={categories} />;
 }
 
 // Categories View Component
