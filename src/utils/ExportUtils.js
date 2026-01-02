@@ -414,4 +414,237 @@ const getReportTitle = (reportType) => {
   return titles[reportType] || 'Général';
 };
 
-export { generateRealPDF, generateRealExcel };
+// Fonction pour générer un PDF du rapport comptable
+const generateAccountingReportPDF = async (reportData, periodLabel, periodType, categories = []) => {
+  const { jsPDF } = await import('jspdf');
+
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.width;
+  const pageHeight = doc.internal.pageSize.height;
+  let yPosition = 20;
+
+  // Configuration des polices
+  doc.setFont('helvetica');
+
+  // En-tête du rapport
+  doc.setFontSize(22);
+  doc.setTextColor(102, 126, 234); // Couleur principale #667eea
+  doc.text('RAPPORT COMPTABLE', pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 12;
+
+  // Période
+  doc.setFontSize(14);
+  doc.setTextColor(55, 65, 81);
+  doc.text(periodLabel, pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 8;
+
+  // Date de génération
+  doc.setFontSize(10);
+  doc.setTextColor(107, 114, 128);
+  const generatedStr = `Généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}`;
+  doc.text(generatedStr, pageWidth / 2, yPosition, { align: 'center' });
+  yPosition += 15;
+
+  // Ligne de séparation
+  doc.setDrawColor(102, 126, 234);
+  doc.setLineWidth(0.8);
+  doc.line(20, yPosition, pageWidth - 20, yPosition);
+  yPosition += 15;
+
+  // ========== COMPTE DE RÉSULTAT ==========
+  doc.setFontSize(16);
+  doc.setTextColor(102, 126, 234);
+  doc.text('📊 COMPTE DE RÉSULTAT', 20, yPosition);
+  yPosition += 12;
+
+  // Rectangle de fond pour le compte de résultat
+  doc.setFillColor(102, 126, 234, 10);
+  doc.roundedRect(15, yPosition - 5, pageWidth - 30, 82, 3, 3, 'F');
+
+  // Chiffre d'affaires
+  doc.setFontSize(11);
+  doc.setTextColor(0, 0, 0);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Chiffre d\'affaires', 20, yPosition);
+  doc.setTextColor(16, 185, 129); // Vert
+  doc.text(`+ ${reportData.revenue.toLocaleString()} FCFA`, pageWidth - 20, yPosition, { align: 'right' });
+  yPosition += 8;
+
+  // Ligne
+  doc.setDrawColor(229, 231, 235);
+  doc.setLineWidth(0.3);
+  doc.line(20, yPosition, pageWidth - 20, yPosition);
+  yPosition += 8;
+
+  // Coût des marchandises vendues
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(107, 114, 128);
+  doc.text('Coût des marchandises vendues', 25, yPosition);
+  doc.setTextColor(239, 68, 68); // Rouge
+  doc.text(`- ${reportData.cogs.toLocaleString()} FCFA`, pageWidth - 20, yPosition, { align: 'right' });
+  yPosition += 8;
+
+  // Ligne
+  doc.setDrawColor(229, 231, 235);
+  doc.line(20, yPosition, pageWidth - 20, yPosition);
+  yPosition += 10;
+
+  // Marge brute
+  doc.setFont('helvetica', 'bold');
+  doc.setFillColor(102, 126, 234, 20);
+  doc.roundedRect(18, yPosition - 6, pageWidth - 36, 10, 2, 2, 'F');
+  doc.setTextColor(0, 0, 0);
+  doc.text('= MARGE BRUTE', 20, yPosition);
+  const grossProfitColor = reportData.grossProfit >= 0 ? [16, 185, 129] : [239, 68, 68];
+  doc.setTextColor(...grossProfitColor);
+  doc.text(`${reportData.grossProfit.toLocaleString()} FCFA (${reportData.grossMargin.toFixed(1)}%)`, pageWidth - 20, yPosition, { align: 'right' });
+  yPosition += 12;
+
+  // Ligne
+  doc.setDrawColor(229, 231, 235);
+  doc.line(20, yPosition, pageWidth - 20, yPosition);
+  yPosition += 8;
+
+  // Dépenses d'exploitation
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(107, 114, 128);
+  doc.text('Dépenses d\'exploitation', 25, yPosition);
+  doc.setTextColor(239, 68, 68);
+  doc.text(`- ${reportData.expenses.toLocaleString()} FCFA`, pageWidth - 20, yPosition, { align: 'right' });
+  yPosition += 8;
+
+  // Ligne épaisse
+  doc.setDrawColor(102, 126, 234);
+  doc.setLineWidth(0.8);
+  doc.line(20, yPosition, pageWidth - 20, yPosition);
+  yPosition += 12;
+
+  // Bénéfice net
+  const netProfitBg = reportData.netProfit >= 0 ? [240, 253, 244] : [254, 242, 242];
+  const netProfitColor = reportData.netProfit >= 0 ? [16, 185, 129] : [239, 68, 68];
+  doc.setFillColor(...netProfitBg);
+  doc.roundedRect(18, yPosition - 8, pageWidth - 36, 14, 3, 3, 'F');
+  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(0, 0, 0);
+  doc.text('= BÉNÉFICE NET', 20, yPosition);
+  doc.setTextColor(...netProfitColor);
+  doc.text(`${reportData.netProfit.toLocaleString()} FCFA (${reportData.netMargin.toFixed(1)}%)`, pageWidth - 20, yPosition, { align: 'right' });
+  yPosition += 20;
+
+  // ========== INDICATEURS CLÉS ==========
+  doc.setFontSize(16);
+  doc.setTextColor(102, 126, 234);
+  doc.text('📈 INDICATEURS CLÉS', 20, yPosition);
+  yPosition += 12;
+
+  const metrics = [
+    { label: 'Nombre de ventes', value: reportData.salesCount.toString(), icon: '🛒' },
+    { label: 'Articles vendus', value: reportData.itemsSold.toString(), icon: '📦' },
+    { label: 'Panier moyen', value: `${reportData.averageBasket.toLocaleString()} FCFA`, icon: '💰' }
+  ];
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+
+  const metricsPerRow = 3;
+  const metricWidth = (pageWidth - 40) / metricsPerRow;
+  let xPosition = 20;
+
+  metrics.forEach((metric, index) => {
+    // Rectangle avec bordure
+    doc.setDrawColor(229, 231, 235);
+    doc.setLineWidth(0.5);
+    doc.setFillColor(249, 250, 251);
+    doc.roundedRect(xPosition, yPosition - 3, metricWidth - 5, 16, 2, 2, 'FD');
+
+    // Icône et label
+    doc.setTextColor(107, 114, 128);
+    doc.text(metric.icon + ' ' + metric.label, xPosition + 3, yPosition + 3);
+
+    // Valeur
+    doc.setTextColor(17, 24, 39);
+    doc.setFont('helvetica', 'bold');
+    doc.text(metric.value, xPosition + 3, yPosition + 10);
+    doc.setFont('helvetica', 'normal');
+
+    xPosition += metricWidth;
+
+    if ((index + 1) % metricsPerRow === 0) {
+      xPosition = 20;
+      yPosition += 20;
+    }
+  });
+
+  if (metrics.length % metricsPerRow !== 0) {
+    yPosition += 20;
+  }
+
+  yPosition += 5;
+
+  // ========== DÉPENSES PAR CATÉGORIE ==========
+  if (reportData.expensesByCategory && reportData.expensesByCategory.length > 0) {
+    // Vérifier si on a assez d'espace, sinon nouvelle page
+    if (yPosition > pageHeight - 80) {
+      doc.addPage();
+      yPosition = 20;
+    }
+
+    doc.setFontSize(16);
+    doc.setTextColor(102, 126, 234);
+    doc.text('💼 DÉPENSES PAR CATÉGORIE', 20, yPosition);
+    yPosition += 12;
+
+    doc.setFontSize(10);
+
+    reportData.expensesByCategory.forEach((cat, index) => {
+      if (yPosition > pageHeight - 20) {
+        doc.addPage();
+        yPosition = 20;
+      }
+
+      const percentage = reportData.expenses > 0 ? (cat.total / reportData.expenses * 100) : 0;
+
+      // Trouver le nom de la catégorie
+      const category = categories.find(c => c.id === cat.categoryId);
+      const categoryName = category?.name || 'Catégorie inconnue';
+
+      // Nom de la catégorie et montant
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(55, 65, 81);
+      doc.text(`${index + 1}. ${categoryName}`, 20, yPosition);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(107, 114, 128);
+      doc.text(`${cat.total.toLocaleString()} FCFA (${percentage.toFixed(1)}%)`, pageWidth - 20, yPosition, { align: 'right' });
+
+      yPosition += 5;
+
+      // Barre de progression
+      const barWidth = pageWidth - 40;
+      const filledWidth = (percentage / 100) * barWidth;
+
+      // Fond de la barre
+      doc.setFillColor(243, 244, 246);
+      doc.roundedRect(20, yPosition, barWidth, 4, 2, 2, 'F');
+
+      // Barre remplie
+      doc.setFillColor(102, 126, 234);
+      doc.roundedRect(20, yPosition, filledWidth, 4, 2, 2, 'F');
+
+      yPosition += 10;
+    });
+  }
+
+  // ========== PIED DE PAGE ==========
+  const footerY = pageHeight - 15;
+  doc.setFontSize(8);
+  doc.setTextColor(156, 163, 175);
+  doc.text('Rapport généré automatiquement par POS Superette - Système de Gestion', pageWidth / 2, footerY, { align: 'center' });
+
+  // Sauvegarde
+  const fileName = `rapport_comptable_${periodType}_${new Date().toISOString().split('T')[0]}.pdf`;
+  doc.save(fileName);
+};
+
+export { generateRealPDF, generateRealExcel, generateAccountingReportPDF };
