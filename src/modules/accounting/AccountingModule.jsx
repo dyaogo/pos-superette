@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import { useAuth } from '../../contexts/AuthContext';
 import { useExpenseCategories } from '../../hooks/useExpenseCategories';
 import { useStores } from '../../hooks/useStores';
+import { generateAccountingReportPDF } from '../../utils/ExportUtils';
 
 export default function AccountingModule() {
   const { currentUser } = useAuth();
@@ -383,6 +384,25 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
     return '';
   };
 
+  // Fonction pour exporter le rapport en PDF
+  const handleExportPDF = async () => {
+    if (!reportData) {
+      toast.error('Aucune donnée à exporter');
+      return;
+    }
+
+    try {
+      toast.loading('Génération du PDF en cours...');
+      await generateAccountingReportPDF(reportData, getPeriodLabel(), period, categories);
+      toast.dismiss();
+      toast.success('PDF téléchargé avec succès');
+    } catch (error) {
+      toast.dismiss();
+      console.error('Erreur lors de l\'export PDF:', error);
+      toast.error('Erreur lors de la génération du PDF');
+    }
+  };
+
   if (loading) {
     return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Chargement...</div>;
   }
@@ -411,33 +431,59 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
     <div>
       {/* Period Selector with Navigation */}
       <div style={{ marginBottom: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-        {/* Type de période */}
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {[
-            { value: 'week', label: 'Semaine' },
-            { value: 'month', label: 'Mois' },
-            { value: 'year', label: 'Année' }
-          ].map(p => (
-            <button
-              key={p.value}
-              onClick={() => {
-                setPeriod(p.value);
-                setPeriodOffset(0); // Réinitialiser à la période actuelle lors du changement de type
-              }}
-              style={{
-                padding: '8px 16px',
-                background: period === p.value ? '#667eea' : 'white',
-                color: period === p.value ? 'white' : '#374151',
-                border: '1px solid #e5e7eb',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}
-            >
-              {p.label}
-            </button>
-          ))}
+        {/* Type de période et bouton export */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {[
+              { value: 'week', label: 'Semaine' },
+              { value: 'month', label: 'Mois' },
+              { value: 'year', label: 'Année' }
+            ].map(p => (
+              <button
+                key={p.value}
+                onClick={() => {
+                  setPeriod(p.value);
+                  setPeriodOffset(0); // Réinitialiser à la période actuelle lors du changement de type
+                }}
+                style={{
+                  padding: '8px 16px',
+                  background: period === p.value ? '#667eea' : 'white',
+                  color: period === p.value ? 'white' : '#374151',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500'
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Bouton Export PDF */}
+          <button
+            onClick={handleExportPDF}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+          >
+            <Download size={18} />
+            Exporter PDF
+          </button>
         </div>
 
         {/* Navigation de période */}
