@@ -35,8 +35,9 @@ export default async function handler(req, res) {
       const category = await prisma.expenseCategory.create({
         data: {
           name,
-          description: description || '',
+          description: description || null,
           color,
+          icon: 'Receipt',
           isActive: true
         }
       });
