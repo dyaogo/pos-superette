@@ -6,7 +6,8 @@ import {
   ShoppingCart, Package, Users, TrendingUp, TrendingDown,
   ArrowUp, ArrowDown, DollarSign, AlertTriangle,
   Calendar, Clock, Zap, Star, Target, Activity,
-  PlusCircle, Search, Filter, Download, RefreshCw, Award
+  PlusCircle, Search, Filter, Download, RefreshCw, Award,
+  ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 const DashboardModule = () => {
@@ -14,6 +15,7 @@ const DashboardModule = () => {
 
   const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('today');
+  const [periodOffset, setPeriodOffset] = useState(0); // 0 = période actuelle, -1 = période précédente, etc.
   const [salesHistory, setSalesHistory] = useState([]);
   const [productCatalog, setProductCatalog] = useState([]);
   const [customers, setCustomers] = useState([]);
@@ -74,27 +76,34 @@ const DashboardModule = () => {
     switch (selectedPeriod) {
       case 'today':
         startDate = new Date(now);
+        startDate.setDate(now.getDate() + periodOffset);
         startDate.setHours(0, 0, 0, 0);
-        endDate = new Date(now);
+        endDate = new Date(startDate);
         endDate.setHours(23, 59, 59, 999);
         break;
       case 'week':
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay());
-        weekStart.setHours(0, 0, 0, 0);
-        startDate = weekStart;
-        endDate = new Date(weekStart);
-        endDate.setDate(endDate.getDate() + 6);
+        const currentDay = now.getDay();
+        const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + distanceToMonday + (periodOffset * 7));
+        monday.setHours(0, 0, 0, 0);
+        startDate = monday;
+        endDate = new Date(monday);
+        endDate.setDate(monday.getDate() + 6);
         endDate.setHours(23, 59, 59, 999);
         break;
       case 'month':
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const targetMonth = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+        startDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth(), 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(targetMonth.getFullYear(), targetMonth.getMonth() + 1, 0);
         endDate.setHours(23, 59, 59, 999);
         break;
       case 'year':
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
+        const targetYear = now.getFullYear() + periodOffset;
+        startDate = new Date(targetYear, 0, 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate = new Date(targetYear, 11, 31);
         endDate.setHours(23, 59, 59, 999);
         break;
       default:
@@ -115,7 +124,7 @@ const DashboardModule = () => {
     const grossMargin = revenue * 0.37; // 37% de marge moyenne
 
     return { revenue, transactions, avgBasket, grossMargin };
-  }, [salesHistory, selectedPeriod]);
+  }, [salesHistory, selectedPeriod, periodOffset]);
 
   // Calcul des tendances par rapport à la période précédente
   const calculateTrends = useMemo(() => {
@@ -182,7 +191,7 @@ const DashboardModule = () => {
       basket: calculateTrend(current.avgBasket, previous.avgBasket),
       margin: calculateTrend(current.grossMargin, previous.grossMargin)
     };
-  }, [getMetricsForPeriod, salesHistory, selectedPeriod]);
+  }, [getMetricsForPeriod, salesHistory, selectedPeriod, periodOffset]);
 
   // Génération des données pour le graphique selon la période
   const chartData = useMemo(() => {
@@ -290,7 +299,7 @@ const DashboardModule = () => {
       default:
         return [];
     }
-  }, [salesHistory, selectedPeriod]);
+  }, [salesHistory, selectedPeriod, periodOffset]);
 
   // Composant StatCard avec tendances
   const StatCard = ({ title, value, icon: Icon, trend, color, delay = 0, marginPercentage }) => (
@@ -678,35 +687,157 @@ const DashboardModule = () => {
         </div>
         
         {/* Sélecteur de période */}
-        <div style={{
-          display: 'flex',
-          background: isDark ? '#2d3748' : 'white',
-          borderRadius: '12px',
-          padding: '4px',
-          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
-          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
-        }}>
-          {['today', 'week', 'month', 'year'].map(period => (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Type de période */}
+          <div style={{
+            display: 'flex',
+            background: isDark ? '#2d3748' : 'white',
+            borderRadius: '12px',
+            padding: '4px',
+            border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+            boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+          }}>
+            {['today', 'week', 'month', 'year'].map(period => (
+              <button
+                key={period}
+                onClick={() => {
+                  setSelectedPeriod(period);
+                  setPeriodOffset(0); // Réinitialiser à la période actuelle
+                }}
+                style={{
+                  padding: '10px 16px',
+                  border: 'none',
+                  borderRadius: '8px',
+                  background: selectedPeriod === period ? '#3b82f6' : 'transparent',
+                  color: selectedPeriod === period ? 'white' : isDark ? '#a0aec0' : '#64748b',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  fontSize: '14px'
+                }}
+              >
+                {period === 'today' ? "Aujourd'hui" :
+                 period === 'week' ? 'Semaine' :
+                 period === 'month' ? 'Mois' : 'Année'}
+              </button>
+            ))}
+          </div>
+
+          {/* Navigation de période */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            padding: '12px 16px',
+            background: isDark ? '#2d3748' : 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
+            borderRadius: '12px',
+            border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+          }}>
             <button
-              key={period}
-              onClick={() => setSelectedPeriod(period)}
+              onClick={() => setPeriodOffset(prev => prev - 1)}
               style={{
-                padding: '10px 16px',
-                border: 'none',
-                borderRadius: '8px',
-                background: selectedPeriod === period ? '#3b82f6' : 'transparent',
-                color: selectedPeriod === period ? 'white' : isDark ? '#a0aec0' : '#64748b',
-                fontWeight: '500',
+                padding: '8px',
+                background: isDark ? '#374151' : 'white',
+                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                borderRadius: '6px',
                 cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                fontSize: '14px'
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDark ? '#a0aec0' : '#374151',
+                transition: 'all 0.2s'
               }}
+              title="Période précédente"
             >
-              {period === 'today' ? "Aujourd'hui" : 
-               period === 'week' ? 'Semaine' : 
-               period === 'month' ? 'Mois' : 'Année'}
+              <ChevronLeft size={20} />
             </button>
-          ))}
+
+            <div style={{
+              flex: 1,
+              textAlign: 'center',
+              fontSize: '16px',
+              fontWeight: '600',
+              color: isDark ? '#e2e8f0' : '#374151'
+            }}>
+              {(() => {
+                const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
+                                    'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+                const now = new Date();
+
+                if (selectedPeriod === 'today') {
+                  const targetDate = new Date(now);
+                  targetDate.setDate(now.getDate() + periodOffset);
+                  return targetDate.toLocaleDateString('fr-FR', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric'
+                  });
+                } else if (selectedPeriod === 'week') {
+                  const currentDay = now.getDay();
+                  const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
+                  const monday = new Date(now);
+                  monday.setDate(now.getDate() + distanceToMonday + (periodOffset * 7));
+                  const sunday = new Date(monday);
+                  sunday.setDate(monday.getDate() + 6);
+                  return `Semaine du ${monday.getDate()}-${sunday.getDate()} ${monthNames[monday.getMonth()]} ${monday.getFullYear()}`;
+                } else if (selectedPeriod === 'month') {
+                  const targetMonth = new Date(now.getFullYear(), now.getMonth() + periodOffset, 1);
+                  return `${monthNames[targetMonth.getMonth()]} ${targetMonth.getFullYear()}`;
+                } else if (selectedPeriod === 'year') {
+                  return `Année ${now.getFullYear() + periodOffset}`;
+                }
+              })()}
+              {periodOffset !== 0 && (
+                <span style={{
+                  marginLeft: '8px',
+                  fontSize: '12px',
+                  color: isDark ? '#9ca3af' : '#6b7280',
+                  fontWeight: '400'
+                }}>
+                  ({periodOffset < 0 ? `${Math.abs(periodOffset)} période${Math.abs(periodOffset) > 1 ? 's' : ''} en arrière` : `Dans ${periodOffset} période${periodOffset > 1 ? 's' : ''}`})
+                </span>
+              )}
+            </div>
+
+            <button
+              onClick={() => setPeriodOffset(prev => prev + 1)}
+              style={{
+                padding: '8px',
+                background: isDark ? '#374151' : 'white',
+                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: isDark ? '#a0aec0' : '#374151',
+                transition: 'all 0.2s'
+              }}
+              title="Période suivante"
+            >
+              <ChevronRight size={20} />
+            </button>
+
+            {periodOffset !== 0 && (
+              <button
+                onClick={() => setPeriodOffset(0)}
+                style={{
+                  padding: '8px 16px',
+                  background: '#3b82f6',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s'
+                }}
+              >
+                Aujourd'hui
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
