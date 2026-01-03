@@ -11,52 +11,18 @@ import {
 } from 'lucide-react';
 
 const DashboardModule = () => {
-  const { appSettings = {} } = useApp();
+  const {
+    appSettings = {},
+    productCatalog = [],
+    salesHistory = [],
+    customers = [],
+    currentStore,
+    loading: contextLoading
+  } = useApp();
 
-  const [loading, setLoading] = useState(true);
   const [selectedPeriod, setSelectedPeriod] = useState('today');
   const [periodOffset, setPeriodOffset] = useState(0); // 0 = période actuelle, -1 = période précédente, etc.
-  const [salesHistory, setSalesHistory] = useState([]);
-  const [productCatalog, setProductCatalog] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const isDark = appSettings?.darkMode;
-
-  // ✅ Charger les données depuis l'API au montage (comme dashboard.js)
-  useEffect(() => {
-    const loadDashboardData = async () => {
-      setLoading(true);
-      try {
-        const [salesRes, productsRes, customersRes] = await Promise.all([
-          fetch('/api/sales?limit=1000'),
-          fetch('/api/products'),
-          fetch('/api/customers'),
-        ]);
-
-        const salesData = await salesRes.json();
-        const productsData = await productsRes.json();
-        const customersData = await customersRes.json();
-
-        setSalesHistory(
-          Array.isArray(salesData?.data) ? salesData.data :
-          Array.isArray(salesData) ? salesData : []
-        );
-        setProductCatalog(
-          Array.isArray(productsData?.data) ? productsData.data :
-          Array.isArray(productsData) ? productsData : []
-        );
-        setCustomers(
-          Array.isArray(customersData?.data) ? customersData.data :
-          Array.isArray(customersData) ? customersData : []
-        );
-      } catch (error) {
-        console.error('Erreur chargement dashboard:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, []);
 
   // Fonction utilitaire pour formater les nombres
   const formatNumber = (number) => {
@@ -598,7 +564,7 @@ const DashboardModule = () => {
   }, [productCatalog]);
 
   // ✅ Afficher un loader pendant le chargement
-  if (loading) {
+  if (contextLoading) {
     return (
       <div style={{
         padding: '24px',
@@ -841,32 +807,46 @@ const DashboardModule = () => {
         </div>
       </div>
 
-      {/* Bouton actualiser */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '24px' }}>
-        <button
-          onClick={() => {
-            setLoading(true);
-            setTimeout(() => setLoading(false), 1000);
-          }}
-          style={{
+      {/* Info magasin sélectionné */}
+      {currentStore && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '16px',
+          marginBottom: '24px',
+          background: isDark ? '#2d3748' : 'white',
+          borderRadius: '12px',
+          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{
+            background: '#3b82f615',
+            padding: '10px',
+            borderRadius: '8px',
             display: 'flex',
             alignItems: 'center',
-            gap: '8px',
-            padding: '12px 16px',
-            background: isDark ? '#4a5568' : '#e2e8f0',
-            color: isDark ? '#f7fafc' : '#2d3748',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <RefreshCw size={16} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
-          Actualiser
-        </button>
-      </div>
+            justifyContent: 'center'
+          }}>
+            <Package size={20} color="#3b82f6" />
+          </div>
+          <div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: isDark ? '#f7fafc' : '#2d3748'
+            }}>
+              Magasin: {currentStore.name}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: isDark ? '#a0aec0' : '#64748b'
+            }}>
+              Données filtrées pour ce magasin uniquement
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Statistiques principales avec marges brutes */}
       <div style={{
