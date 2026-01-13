@@ -46,7 +46,7 @@ export default function ReportsPage() {
       moduleName="Rapports"
       fallbackTitle="Erreur dans le module Rapports"
       fallbackMessage="Une erreur est survenue lors du chargement du module de rapports avancés."
-      onGoHome={() => router.push('/dashboard')}
+      onGoHome={() => router.push('/dashboards')}
       onReset={() => router.reload()}
     >
       <AdvancedReportsModule />

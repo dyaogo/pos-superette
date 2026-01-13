@@ -47,7 +47,7 @@ export default function AccountingPage() {
       moduleName="Comptabilité"
       fallbackTitle="Erreur dans le module Comptabilité"
       fallbackMessage="Une erreur est survenue lors du chargement du module de comptabilité. Nos équipes ont été notifiées."
-      onGoHome={() => router.push('/dashboard')}
+      onGoHome={() => router.push('/dashboards')}
       onReset={() => router.reload()}
     >
       <AccountingModule />

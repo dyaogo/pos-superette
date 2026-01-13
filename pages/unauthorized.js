@@ -62,7 +62,7 @@ export default function UnauthorizedPage() {
         </p>
 
         <button
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/dashboards")}
           style={{
             padding: "12px 30px",
             background: "var(--color-primary)",
