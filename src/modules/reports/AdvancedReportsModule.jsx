@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useApp } from '../../contexts/AppContext';
 import {
   LineChart, Line, BarChart, Bar, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -17,60 +18,46 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'
 
 export default function AdvancedReportsModule() {
   const [period, setPeriod] = useState('month'); // today, week, month, year
-  const [salesData, setSalesData] = useState([]);
+
+  // Utiliser les données d'AppContext au lieu de charger depuis l'API
+  const {
+    salesHistory: allSalesData = [],
+    productCatalog: allProductsData = [],
+    customers: allCustomersData = [],
+    currentStore,
+    loading: contextLoading
+  } = useApp();
+
   const [expenses, setExpenses] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Charger uniquement les dépenses (pas disponibles dans AppContext)
   useEffect(() => {
-    loadReportData();
-  }, [period]);
+    const loadExpenses = async () => {
+      setLoading(true);
+      try {
+        const expensesRes = await fetch('/api/accounting/expenses');
+        const expensesData = await expensesRes.json();
 
-  const loadReportData = async () => {
-    setLoading(true);
-    try {
-      const [salesRes, expensesRes, productsRes, customersRes] = await Promise.all([
-        fetch('/api/sales?limit=1000'),
-        fetch('/api/accounting/expenses'),
-        fetch('/api/products'),
-        fetch('/api/customers'),
-      ]);
+        const expensesArray = Array.isArray(expensesData?.expenses) ? expensesData.expenses
+                             : Array.isArray(expensesData) ? expensesData
+                             : [];
+        setExpenses(expensesArray);
+      } catch (error) {
+        console.error('Error loading expenses:', error);
+        toast.error('Erreur lors du chargement des dépenses');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      const [salesData, expensesData, productsData, customersData] = await Promise.all([
-        salesRes.json(),
-        expensesRes.json(),
-        productsRes.json(),
-        customersRes.json(),
-      ]);
+    loadExpenses();
+  }, []);
 
-      // Ensure all data is properly normalized as arrays
-      const salesArray = Array.isArray(salesData?.data) ? salesData.data
-                        : Array.isArray(salesData) ? salesData
-                        : [];
-      setSalesData(salesArray);
-
-      const expensesArray = Array.isArray(expensesData?.expenses) ? expensesData.expenses
-                           : Array.isArray(expensesData) ? expensesData
-                           : [];
-      setExpenses(expensesArray);
-
-      const productsArray = Array.isArray(productsData?.data) ? productsData.data
-                           : Array.isArray(productsData) ? productsData
-                           : [];
-      setProducts(productsArray);
-
-      const customersArray = Array.isArray(customersData?.data) ? customersData.data
-                            : Array.isArray(customersData) ? customersData
-                            : [];
-      setCustomers(customersArray);
-    } catch (error) {
-      console.error('Error loading report data:', error);
-      toast.error('Erreur lors du chargement des données');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Utiliser les données d'AppContext
+  const salesData = allSalesData;
+  const products = allProductsData;
+  const customers = allCustomersData;
 
   // Filtrer les données selon la période
   const filteredData = useMemo(() => {
@@ -294,7 +281,7 @@ export default function AdvancedReportsModule() {
     toast.success('Rapport PDF exporté avec succès');
   };
 
-  if (loading) {
+  if (loading || contextLoading) {
     return (
       <div className="flex items-center justify-center" style={{ minHeight: '400px' }}>
         <div className="text-lg text-secondary">Chargement des rapports...</div>
@@ -377,6 +364,47 @@ export default function AdvancedReportsModule() {
           </button>
         </div>
       </div>
+
+      {/* Info magasin sélectionné */}
+      {currentStore && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          padding: '16px',
+          marginBottom: 'var(--space-lg)',
+          background: 'var(--color-surface)',
+          borderRadius: '12px',
+          border: '1px solid var(--color-border)',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{
+            background: 'rgba(59, 130, 246, 0.1)',
+            padding: '10px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <Package size={20} color="#3b82f6" />
+          </div>
+          <div>
+            <div style={{
+              fontSize: '14px',
+              fontWeight: '600',
+              color: 'var(--color-text-primary)'
+            }}>
+              Magasin: {currentStore.name}
+            </div>
+            <div style={{
+              fontSize: '12px',
+              color: 'var(--color-text-secondary)'
+            }}>
+              Données filtrées pour ce magasin uniquement
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Métriques KPI */}
       <div style={{
