@@ -1029,12 +1029,12 @@ export default function POSPage() {
                 background: "var(--color-surface)",
                 border: "2px solid var(--color-border)",
                 borderRadius: "12px",
-                padding: "12px",
+                padding: "10px",
                 cursor: "pointer",
                 transition: "all 0.2s",
                 display: "flex",
                 flexDirection: "column",
-                gap: "10px",
+                gap: "8px",
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.borderColor = "var(--color-primary)";
@@ -1053,7 +1053,7 @@ export default function POSPage() {
                   alt={product.name}
                   style={{
                     width: "100%",
-                    height: "120px",
+                    height: "80px",
                     objectFit: "cover",
                     borderRadius: "8px",
                     background: "var(--color-surface-hover)",
@@ -1063,14 +1063,14 @@ export default function POSPage() {
                 <div
                   style={{
                     width: "100%",
-                    height: "120px",
+                    height: "80px",
                     background: "var(--color-surface-hover)",
                     borderRadius: "8px",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
                     color: "var(--color-text-muted)",
-                    fontSize: "48px",
+                    fontSize: "36px",
                   }}
                 >
                   📦
@@ -1107,19 +1107,6 @@ export default function POSPage() {
                     }}
                   >
                     Stock: {product.stock}
-                  </div>
-                </PermissionGate>
-
-                {/* ✨ AJOUTÉ - Prix d'achat visible seulement pour Admin */}
-                <PermissionGate roles={["admin"]}>
-                  <div
-                    style={{
-                      fontSize: "11px",
-                      color: "var(--color-text-muted)",
-                      marginTop: "2px",
-                    }}
-                  >
-                    PA: {product.costPrice.toLocaleString()} FCFA
                   </div>
                 </PermissionGate>
               </div>
