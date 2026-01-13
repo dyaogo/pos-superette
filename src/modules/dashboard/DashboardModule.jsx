@@ -1,6 +1,7 @@
 // 📁 src/modules/dashboard/DashboardModule.jsx
 
 import React, { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/router';
 import { useApp } from '../../contexts/AppContext';
 import {
   ShoppingCart, Package, Users, TrendingUp, TrendingDown,
@@ -11,6 +12,7 @@ import {
 } from 'lucide-react';
 
 const DashboardModule = () => {
+  const router = useRouter();
   const {
     appSettings = {},
     productCatalog = [],
@@ -1127,13 +1129,14 @@ const DashboardModule = () => {
           gap: '16px'
         }}>
           {[
-            { title: 'Nouvelle Vente', icon: PlusCircle, color: '#10b981' },
-            { title: 'Ajouter Produit', icon: Package, color: '#3b82f6' },
-            { title: 'Voir Rapports', icon: TrendingUp, color: '#8b5cf6' },
-            { title: 'Gérer Stock', icon: AlertTriangle, color: '#f59e0b' }
+            { title: 'Nouvelle Vente', icon: PlusCircle, color: '#10b981', route: '/pos' },
+            { title: 'Ajouter Produit', icon: Package, color: '#3b82f6', route: '/products-list' },
+            { title: 'Voir Rapports', icon: TrendingUp, color: '#8b5cf6', route: '/reports' },
+            { title: 'Gérer Stock', icon: AlertTriangle, color: '#f59e0b', route: '/stocks' }
           ].map((action, index) => (
             <div
               key={action.title}
+              onClick={() => router.push(action.route)}
               style={{
                 display: 'flex',
                 alignItems: 'center',
