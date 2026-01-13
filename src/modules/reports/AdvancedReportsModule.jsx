@@ -205,79 +205,393 @@ export default function AdvancedReportsModule() {
     return Object.values(categoryStats);
   }, [filteredData.sales, products]);
 
-  // Export Excel
+  // Export Excel avec formatage moderne
   const exportToExcel = () => {
     const wb = XLSX.utils.book_new();
 
-    // Feuille Résumé
+    // === Feuille Résumé avec formatage ===
     const summaryData = [
-      ['Rapport de Ventes', ''],
-      ['Période', period],
-      ['Date génération', new Date().toLocaleString('fr-FR')],
+      ['RAPPORT DE VENTES - ANALYSE COMPLETE'],
       [''],
-      ['Métriques Principales', ''],
-      ['Chiffre d\'affaires', Math.round(metrics.totalRevenue).toLocaleString('fr-FR') + ' FCFA'],
-      ['Coût des marchandises vendues', Math.round(metrics.totalCost).toLocaleString('fr-FR') + ' FCFA'],
-      ['Marge Brute', Math.round(metrics.grossMargin).toLocaleString('fr-FR') + ' FCFA'],
-      ['Taux de Marge Brute', metrics.grossMarginRate.toFixed(1) + '%'],
-      ['Dépenses', Math.round(metrics.totalExpenses).toLocaleString('fr-FR') + ' FCFA'],
-      ['Bénéfice Net', Math.round(metrics.profit).toLocaleString('fr-FR') + ' FCFA'],
+      ['Période', period === 'today' ? "Aujourd'hui" : period === 'week' ? '7 derniers jours' : period === 'month' ? '30 derniers jours' : '12 derniers mois'],
+      ['Magasin', currentStore?.name || 'Tous les magasins'],
+      ['Date de génération', new Date().toLocaleString('fr-FR')],
+      [''],
+      ['COMPTE DE RESULTAT'],
+      ['Indicateur', 'Montant', 'Détails'],
+      ['Chiffre d\'affaires', Math.round(metrics.totalRevenue), 'FCFA'],
+      ['Coût des marchandises', Math.round(metrics.totalCost), 'FCFA'],
+      ['Marge Brute', Math.round(metrics.grossMargin), `${metrics.grossMarginRate.toFixed(1)}% du CA`],
+      ['Dépenses d\'exploitation', Math.round(metrics.totalExpenses), 'FCFA'],
+      ['Bénéfice Net', Math.round(metrics.profit), metrics.profit >= 0 ? 'Positif' : 'Négatif'],
+      [''],
+      ['INDICATEURS DE PERFORMANCE'],
+      ['Métrique', 'Valeur'],
+      ['Nombre de transactions', filteredData.sales.length],
+      ['Panier moyen', Math.round(metrics.totalRevenue / (filteredData.sales.length || 1)) + ' FCFA'],
+      ['Taux de marge', metrics.grossMarginRate.toFixed(1) + '%'],
+      ['Rentabilité', metrics.totalRevenue > 0 ? ((metrics.profit / metrics.totalRevenue) * 100).toFixed(1) + '%' : '0%'],
     ];
-    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
-    XLSX.utils.book_append_sheet(wb, wsSummary, 'Résumé');
 
-    // Feuille Top Produits
+    const wsSummary = XLSX.utils.aoa_to_sheet(summaryData);
+
+    // Styles pour Excel (largeur des colonnes)
+    wsSummary['!cols'] = [
+      { wch: 30 }, // Colonne A
+      { wch: 20 }, // Colonne B
+      { wch: 25 }  // Colonne C
+    ];
+
+    // Fusionner la cellule titre
+    wsSummary['!merges'] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }, // Titre principal
+      { s: { r: 6, c: 0 }, e: { r: 6, c: 2 } }, // COMPTE DE RESULTAT
+      { s: { r: 14, c: 0 }, e: { r: 14, c: 1 } } // INDICATEURS DE PERFORMANCE
+    ];
+
+    XLSX.utils.book_append_sheet(wb, wsSummary, 'Resume');
+
+    // === Feuille Top Produits ===
     const productsData = [
-      ['Nom', 'Quantité Vendue', 'Chiffre d\'affaires'],
-      ...topProducts.map(p => [p.name, p.quantity, Math.round(p.revenue).toLocaleString('fr-FR')]),
+      ['TOP 5 PRODUITS LES PLUS VENDUS'],
+      [''],
+      ['Rang', 'Nom du Produit', 'Quantité Vendue', 'Chiffre d\'affaires (FCFA)', 'Part du CA'],
+      ...topProducts.map((p, idx) => [
+        `#${idx + 1}`,
+        p.name,
+        p.quantity,
+        Math.round(p.revenue),
+        ((p.revenue / metrics.totalRevenue) * 100).toFixed(1) + '%'
+      ]),
+      [''],
+      ['TOTAL', '', topProducts.reduce((sum, p) => sum + p.quantity, 0), Math.round(topProducts.reduce((sum, p) => sum + p.revenue, 0)), '']
     ];
     const wsProducts = XLSX.utils.aoa_to_sheet(productsData);
+    wsProducts['!cols'] = [
+      { wch: 8 },  // Rang
+      { wch: 35 }, // Nom
+      { wch: 15 }, // Quantité
+      { wch: 20 }, // CA
+      { wch: 12 }  // Part
+    ];
+    wsProducts['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
     XLSX.utils.book_append_sheet(wb, wsProducts, 'Top Produits');
 
-    // Feuille Ventes par jour
+    // === Feuille Top Clients ===
+    if (topCustomers.length > 0) {
+      const customersData = [
+        ['TOP 5 CLIENTS'],
+        [''],
+        ['Rang', 'Nom du Client', 'Nombre d\'achats', 'Total dépensé (FCFA)', 'Panier moyen'],
+        ...topCustomers.map((c, idx) => [
+          `#${idx + 1}`,
+          c.name,
+          c.transactions,
+          Math.round(c.total),
+          Math.round(c.total / c.transactions) + ' FCFA'
+        ])
+      ];
+      const wsCustomers = XLSX.utils.aoa_to_sheet(customersData);
+      wsCustomers['!cols'] = [
+        { wch: 8 },  // Rang
+        { wch: 30 }, // Nom
+        { wch: 18 }, // Nombre
+        { wch: 20 }, // Total
+        { wch: 15 }  // Panier moyen
+      ];
+      wsCustomers['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
+      XLSX.utils.book_append_sheet(wb, wsCustomers, 'Top Clients');
+    }
+
+    // === Feuille Evolution des ventes ===
     const salesDailyData = [
-      ['Date', 'Chiffre d\'affaires', 'Transactions'],
-      ...salesByDay.map(d => [d.date, Math.round(d.revenue).toLocaleString('fr-FR'), d.transactions]),
+      ['EVOLUTION DES VENTES'],
+      [''],
+      ['Date', 'Chiffre d\'affaires (FCFA)', 'Nombre de transactions', 'Panier moyen (FCFA)'],
+      ...salesByDay.map(d => [
+        d.date,
+        Math.round(d.revenue),
+        d.transactions,
+        d.transactions > 0 ? Math.round(d.revenue / d.transactions) : 0
+      ]),
+      [''],
+      ['TOTAL', Math.round(salesByDay.reduce((sum, d) => sum + d.revenue, 0)), salesByDay.reduce((sum, d) => sum + d.transactions, 0), '']
     ];
     const wsSales = XLSX.utils.aoa_to_sheet(salesDailyData);
-    XLSX.utils.book_append_sheet(wb, wsSales, 'Ventes Quotidiennes');
+    wsSales['!cols'] = [
+      { wch: 15 }, // Date
+      { wch: 20 }, // CA
+      { wch: 20 }, // Transactions
+      { wch: 18 }  // Panier moyen
+    ];
+    wsSales['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
+    XLSX.utils.book_append_sheet(wb, wsSales, 'Evolution');
 
-    XLSX.writeFile(wb, `rapport_${period}_${Date.now()}.xlsx`);
+    // === Feuille Ventes par catégorie ===
+    const categoryData = [
+      ['VENTES PAR CATEGORIE'],
+      [''],
+      ['Catégorie', 'Chiffre d\'affaires (FCFA)', 'Part du CA'],
+      ...salesByCategory.map(c => [
+        c.name,
+        Math.round(c.value),
+        ((c.value / metrics.totalRevenue) * 100).toFixed(1) + '%'
+      ])
+    ];
+    const wsCategory = XLSX.utils.aoa_to_sheet(categoryData);
+    wsCategory['!cols'] = [
+      { wch: 25 }, // Catégorie
+      { wch: 25 }, // CA
+      { wch: 15 }  // Part
+    ];
+    wsCategory['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
+    XLSX.utils.book_append_sheet(wb, wsCategory, 'Categories');
+
+    const fileName = `Rapport_${currentStore?.name || 'Tous'}_${period}_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
     toast.success('Rapport Excel exporté avec succès');
   };
 
-  // Export PDF
+  // Export PDF moderne et professionnel
   const exportToPDF = () => {
     const doc = new jsPDF();
+    let yPos = 20;
 
-    doc.setFontSize(18);
-    doc.text('Rapport de Ventes', 14, 20);
+    // === En-tête avec fond coloré ===
+    doc.setFillColor(59, 130, 246); // Bleu
+    doc.rect(0, 0, 210, 45, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont(undefined, 'bold');
+    doc.text('RAPPORT DE VENTES', 105, 20, { align: 'center' });
 
     doc.setFontSize(11);
-    doc.text(`Période: ${period}`, 14, 30);
-    doc.text(`Généré le: ${new Date().toLocaleString('fr-FR')}`, 14, 36);
+    doc.setFont(undefined, 'normal');
+    const periodLabel = period === 'today' ? "Aujourd'hui" :
+                        period === 'week' ? '7 derniers jours' :
+                        period === 'month' ? '30 derniers jours' : '12 derniers mois';
+    doc.text(`Période: ${periodLabel}`, 105, 30, { align: 'center' });
+    if (currentStore) {
+      doc.text(`Magasin: ${currentStore.name}`, 105, 36, { align: 'center' });
+    }
+    doc.setFontSize(9);
+    doc.text(`Généré le ${new Date().toLocaleString('fr-FR')}`, 105, 41, { align: 'center' });
 
-    // Métriques
+    yPos = 55;
+    doc.setTextColor(0, 0, 0);
+
+    // === Section Compte de Résultat ===
+    doc.setFillColor(241, 245, 249); // Gris clair
+    doc.rect(14, yPos - 5, 182, 10, 'F');
     doc.setFontSize(14);
-    doc.text('Métriques Principales', 14, 50);
-    doc.setFontSize(10);
-    doc.text(`Chiffre d'affaires: ${Math.round(metrics.totalRevenue).toLocaleString('fr-FR')} FCFA`, 14, 58);
-    doc.text(`Coût marchandises vendues: ${Math.round(metrics.totalCost).toLocaleString('fr-FR')} FCFA`, 14, 64);
-    doc.text(`Marge Brute: ${Math.round(metrics.grossMargin).toLocaleString('fr-FR')} FCFA (${metrics.grossMarginRate.toFixed(1)}%)`, 14, 70);
-    doc.text(`Dépenses: ${Math.round(metrics.totalExpenses).toLocaleString('fr-FR')} FCFA`, 14, 76);
-    doc.text(`Bénéfice Net: ${Math.round(metrics.profit).toLocaleString('fr-FR')} FCFA`, 14, 82);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('COMPTE DE RESULTAT', 20, yPos);
+    yPos += 12;
 
-    // Top Produits Table
-    doc.setFontSize(14);
-    doc.text('Top 5 Produits', 14, 96);
-
+    doc.setTextColor(0, 0, 0);
     autoTable(doc, {
-      startY: 101,
-      head: [['Produit', 'Quantité', 'CA (FCFA)']],
-      body: topProducts.map(p => [p.name, p.quantity, Math.round(p.revenue).toLocaleString('fr-FR')]),
+      startY: yPos,
+      head: [['Indicateur', 'Montant (FCFA)', 'Détails']],
+      body: [
+        ['Chiffre d\'affaires', Math.round(metrics.totalRevenue).toLocaleString('fr-FR'), '100%'],
+        ['Coût des marchandises', Math.round(metrics.totalCost).toLocaleString('fr-FR'), `${(100 - metrics.grossMarginRate).toFixed(1)}%`],
+        ['Marge Brute', Math.round(metrics.grossMargin).toLocaleString('fr-FR'), `${metrics.grossMarginRate.toFixed(1)}%`],
+        ['Dépenses d\'exploitation', Math.round(metrics.totalExpenses).toLocaleString('fr-FR'), metrics.totalRevenue > 0 ? `${((metrics.totalExpenses / metrics.totalRevenue) * 100).toFixed(1)}%` : '0%'],
+        ['Bénéfice Net', Math.round(metrics.profit).toLocaleString('fr-FR'), metrics.totalRevenue > 0 ? `${((metrics.profit / metrics.totalRevenue) * 100).toFixed(1)}%` : '0%'],
+      ],
+      headStyles: {
+        fillColor: [59, 130, 246],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      bodyStyles: {
+        fontSize: 9,
+        cellPadding: 5
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: {
+        0: { cellWidth: 80, fontStyle: 'bold' },
+        1: { cellWidth: 60, halign: 'right' },
+        2: { cellWidth: 40, halign: 'center' }
+      },
+      didParseCell: (data) => {
+        // Colorer la ligne du bénéfice
+        if (data.row.index === 4) {
+          if (metrics.profit >= 0) {
+            data.cell.styles.textColor = [16, 185, 129]; // Vert
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            data.cell.styles.textColor = [239, 68, 68]; // Rouge
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      }
     });
 
-    doc.save(`rapport_${period}_${Date.now()}.pdf`);
+    yPos = doc.lastAutoTable.finalY + 15;
+
+    // === Section Indicateurs Clés ===
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, yPos - 5, 182, 10, 'F');
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('INDICATEURS CLES', 20, yPos);
+    yPos += 12;
+
+    doc.setTextColor(0, 0, 0);
+    autoTable(doc, {
+      startY: yPos,
+      head: [['Métrique', 'Valeur']],
+      body: [
+        ['Nombre de transactions', filteredData.sales.length.toString()],
+        ['Panier moyen', Math.round(metrics.totalRevenue / (filteredData.sales.length || 1)).toLocaleString('fr-FR') + ' FCFA'],
+        ['Taux de marge brute', metrics.grossMarginRate.toFixed(1) + '%'],
+        ['Rentabilité nette', metrics.totalRevenue > 0 ? ((metrics.profit / metrics.totalRevenue) * 100).toFixed(1) + '%' : '0%'],
+      ],
+      headStyles: {
+        fillColor: [139, 92, 246],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      bodyStyles: {
+        fontSize: 9,
+        cellPadding: 4
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: {
+        0: { cellWidth: 100, fontStyle: 'bold' },
+        1: { cellWidth: 80, halign: 'right', textColor: [59, 130, 246], fontStyle: 'bold' }
+      }
+    });
+
+    yPos = doc.lastAutoTable.finalY + 15;
+
+    // === Top 5 Produits ===
+    if (yPos > 220) {
+      doc.addPage();
+      yPos = 20;
+    }
+
+    doc.setFillColor(241, 245, 249);
+    doc.rect(14, yPos - 5, 182, 10, 'F');
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.setTextColor(30, 41, 59);
+    doc.text('TOP 5 PRODUITS', 20, yPos);
+    yPos += 12;
+
+    doc.setTextColor(0, 0, 0);
+    autoTable(doc, {
+      startY: yPos,
+      head: [['#', 'Produit', 'Qté', 'CA (FCFA)', 'Part']],
+      body: topProducts.map((p, idx) => [
+        (idx + 1).toString(),
+        p.name,
+        p.quantity.toString(),
+        Math.round(p.revenue).toLocaleString('fr-FR'),
+        ((p.revenue / metrics.totalRevenue) * 100).toFixed(1) + '%'
+      ]),
+      headStyles: {
+        fillColor: [16, 185, 129],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 10
+      },
+      bodyStyles: {
+        fontSize: 9,
+        cellPadding: 4
+      },
+      alternateRowStyles: {
+        fillColor: [248, 250, 252]
+      },
+      columnStyles: {
+        0: { cellWidth: 15, halign: 'center', fontStyle: 'bold', textColor: [16, 185, 129] },
+        1: { cellWidth: 80 },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 40, halign: 'right' },
+        4: { cellWidth: 25, halign: 'center' }
+      },
+      didParseCell: (data) => {
+        // Surligner le produit #1
+        if (data.row.index === 0 && data.section === 'body') {
+          data.cell.styles.fillColor = [220, 252, 231]; // Vert très clair
+          data.cell.styles.fontStyle = 'bold';
+        }
+      }
+    });
+
+    yPos = doc.lastAutoTable.finalY + 15;
+
+    // === Top 5 Clients (si disponible) ===
+    if (topCustomers.length > 0) {
+      if (yPos > 220) {
+        doc.addPage();
+        yPos = 20;
+      }
+
+      doc.setFillColor(241, 245, 249);
+      doc.rect(14, yPos - 5, 182, 10, 'F');
+      doc.setFontSize(14);
+      doc.setFont(undefined, 'bold');
+      doc.setTextColor(30, 41, 59);
+      doc.text('TOP 5 CLIENTS', 20, yPos);
+      yPos += 12;
+
+      doc.setTextColor(0, 0, 0);
+      autoTable(doc, {
+        startY: yPos,
+        head: [['#', 'Client', 'Achats', 'Total (FCFA)', 'Panier moyen']],
+        body: topCustomers.map((c, idx) => [
+          (idx + 1).toString(),
+          c.name,
+          c.transactions.toString(),
+          Math.round(c.total).toLocaleString('fr-FR'),
+          Math.round(c.total / c.transactions).toLocaleString('fr-FR')
+        ]),
+        headStyles: {
+          fillColor: [245, 158, 11],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 10
+        },
+        bodyStyles: {
+          fontSize: 9,
+          cellPadding: 4
+        },
+        alternateRowStyles: {
+          fillColor: [248, 250, 252]
+        },
+        columnStyles: {
+          0: { cellWidth: 15, halign: 'center', fontStyle: 'bold', textColor: [245, 158, 11] },
+          1: { cellWidth: 70 },
+          2: { cellWidth: 30, halign: 'center' },
+          3: { cellWidth: 40, halign: 'right' },
+          4: { cellWidth: 35, halign: 'right' }
+        }
+      });
+    }
+
+    // === Pied de page ===
+    const pageCount = doc.internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setTextColor(150, 150, 150);
+      doc.text(`Page ${i} sur ${pageCount}`, 105, 290, { align: 'center' });
+      doc.text('Généré par POS Superette', 195, 290, { align: 'right' });
+    }
+
+    const fileName = `Rapport_${currentStore?.name || 'Tous'}_${period}_${new Date().toLocaleDateString('fr-FR').replace(/\//g, '-')}.pdf`;
+    doc.save(fileName);
     toast.success('Rapport PDF exporté avec succès');
   };
 
