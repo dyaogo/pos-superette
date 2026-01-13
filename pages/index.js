@@ -1,14 +1,14 @@
 export default function Home() {
   if (typeof window !== 'undefined') {
-    window.location.href = '/dashboard';
+    window.location.href = '/dashboards';
   }
-  
+
   return (
-    <div style={{ 
-      display: 'flex', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100vh' 
+    <div style={{
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100vh'
     }}>
       <p>Chargement...</p>
     </div>

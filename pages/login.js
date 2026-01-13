@@ -21,7 +21,7 @@ export default function LoginPage() {
     const result = await login(formData.username, formData.password); // ✨ UTILISEZ login du contexte
 
     if (result.success) {
-      router.push("/dashboard");
+      router.push("/dashboards");
     } else {
       setError(result.error);
     }
