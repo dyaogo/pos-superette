@@ -118,7 +118,8 @@ export default function AdvancedReportsModule() {
 
     const grossMargin = totalRevenue - totalCost;
     const grossMarginRate = totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0;
-    // ✅ Bénéfice Net = Marge Brute - Dépenses (pas CA - Dépenses)
+
+    // ✅ Bénéfice Net = Marge Brute - Dépenses
     const profit = grossMargin - totalExpenses;
 
     return {
