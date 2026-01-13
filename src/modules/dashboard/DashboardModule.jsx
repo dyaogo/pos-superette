@@ -1130,7 +1130,7 @@ const DashboardModule = () => {
         }}>
           {[
             { title: 'Nouvelle Vente', icon: PlusCircle, color: '#10b981', route: '/pos' },
-            { title: 'Ajouter Produit', icon: Package, color: '#3b82f6', route: '/products-list' },
+            { title: 'Période de Travail', icon: Clock, color: '#3b82f6', route: '/work-periods' },
             { title: 'Voir Rapports', icon: TrendingUp, color: '#8b5cf6', route: '/reports' },
             { title: 'Gérer Stock', icon: AlertTriangle, color: '#f59e0b', route: '/stocks' }
           ].map((action, index) => (
