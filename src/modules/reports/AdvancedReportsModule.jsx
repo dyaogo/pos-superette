@@ -105,11 +105,19 @@ export default function AdvancedReportsModule() {
     const totalRevenue = filteredData.sales.reduce((sum, s) => sum + (s.total || 0), 0);
     const totalExpenses = filteredData.expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
 
-    // ✅ Utiliser une marge brute standard de 37% (cohérent avec le dashboard)
-    // Au lieu de calculer avec costPrice qui n'est souvent pas renseigné
-    const grossMargin = totalRevenue * 0.37;
-    const grossMarginRate = 37; // Taux de marge fixe
-    const totalCost = totalRevenue - grossMargin; // Coût implicite
+    // ✅ Calculer la marge brute réelle basée sur les coûts des produits
+    let totalCost = 0;
+    filteredData.sales.forEach(sale => {
+      sale.items?.forEach(item => {
+        const product = products.find(p => p.id === item.productId);
+        const costPrice = product?.costPrice || 0;
+        const quantity = item.quantity || 0;
+        totalCost += costPrice * quantity;
+      });
+    });
+
+    const grossMargin = totalRevenue - totalCost;
+    const grossMarginRate = totalRevenue > 0 ? (grossMargin / totalRevenue) * 100 : 0;
 
     // ✅ Bénéfice Net = Marge Brute - Dépenses
     const profit = grossMargin - totalExpenses;
@@ -122,7 +130,7 @@ export default function AdvancedReportsModule() {
       grossMarginRate,
       totalCost
     };
-  }, [filteredData]);
+  }, [filteredData, products]);
 
   // Préparer données pour graphique des ventes par jour
   const salesByDay = useMemo(() => {

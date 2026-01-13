@@ -36,6 +36,23 @@ const DashboardModule = () => {
     return number.toString();
   };
 
+  // Fonction utilitaire pour calculer la marge brute réelle d'un ensemble de ventes
+  const calculateGrossMargin = (sales) => {
+    const revenue = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    let totalCost = 0;
+
+    sales.forEach(sale => {
+      (sale.items || []).forEach(item => {
+        const product = productCatalog.find(p => p.id === item.productId);
+        const costPrice = product?.costPrice || 0;
+        const quantity = item.quantity || 0;
+        totalCost += costPrice * quantity;
+      });
+    });
+
+    return revenue - totalCost;
+  };
+
   // Calcul des métriques pour la période sélectionnée
   const getMetricsForPeriod = useMemo(() => {
     const now = new Date();
@@ -89,10 +106,22 @@ const DashboardModule = () => {
     const revenue = periodSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
     const transactions = periodSales.length;
     const avgBasket = transactions > 0 ? revenue / transactions : 0;
-    const grossMargin = revenue * 0.37; // 37% de marge moyenne
+
+    // Calculer la marge brute réelle basée sur les coûts des produits
+    let totalCost = 0;
+    periodSales.forEach(sale => {
+      (sale.items || []).forEach(item => {
+        const product = productCatalog.find(p => p.id === item.productId);
+        const costPrice = product?.costPrice || 0;
+        const quantity = item.quantity || 0;
+        totalCost += costPrice * quantity;
+      });
+    });
+
+    const grossMargin = revenue - totalCost;
 
     return { revenue, transactions, avgBasket, grossMargin };
-  }, [salesHistory, selectedPeriod, periodOffset]);
+  }, [salesHistory, selectedPeriod, periodOffset, productCatalog]);
 
   // Calcul des tendances par rapport à la période précédente
   const calculateTrends = useMemo(() => {
@@ -140,7 +169,19 @@ const DashboardModule = () => {
       const revenue = previousSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
       const transactions = previousSales.length;
       const avgBasket = transactions > 0 ? revenue / transactions : 0;
-      const grossMargin = revenue * 0.37;
+
+      // Calculer la marge brute réelle basée sur les coûts des produits
+      let totalCost = 0;
+      previousSales.forEach(sale => {
+        (sale.items || []).forEach(item => {
+          const product = productCatalog.find(p => p.id === item.productId);
+          const costPrice = product?.costPrice || 0;
+          const quantity = item.quantity || 0;
+          totalCost += costPrice * quantity;
+        });
+      });
+
+      const grossMargin = revenue - totalCost;
 
       return { revenue, transactions, avgBasket, grossMargin };
     };
@@ -159,7 +200,7 @@ const DashboardModule = () => {
       basket: calculateTrend(current.avgBasket, previous.avgBasket),
       margin: calculateTrend(current.grossMargin, previous.grossMargin)
     };
-  }, [getMetricsForPeriod, salesHistory, selectedPeriod, periodOffset]);
+  }, [getMetricsForPeriod, salesHistory, selectedPeriod, periodOffset, productCatalog]);
 
   // Génération des données pour le graphique selon la période
   const chartData = useMemo(() => {
@@ -175,10 +216,10 @@ const DashboardModule = () => {
             return saleDate.toDateString() === now.toDateString() &&
                    saleDate.getHours() === hour;
           });
-          
+
           const sales = hourSales.reduce((sum, sale) => sum + sale.total, 0);
-          const margin = sales * 0.37;
-          
+          const margin = calculateGrossMargin(hourSales);
+
           todayData.push({
             label: `${hour}h`,
             ventes: sales,
@@ -193,19 +234,19 @@ const DashboardModule = () => {
         const days = ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay());
-        
+
         for (let i = 0; i < 7; i++) {
           const day = new Date(weekStart);
           day.setDate(weekStart.getDate() + i);
-          
+
           const daySales = salesHistory.filter(sale => {
             const saleDate = new Date(sale.createdAt || sale.date);
             return saleDate.toDateString() === day.toDateString();
           });
-          
+
           const sales = daySales.reduce((sum, sale) => sum + sale.total, 0);
-          const margin = sales * 0.37;
-          
+          const margin = calculateGrossMargin(daySales);
+
           weekData.push({
             label: days[i],
             ventes: sales,
@@ -218,21 +259,21 @@ const DashboardModule = () => {
         // Données par semaine du mois
         const monthData = [];
         const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-        
+
         for (let week = 1; week <= 4; week++) {
           const weekStart = new Date(monthStart);
           weekStart.setDate((week - 1) * 7 + 1);
           const weekEnd = new Date(weekStart);
           weekEnd.setDate(weekStart.getDate() + 6);
-          
+
           const weekSales = salesHistory.filter(sale => {
             const saleDate = new Date(sale.createdAt || sale.date);
             return saleDate >= weekStart && saleDate <= weekEnd;
           });
-          
+
           const sales = weekSales.reduce((sum, sale) => sum + sale.total, 0);
-          const margin = sales * 0.37;
-          
+          const margin = calculateGrossMargin(weekSales);
+
           monthData.push({
             label: `S${week}`,
             ventes: sales,
@@ -245,17 +286,17 @@ const DashboardModule = () => {
         // Données par mois de l'année
         const yearData = [];
         const months = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc'];
-        
+
         for (let month = 0; month < 12; month++) {
           const monthSales = salesHistory.filter(sale => {
             const saleDate = new Date(sale.createdAt || sale.date);
             return saleDate.getFullYear() === now.getFullYear() &&
                    saleDate.getMonth() === month;
           });
-          
+
           const sales = monthSales.reduce((sum, sale) => sum + sale.total, 0);
-          const margin = sales * 0.37;
-          
+          const margin = calculateGrossMargin(monthSales);
+
           yearData.push({
             label: months[month],
             ventes: sales,
@@ -267,7 +308,7 @@ const DashboardModule = () => {
       default:
         return [];
     }
-  }, [salesHistory, selectedPeriod, periodOffset]);
+  }, [salesHistory, selectedPeriod, periodOffset, productCatalog]);
 
   // Composant StatCard avec tendances
   const StatCard = ({ title, value, icon: Icon, trend, color, delay = 0, marginPercentage }) => (
