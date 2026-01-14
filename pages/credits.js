@@ -331,6 +331,7 @@ function CreditsPage() {
                 </th>
                 <th style={{ padding: "15px", textAlign: "right" }}>Montant</th>
                 <th style={{ padding: "15px", textAlign: "right" }}>Restant</th>
+                <th style={{ padding: "15px", textAlign: "left" }}>Caissier</th>
                 <th style={{ padding: "15px", textAlign: "left" }}>Créé le</th>
                 <th style={{ padding: "15px", textAlign: "left" }}>Échéance</th>
                 <th style={{ padding: "15px", textAlign: "center" }}>Statut</th>
@@ -388,6 +389,15 @@ function CreditsPage() {
                         }}
                       >
                         {credit.remainingAmount.toLocaleString()} FCFA
+                      </td>
+                      <td
+                        style={{
+                          padding: "15px",
+                          fontSize: "14px",
+                          color: "var(--color-text-secondary)",
+                        }}
+                      >
+                        {credit.createdBy || "N/A"}
                       </td>
                       <td
                         style={{
