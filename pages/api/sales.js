@@ -19,7 +19,8 @@ async function handler(req, res) {
         skip,
         take: limit,
         include: {
-          items: true  // ⚠️ Ceci ne charge que les SaleItem, pas les Product
+          items: true,  // ⚠️ Ceci ne charge que les SaleItem, pas les Product
+          customer: true  // ✅ Inclure les données du client
         },
         orderBy: {
           createdAt: 'desc'

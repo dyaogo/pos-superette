@@ -83,6 +83,7 @@ model Credit {
   description     String?
   dueDate         DateTime
   status          String   @default("pending") // pending, partial, paid
+  createdBy       String?  // ✅ Nom du caissier qui a accordé le crédit
   createdAt       DateTime @default(now())
 }
 model Return {

@@ -33,6 +33,7 @@ async function handler(req, res) {
       }
 
       const { customerId, amount, dueDate, notes } = validation.data;
+      const createdBy = req.body.createdBy || req.body.cashier || 'Système';
 
       const credit = await prisma.credit.create({
         data: {
@@ -41,7 +42,8 @@ async function handler(req, res) {
           remainingAmount: amount,
           description: notes,
           dueDate: new Date(dueDate),
-          status: 'pending'
+          status: 'pending',
+          createdBy  // ✅ Enregistrer le nom du caissier
         }
       });
       

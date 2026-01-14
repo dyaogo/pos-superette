@@ -367,6 +367,7 @@ export default function POSPage() {
             description: `Vente ${saleData.receiptNumber}`,
             dueDate: creditDueDate || getDefaultDueDate(),
             status: "pending",
+            createdBy: currentUser?.fullName || currentUser?.email || cashSession?.openedBy || "Caissier",
           };
 
           // 🚀 OPTIMISTIC UI - Créer le crédit local immédiatement
@@ -738,7 +739,10 @@ export default function POSPage() {
 
             {/* ✨ MODIFIÉ - Bouton Fermer caisse accessible à tous les utilisateurs */}
             <button
-              onClick={() => setShowCloseModal(true)}
+              onClick={async () => {
+                await loadCashOperations(); // Recharger les opérations avant d'ouvrir
+                setShowCloseModal(true);
+              }}
               style={{
                 padding: "10px 20px",
                 background: "var(--color-danger)",
