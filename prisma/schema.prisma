@@ -52,8 +52,9 @@ model Sale {
   customerId    String?
   cashier       String   @default("Admin")
   createdAt     DateTime @default(now())
-  
+
   store         Store      @relation(fields: [storeId], references: [id])
+  customer      Customer?  @relation(fields: [customerId], references: [id])
   items         SaleItem[]
 }
 
@@ -74,6 +75,9 @@ model Customer {
   phone     String?
   email     String?
   createdAt DateTime @default(now())
+
+  sales     Sale[]
+  credits   Credit[]
 }
 model Credit {
   id              String   @id @default(cuid())
@@ -85,6 +89,8 @@ model Credit {
   status          String   @default("pending") // pending, partial, paid
   createdBy       String?  // ✅ Nom du caissier qui a accordé le crédit
   createdAt       DateTime @default(now())
+
+  customer        Customer @relation(fields: [customerId], references: [id])
 }
 model Return {
   id          String   @id @default(cuid())
