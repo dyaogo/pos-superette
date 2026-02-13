@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Users, CreditCard, AlertTriangle, Clock, Check, Phone, Plus, Eye, FileText } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
+import { useAuth } from '../../contexts/AuthContext';
 import { saveCredits } from '../../services/sales.service';
 import { useResponsive, getResponsiveStyles } from '../../components/ResponsiveComponents';
 
 const CreditManagementModule = () => {
-  const { customers = [], setCustomers, appSettings, credits = [], setCredits } = useApp();
+  const { customers = [], setCustomers, appSettings, credits = [], setCredits, currentStore } = useApp();
+  const { currentUser } = useAuth();
   const [showAddCreditModal, setShowAddCreditModal] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedCredit, setSelectedCredit] = useState(null);
@@ -17,6 +19,7 @@ const CreditManagementModule = () => {
   });
   const [paymentAmount, setPaymentAmount] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
+  const [openCashSession, setOpenCashSession] = useState(null);
 
   const isDark = appSettings?.darkMode;
   const { deviceType } = useResponsive();
@@ -26,6 +29,22 @@ const CreditManagementModule = () => {
   useEffect(() => {
     saveCredits(credits);
   }, [credits]);
+
+  // Charger la session de caisse ouverte
+  useEffect(() => {
+    const loadOpenSession = async () => {
+      if (!currentStore?.id) return;
+      try {
+        const res = await fetch(`/api/cash-sessions?storeId=${currentStore.id}`);
+        if (res.ok) {
+          const sessions = await res.json();
+          const open = sessions.find(s => s.status === 'open');
+          setOpenCashSession(open || null);
+        }
+      } catch (e) {}
+    };
+    loadOpenSession();
+  }, [currentStore]);
 
   // Calculer la date d'échéance par défaut (30 jours)
   const getDefaultDueDate = () => {
@@ -59,7 +78,7 @@ const CreditManagementModule = () => {
   };
 
   // Enregistrer un paiement
-  const recordPayment = () => {
+  const recordPayment = async () => {
     if (!selectedCredit || !paymentAmount) return;
 
     const amount = Math.round(parseFloat(paymentAmount));
@@ -68,27 +87,50 @@ const CreditManagementModule = () => {
       return;
     }
 
-    const payment = {
-      id: Date.now(),
-      amount,
-      date: new Date().toISOString(),
-      method: 'cash' // Peut être étendu
-    };
+    try {
+      // Appeler l'API pour enregistrer le paiement et créer une CashOperation
+      const res = await fetch(`/api/credits/${selectedCredit.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          paymentAmount: amount,
+          sessionId: openCashSession?.id,
+          createdBy: currentUser?.fullName || currentUser?.email || 'Caissier'
+        })
+      });
 
-    const updatedCredits = credits.map(credit => {
-      if (credit.id === selectedCredit.id) {
-        const newRemainingAmount = Math.round(credit.remainingAmount - amount);
-        return {
-          ...credit,
-          payments: [...credit.payments, payment],
-          remainingAmount: newRemainingAmount,
-          status: newRemainingAmount === 0 ? 'paid' : 'partial'
-        };
+      if (res.ok) {
+        const updatedCredit = await res.json();
+        // Mettre à jour l'état local
+        const updatedCredits = credits.map(credit =>
+          credit.id === selectedCredit.id
+            ? { ...credit, remainingAmount: updatedCredit.remainingAmount, status: updatedCredit.status }
+            : credit
+        );
+        setCredits(updatedCredits);
+      } else {
+        // Fallback : mise à jour locale si l'API échoue
+        const updatedCredits = credits.map(credit => {
+          if (credit.id === selectedCredit.id) {
+            const newRemainingAmount = Math.round(credit.remainingAmount - amount);
+            return { ...credit, remainingAmount: newRemainingAmount, status: newRemainingAmount === 0 ? 'paid' : 'partial' };
+          }
+          return credit;
+        });
+        setCredits(updatedCredits);
       }
-      return credit;
-    });
+    } catch (e) {
+      // Fallback : mise à jour locale si l'API échoue
+      const updatedCredits = credits.map(credit => {
+        if (credit.id === selectedCredit.id) {
+          const newRemainingAmount = Math.round(credit.remainingAmount - amount);
+          return { ...credit, remainingAmount: newRemainingAmount, status: newRemainingAmount === 0 ? 'paid' : 'partial' };
+        }
+        return credit;
+      });
+      setCredits(updatedCredits);
+    }
 
-    setCredits(updatedCredits);
     setPaymentAmount('');
     setShowPaymentModal(false);
     setSelectedCredit(null);
@@ -322,6 +364,12 @@ const CreditManagementModule = () => {
                     Restant
                   </th>
                   <th style={{ padding: '10px', textAlign: 'left', color: isDark ? '#a0aec0' : '#64748b' }}>
+                    Caissier
+                  </th>
+                  <th style={{ padding: '10px', textAlign: 'left', color: isDark ? '#a0aec0' : '#64748b' }}>
+                    Créé le
+                  </th>
+                  <th style={{ padding: '10px', textAlign: 'left', color: isDark ? '#a0aec0' : '#64748b' }}>
                     Échéance
                   </th>
                   <th style={{ padding: '10px', textAlign: 'left', color: isDark ? '#a0aec0' : '#64748b' }}>
@@ -360,6 +408,12 @@ const CreditManagementModule = () => {
                         <span style={{ color: credit.remainingAmount > 0 ? '#ef4444' : '#10b981' }}>
                           {(credit.remainingAmount || 0).toLocaleString()} {appSettings?.currency}
                         </span>
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: isDark ? '#a0aec0' : '#64748b' }}>
+                        {credit.createdBy || 'N/A'}
+                      </td>
+                      <td style={{ padding: '12px', fontSize: '13px', color: isDark ? '#a0aec0' : '#64748b' }}>
+                        {credit.createdAt ? new Date(credit.createdAt).toLocaleDateString('fr-FR') : 'N/A'}
                       </td>
                       <td style={{ padding: '12px', color: isDark ? '#f7fafc' : '#2d3748' }}>
                         <div>{dueDate.toLocaleDateString('fr-FR')}</div>
