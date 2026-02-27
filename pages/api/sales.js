@@ -119,55 +119,63 @@ async function handler(req, res) {
     
     // Calculer les montants
     const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-    const taxRate = 0.18; // À récupérer du magasin si nécessaire
+    const taxRate = 0.18;
     const tax = subtotal * taxRate;
     const totalAmount = subtotal + tax;
-    
-    // Créer la vente
-    const sale = await prisma.sale.create({
-      data: {
-        storeId: finalStoreId,
-        receiptNumber: `REC-${Date.now()}`,
-        subtotal: subtotal,
-        tax: tax,
-        total: totalAmount,
-        discount: 0,
-        paymentMethod: paymentMethod || 'cash',
-        cashReceived: cashReceived || null,
-        change: change || null,
-        customerId: customerId || null,
-        cashier: 'Admin', // À remplacer par l'utilisateur connecté
-        items: {
-  create: items.map(item => ({
-    productId: item.productId,
-    productName: item.name || item.productName || 'Produit',  // Accepter les deux formats
-    quantity: item.quantity,
-    unitPrice: item.unitPrice,
-    total: item.unitPrice * item.quantity
-  }))
-}
-      },
-      include: {
-        items: true
-      }
-    });
-    
-    // Mettre à jour les stocks
+
+    // 🛡️ FIX #5 — Vérification de stock côté serveur avant transaction
+    const stockInsuffisant = [];
     for (const item of items) {
-      try {
-        await prisma.product.update({
-          where: { id: item.productId },
-          data: {
-            stock: {
-              decrement: item.quantity
-            }
-          }
-        });
-      } catch (error) {
-        console.warn(`Erreur mise à jour stock produit ${item.productId}:`, error);
+      const produit = await prisma.product.findUnique({ where: { id: item.productId } });
+      if (produit && produit.stock < item.quantity) {
+        stockInsuffisant.push({ name: item.name || item.productName, stock: produit.stock, demande: item.quantity });
       }
     }
-    
+    if (stockInsuffisant.length > 0) {
+      const detail = stockInsuffisant.map(p => `${p.name} (stock: ${p.stock}, demandé: ${p.demande})`).join(', ');
+      return res.status(409).json({ error: `Stock insuffisant : ${detail}` });
+    }
+
+    // 🛡️ FIX #5 — Transaction atomique : vente + décréments de stock en une seule opération
+    const sale = await prisma.$transaction(async (tx) => {
+      // 1. Créer la vente
+      const nouvellVente = await tx.sale.create({
+        data: {
+          storeId: finalStoreId,
+          receiptNumber: `REC-${Date.now()}`,
+          subtotal,
+          tax,
+          total: totalAmount,
+          discount: 0,
+          paymentMethod: paymentMethod || 'cash',
+          cashReceived: cashReceived || null,
+          change: change || null,
+          customerId: customerId || null,
+          cashier: req.body.cashier || 'Admin',
+          items: {
+            create: items.map(item => ({
+              productId: item.productId,
+              productName: item.name || item.productName || 'Produit',
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              total: item.unitPrice * item.quantity
+            }))
+          }
+        },
+        include: { items: true }
+      });
+
+      // 2. Décrémenter le stock de chaque article (atomique — annulé si erreur)
+      for (const item of items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } }
+        });
+      }
+
+      return nouvellVente;
+    });
+
     res.status(201).json(sale);
   } catch (error) {
     console.error('Erreur POST sale:', error);

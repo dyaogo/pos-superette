@@ -7,7 +7,12 @@ const prisma = new PrismaClient();
 async function handler(req, res) {
   if (req.method === 'GET') {
     try {
+      // 🛡️ FIX #6 — Filtrer par magasin si storeId fourni en query param
+      const { storeId } = req.query;
+      const where = storeId ? { storeId } : {};
+
       const credits = await prisma.credit.findMany({
+        where,
         orderBy: { createdAt: 'desc' }
       });
       res.status(200).json(credits);
@@ -34,10 +39,13 @@ async function handler(req, res) {
 
       const { customerId, amount, dueDate, notes } = validation.data;
       const createdBy = req.body.createdBy || req.body.cashier || 'Système';
+      // 🛡️ FIX #6 — Rattacher le crédit au magasin actuel
+      const storeId = req.body.storeId || null;
 
       const credit = await prisma.credit.create({
         data: {
           customerId,
+          storeId,           // FIX #6
           amount,
           remainingAmount: amount,
           description: notes,

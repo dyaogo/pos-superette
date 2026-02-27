@@ -58,7 +58,12 @@ function CreditsPage() {
 
   const loadCredits = async () => {
     try {
-      const res = await fetch("/api/credits");
+      // 🛡️ FIX #6 — Filtrer par magasin si un magasin est sélectionné
+      const params = currentStore?.id
+        ? new URLSearchParams({ storeId: currentStore.id })
+        : null;
+      const url = params ? `/api/credits?${params}` : "/api/credits";
+      const res = await fetch(url);
       const data = await res.json();
       setCredits(data);
     } catch (error) {

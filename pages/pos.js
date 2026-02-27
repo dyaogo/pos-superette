@@ -239,6 +239,22 @@ export default function POSPage() {
       return;
     }
 
+    // 🛡️ FIX #7 — Vérification du stock disponible avant validation
+    const articlesManquants = cart.filter((item) => {
+      const produit = productCatalog.find((p) => p.id === item.id);
+      return !produit || produit.stock < item.quantity;
+    });
+    if (articlesManquants.length > 0) {
+      const details = articlesManquants
+        .map((item) => {
+          const produit = productCatalog.find((p) => p.id === item.id);
+          return `${item.name} (stock: ${produit?.stock ?? 0}, demandé: ${item.quantity})`;
+        })
+        .join(" | ");
+      showToast(`❌ Stock insuffisant : ${details}`, "error");
+      return;
+    }
+
     setIsProcessingSale(true);
 
     // Préparer les données de vente
@@ -312,6 +328,20 @@ export default function POSPage() {
           if (response.ok) {
             newSale = await response.json();
             console.log("✅ Vente enregistrée en ligne:", newSale);
+          } else if (response.status === 409) {
+            // 🛡️ FIX #5 — Stock épuisé côté serveur (race condition) : annuler la vente
+            const errData = await response.json();
+            console.error("❌ Stock insuffisant côté serveur:", errData.error);
+            // Rollback UI : restaurer panier + stocks
+            setCart(cartSnapshot);
+            setSelectedCustomer(customerSnapshot);
+            setPaymentMethod(paymentMethodSnapshot);
+            setShowReceipt(false);
+            updateMultipleProductStocksOptimistic(
+              cartSnapshot.map(item => ({ id: item.id, quantity: -item.quantity })) // annuler décréments
+            );
+            showToast(`❌ ${errData.error}`, "error");
+            return; // Pas de fallback offline pour les erreurs de stock
           } else {
             throw new Error("Erreur API");
           }
@@ -362,6 +392,7 @@ export default function POSPage() {
 
           const creditData = {
             customerId: customerSnapshot.id,
+            storeId: currentStore?.id || null,  // 🛡️ FIX #6 — Rattacher au magasin
             amount: roundedTotal,
             remainingAmount: roundedTotal,
             description: `Vente ${saleData.receiptNumber}`,
@@ -593,14 +624,15 @@ export default function POSPage() {
     setClosingAmount("");
     setClosingNotes("");
 
-    const expectedAmount = cashSession.openingAmount +
+    // 🛡️ FIX #8 — Protection NaN : valeurs nulles remplacées par 0
+    const expectedAmount = (cashSession.openingAmount || 0) +
       currentStoreSales
         .filter(
           (s) =>
             s.paymentMethod === "cash" &&
             new Date(s.createdAt) >= new Date(cashSession.openedAt)
         )
-        .reduce((sum, s) => sum + s.total, 0);
+        .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
     const difference = parseFloat(closingAmount) - expectedAmount;
     const diffText = difference === 0
@@ -1776,7 +1808,7 @@ export default function POSPage() {
               s.paymentMethod === "cash" &&
               new Date(s.createdAt) >= new Date(cashSession.openedAt)
           )
-          .reduce((sum, s) => sum + s.total, 0);
+          .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
         const sessionCardSales = currentStoreSales
           .filter(
@@ -1784,7 +1816,7 @@ export default function POSPage() {
               s.paymentMethod === "card" &&
               new Date(s.createdAt) >= new Date(cashSession.openedAt)
           )
-          .reduce((sum, s) => sum + s.total, 0);
+          .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
         const sessionCreditSales = currentStoreSales
           .filter(
@@ -1792,7 +1824,7 @@ export default function POSPage() {
               s.paymentMethod === "credit" &&
               new Date(s.createdAt) >= new Date(cashSession.openedAt)
           )
-          .reduce((sum, s) => sum + s.total, 0);
+          .reduce((sum, s) => sum + (Number(s.total) || 0), 0);
 
         // Calculer les entrées et sorties d'argent
         const sessionOperations = cashOperations.filter(
@@ -1800,12 +1832,13 @@ export default function POSPage() {
         );
         const cashIn = sessionOperations
           .filter((op) => op.type === "in")
-          .reduce((sum, op) => sum + op.amount, 0);
+          .reduce((sum, op) => sum + (Number(op.amount) || 0), 0);
         const cashOut = sessionOperations
           .filter((op) => op.type === "out")
-          .reduce((sum, op) => sum + op.amount, 0);
+          .reduce((sum, op) => sum + (Number(op.amount) || 0), 0);
 
-        const expectedAmount = cashSession.openingAmount + sessionCashSales + cashIn - cashOut;
+        // 🛡️ FIX #8 — Protection NaN dans l'affichage du modal
+        const expectedAmount = (cashSession.openingAmount || 0) + (sessionCashSales || 0) + (cashIn || 0) - (cashOut || 0);
         const actualAmount = parseFloat(closingAmount) || 0;
         const difference = closingAmount ? actualAmount - expectedAmount : 0;
 

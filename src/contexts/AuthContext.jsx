@@ -64,6 +64,13 @@ export function AuthProvider({ children }) {
       }
     }
 
+    // 🔐 FIX #1 & #2 — Effacer le cookie de session côté serveur
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Erreur suppression cookie:', error);
+    }
+
     setCurrentUser(null);
     localStorage.removeItem('currentUser');
     router.push('/login');

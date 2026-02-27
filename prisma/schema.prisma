@@ -21,6 +21,7 @@ model Store {
   products  Product[]
   sales     Sale[]
   expenses  Expense[]
+  credits   Credit[]  // 🛡️ FIX #6
 }
 
 model Product {
@@ -82,6 +83,7 @@ model Customer {
 model Credit {
   id              String   @id @default(cuid())
   customerId      String
+  storeId         String?  // 🛡️ FIX #6 — Rattachement au magasin (optionnel pour compatibilité)
   amount          Float
   remainingAmount Float
   description     String?
@@ -91,6 +93,7 @@ model Credit {
   createdAt       DateTime @default(now())
 
   customer        Customer @relation(fields: [customerId], references: [id])
+  store           Store?   @relation(fields: [storeId], references: [id])
 }
 model Return {
   id          String   @id @default(cuid())

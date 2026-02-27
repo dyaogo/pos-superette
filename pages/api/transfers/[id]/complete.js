@@ -19,7 +19,7 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Transfert déjà traité" });
       }
 
-      // Déduire du stock source
+      // Vérifier le stock source AVANT la transaction
       const sourceProduct = await prisma.product.findFirst({
         where: {
           id: transfer.productId,
@@ -31,12 +31,6 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "Stock source insuffisant" });
       }
 
-      await prisma.product.update({
-        where: { id: sourceProduct.id },
-        data: { stock: sourceProduct.stock - transfer.quantity },
-      });
-
-      // Ajouter au stock destination (ou créer le produit s'il n'existe pas)
       const destProduct = await prisma.product.findFirst({
         where: {
           barcode: sourceProduct.barcode,
@@ -44,35 +38,44 @@ export default async function handler(req, res) {
         },
       });
 
-      if (destProduct) {
-        await prisma.product.update({
-          where: { id: destProduct.id },
-          data: { stock: destProduct.stock + transfer.quantity },
+      // 🛡️ FIX #4 — Transaction atomique : toutes les mises à jour ou aucune
+      const updatedTransfer = await prisma.$transaction(async (tx) => {
+        // 1. Déduire du stock source
+        await tx.product.update({
+          where: { id: sourceProduct.id },
+          data: { stock: { decrement: transfer.quantity } },
         });
-      } else {
-        // Créer le produit dans le magasin destination
-        await prisma.product.create({
+
+        // 2. Ajouter au stock destination (ou créer le produit)
+        if (destProduct) {
+          await tx.product.update({
+            where: { id: destProduct.id },
+            data: { stock: { increment: transfer.quantity } },
+          });
+        } else {
+          await tx.product.create({
+            data: {
+              storeId: transfer.toStoreId,
+              barcode: sourceProduct.barcode,
+              name: sourceProduct.name,
+              category: sourceProduct.category,
+              costPrice: sourceProduct.costPrice,
+              sellingPrice: sourceProduct.sellingPrice,
+              stock: transfer.quantity,
+              image: sourceProduct.image,
+            },
+          });
+        }
+
+        // 3. Marquer le transfert comme complété
+        return tx.stockTransfer.update({
+          where: { id },
           data: {
-            storeId: transfer.toStoreId,
-            barcode: sourceProduct.barcode,
-            name: sourceProduct.name,
-            category: sourceProduct.category,
-            costPrice: sourceProduct.costPrice,
-            sellingPrice: sourceProduct.sellingPrice,
-            stock: transfer.quantity,
-            image: sourceProduct.image,
+            status: "completed",
+            completedAt: new Date(),
+            completedBy: req.body.completedBy || "Admin",
           },
         });
-      }
-
-      // Marquer le transfert comme complété
-      const updatedTransfer = await prisma.stockTransfer.update({
-        where: { id },
-        data: {
-          status: "completed",
-          completedAt: new Date(),
-          completedBy: req.body.completedBy || "Admin",
-        },
       });
 
       res.status(200).json(updatedTransfer);
