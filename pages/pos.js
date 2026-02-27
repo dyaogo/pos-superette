@@ -655,7 +655,7 @@ export default function POSPage() {
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
+    <div style={{ display: "flex", height: "calc(100vh - 70px)" }}>
       {/* Colonne gauche - Produits */}
       <div style={{ flex: 2, padding: "20px", overflow: "auto" }}>
         <h1 style={{ marginBottom: "20px" }}>Point de Vente</h1>
@@ -1430,7 +1430,7 @@ export default function POSPage() {
           )}
         </div>
 
-        <div style={{ flex: 1, overflow: "auto", padding: "15px" }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "15px", minHeight: 0 }}>
           {cart.length === 0 ? (
             <p
               style={{
