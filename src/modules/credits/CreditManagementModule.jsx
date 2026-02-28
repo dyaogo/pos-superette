@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, CreditCard, AlertTriangle, Clock, Check, Phone, Plus, Eye, FileText } from 'lucide-react';
+import { Users, CreditCard, AlertTriangle, Clock, Check, Phone, Plus, Eye, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { useApp } from '../../contexts/AppContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { saveCredits } from '../../services/sales.service';
@@ -20,6 +20,7 @@ const CreditManagementModule = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [openCashSession, setOpenCashSession] = useState(null);
+  const [expandedCredit, setExpandedCredit] = useState(null);
 
   const isDark = appSettings?.darkMode;
   const { deviceType } = useResponsive();
@@ -101,10 +102,10 @@ const CreditManagementModule = () => {
 
       if (res.ok) {
         const updatedCredit = await res.json();
-        // Mettre à jour l'état local
+        // Mettre à jour l'état local (inclure payments pour l'historique)
         const updatedCredits = credits.map(credit =>
           credit.id === selectedCredit.id
-            ? { ...credit, remainingAmount: updatedCredit.remainingAmount, status: updatedCredit.status }
+            ? { ...credit, remainingAmount: updatedCredit.remainingAmount, status: updatedCredit.status, payments: updatedCredit.payments || credit.payments || [] }
             : credit
         );
         setCredits(updatedCredits);
@@ -385,9 +386,11 @@ const CreditManagementModule = () => {
                   const dueDate = new Date(credit.dueDate);
                   const isOverdue = dueDate < new Date() && credit.status !== 'paid';
                   const daysOverdue = isOverdue ? Math.floor((new Date() - dueDate) / (1000 * 60 * 60 * 24)) : 0;
-                  
+                  const isExpanded = expandedCredit === credit.id;
+
                   return (
-                    <tr key={credit.id} style={{ 
+                    <React.Fragment key={credit.id}>
+                    <tr style={{
                       borderBottom: `1px solid ${isDark ? '#374151' : '#f1f5f9'}`,
                       background: isOverdue ? (isDark ? '#431018' : '#fef2f2') : 'transparent'
                     }}>
@@ -485,9 +488,104 @@ const CreditManagementModule = () => {
                               WhatsApp
                             </button>
                           )}
+                          <button
+                            onClick={() => setExpandedCredit(isExpanded ? null : credit.id)}
+                            style={{
+                              padding: '6px 10px',
+                              background: isExpanded ? '#6366f1' : (isDark ? '#4a5568' : '#e2e8f0'),
+                              color: isExpanded ? 'white' : (isDark ? '#f7fafc' : '#374151'),
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '12px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '3px'
+                            }}
+                            title="Voir l'historique des remboursements"
+                          >
+                            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                            Historique
+                          </button>
                         </div>
                       </td>
                     </tr>
+
+                    {/* ✅ Ligne étendue : historique des remboursements */}
+                    {isExpanded && (
+                      <tr style={{ background: isDark ? '#1f2937' : '#f8fafc' }}>
+                        <td colSpan="8" style={{ padding: '16px 20px', borderBottom: `1px solid ${isDark ? '#374151' : '#e2e8f0'}` }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                            <Clock size={15} color="#6366f1" />
+                            <span style={{ fontWeight: '600', fontSize: '14px', color: isDark ? '#e2e8f0' : '#374151' }}>
+                              Historique des remboursements
+                            </span>
+                            <span style={{ fontSize: '12px', color: isDark ? '#9ca3af' : '#9ca3af' }}>
+                              ({credit.payments?.length || 0} paiement{(credit.payments?.length || 0) !== 1 ? 's' : ''})
+                            </span>
+                          </div>
+                          {(!credit.payments || credit.payments.length === 0) ? (
+                            <div style={{
+                              padding: '10px 14px',
+                              background: isDark ? '#374151' : 'white',
+                              borderRadius: '6px',
+                              border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                              fontSize: '13px',
+                              color: isDark ? '#9ca3af' : '#9ca3af',
+                              fontStyle: 'italic'
+                            }}>
+                              Aucun remboursement enregistré
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {credit.payments.map((payment, index) => (
+                                <div key={payment.id} style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  padding: '8px 14px',
+                                  background: isDark ? '#374151' : 'white',
+                                  borderRadius: '6px',
+                                  border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+                                }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <div style={{
+                                      width: '22px', height: '22px', borderRadius: '50%',
+                                      background: '#10b981', color: 'white',
+                                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                      fontSize: '11px', fontWeight: '700', flexShrink: 0
+                                    }}>
+                                      {index + 1}
+                                    </div>
+                                    <div>
+                                      <div style={{ fontWeight: '600', color: '#10b981', fontSize: '14px' }}>
+                                        +{payment.amount.toLocaleString('fr-FR')} {appSettings?.currency}
+                                      </div>
+                                      {payment.note && (
+                                        <div style={{ fontSize: '11px', color: isDark ? '#9ca3af' : '#9ca3af' }}>
+                                          {payment.note}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right', fontSize: '11px', color: isDark ? '#9ca3af' : '#9ca3af' }}>
+                                    <div style={{ fontWeight: '500' }}>{payment.paidBy || 'Système'}</div>
+                                    <div>{new Date(payment.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+                                  </div>
+                                </div>
+                              ))}
+                              <div style={{ textAlign: 'right', fontSize: '12px', color: isDark ? '#a0aec0' : '#64748b', marginTop: '4px' }}>
+                                Total remboursé :&nbsp;
+                                <strong style={{ color: '#10b981' }}>
+                                  {((credit.amount || 0) - (credit.remainingAmount || 0)).toLocaleString('fr-FR')} {appSettings?.currency}
+                                </strong>
+                              </div>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                    </React.Fragment>
                   );
                 })}
               </tbody>
