@@ -19,37 +19,35 @@ async function handler(req, res) {
         skip,
         take: limit,
         include: {
-          items: true,  // ⚠️ Ceci ne charge que les SaleItem, pas les Product
-          customer: true  // ✅ Inclure les données du client
+          items: true,
+          customer: true
         },
         orderBy: {
           createdAt: 'desc'
         }
       });
-      
-      // Enrichir chaque vente avec les infos produits
-      const enrichedSales = await Promise.all(
-        sales.map(async (sale) => {
-          const enrichedItems = await Promise.all(
-            sale.items.map(async (item) => {
-              // Récupérer le produit pour avoir son nom actuel
-              const product = await prisma.product.findUnique({
-                where: { id: item.productId }
-              });
-              
-              return {
-                ...item,
-                product: product || { name: item.productName } // Utiliser le nom sauvegardé si produit supprimé
-              };
-            })
-          );
-          
-          return {
-            ...sale,
-            items: enrichedItems
-          };
-        })
-      );
+
+      // ✅ FIX N+1 : Charger TOUS les produits en une seule requête IN
+      // Avant : 1 requête par article (ex: 50 ventes × 5 articles = 251 requêtes)
+      // Après : 3 requêtes fixes (count + sales + products)
+      const productIds = [...new Set(
+        sales.flatMap(sale => sale.items.map(item => item.productId))
+      )];
+
+      const products = productIds.length > 0
+        ? await prisma.product.findMany({ where: { id: { in: productIds } } })
+        : [];
+
+      const productMap = Object.fromEntries(products.map(p => [p.id, p]));
+
+      // Assembler les données en mémoire (pas de requêtes supplémentaires)
+      const enrichedSales = sales.map(sale => ({
+        ...sale,
+        items: sale.items.map(item => ({
+          ...item,
+          product: productMap[item.productId] || { name: item.productName }
+        }))
+      }));
       
       // 🔥 PAGINATION : Métadonnées
       const totalPages = Math.ceil(total / limit);
@@ -118,10 +116,13 @@ async function handler(req, res) {
     }
     
     // Calculer les montants
-    const subtotal = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
+    // Les unitPrice (sellingPrice) sont des prix TTC (toutes taxes comprises)
+    // Il faut donc EXTRAIRE la TVA du total TTC, pas l'ajouter par-dessus
+    const totalTTC = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
     const taxRate = 0.18;
-    const tax = subtotal * taxRate;
-    const totalAmount = subtotal + tax;
+    const subtotal = Math.round((totalTTC / (1 + taxRate)) * 100) / 100; // Prix HT
+    const tax = Math.round((totalTTC - subtotal) * 100) / 100;           // TVA extraite
+    const totalAmount = totalTTC;                                          // Total TTC (= ce que le client paie)
 
     // 🛡️ FIX #5 — Vérification de stock côté serveur avant transaction
     const stockInsuffisant = [];
