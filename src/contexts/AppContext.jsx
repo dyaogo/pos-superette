@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useOnline } from './OnlineContext';
 import { useAuth } from './AuthContext';
 import { offlineDB } from '../utils/offlineDB';
@@ -7,7 +7,7 @@ const AppContext = createContext();
 
 export function AppProvider({ children }) {
   const { isOnline, cacheData } = useOnline();
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading } = useAuth();
 
   const [stores, setStores] = useState([]);
   const [currentStore, setCurrentStore] = useState(null);
@@ -27,13 +27,26 @@ export function AppProvider({ children }) {
     language: 'fr'
   });
 
-  // Initialisation au démarrage - AVEC PROTECTION
+  const initializedForUserRef = useRef(null);
+
+  // Initialisation — attend que l'auth soit confirmée
   useEffect(() => {
-    if (!initialized) {
-      initializeApp();
-      setInitialized(true);
+    // Attendre que AuthContext finisse de charger depuis localStorage
+    if (authLoading) return;
+
+    // Non connecté - arrêter le loading, ne pas appeler l'API (évite le 401)
+    if (!currentUser) {
+      setLoading(false);
+      return;
     }
-  }, [initialized]);
+
+    // Déjà initialisé pour cet utilisateur
+    if (initializedForUserRef.current === currentUser.id) return;
+
+    // Initialiser pour cet utilisateur
+    initializedForUserRef.current = currentUser.id;
+    initializeApp();
+  }, [currentUser, authLoading]);
 
   // ✅ FIX: Forcer le bon magasin pour les caissiers
   useEffect(() => {
@@ -71,6 +84,11 @@ export function AppProvider({ children }) {
 
       // 2. Charger les magasins
       const storesRes = await fetch('/api/stores');
+      // Vérifier que la réponse est OK (évite le crash sur 401)
+      if (!storesRes.ok) {
+        console.warn('⚠️ Impossible de charger les magasins (status:', storesRes.status, '). Vérifiez l\'authentification.');
+        return;
+      }
       const storesData = await storesRes.json();
       setStores(storesData);
 

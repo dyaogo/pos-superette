@@ -27,7 +27,7 @@ import OnlineStatusBadge from "./OnlineStatusBadge";
 
 export default function Layout({ children }) {
   const router = useRouter();
-  const { currentUser, logout, hasPermission } = useAuth();
+  const { currentUser, logout, hasPermission, loading: authLoading } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -56,6 +56,14 @@ export default function Layout({ children }) {
     window.addEventListener('resize', checkScreenSize);
     return () => window.removeEventListener('resize', checkScreenSize);
   }, []);
+
+  // 🔐 Rediriger vers /login si non authentifié
+  useEffect(() => {
+    const pagesPubliques = ["/", "/login", "/unauthorized"];
+    if (!authLoading && !currentUser && !pagesPubliques.includes(router.pathname)) {
+      router.push('/login');
+    }
+  }, [currentUser, authLoading, router.pathname]);
 
   // Close sidebar when route changes on mobile/tablet
   useEffect(() => {
