@@ -86,7 +86,17 @@ export function AppProvider({ children }) {
       const storesRes = await fetch('/api/stores');
       // Vérifier que la réponse est OK (évite le crash sur 401)
       if (!storesRes.ok) {
-        console.warn('⚠️ Impossible de charger les magasins (status:', storesRes.status, '). Vérifiez l\'authentification.');
+        console.warn('⚠️ Chargement magasins échoué (status:', storesRes.status, ')');
+        if (storesRes.status === 401) {
+          // Session localStorage sans cookie → expirée ou pre-Phase1
+          // Effacer la session stale et forcer une reconnexion propre
+          console.warn('🔒 Session invalide détectée. Redirection vers /login...');
+          localStorage.removeItem('currentUser');
+          localStorage.removeItem('currentStoreId');
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+        }
         return;
       }
       const storesData = await storesRes.json();
