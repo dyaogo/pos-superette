@@ -711,6 +711,49 @@ function CreditsPage() {
                               </div>
                             )}
                           </div>
+
+                          {/* ✅ Historique des remboursements */}
+                          <div style={{ marginTop: "20px" }}>
+                            <h4 style={{ margin: "0 0 12px 0", fontSize: "15px", fontWeight: "600", display: "flex", alignItems: "center", gap: "8px" }}>
+                              <Clock size={16} />
+                              Historique des remboursements
+                              <span style={{ fontSize: "12px", fontWeight: "400", color: "var(--color-text-muted)" }}>
+                                ({credit.payments?.length || 0} paiement{(credit.payments?.length || 0) !== 1 ? "s" : ""})
+                              </span>
+                            </h4>
+                            {(!credit.payments || credit.payments.length === 0) ? (
+                              <div style={{ padding: "12px 15px", background: "var(--color-surface)", borderRadius: "8px", border: "1px solid var(--color-border)", fontSize: "13px", color: "var(--color-text-muted)", fontStyle: "italic" }}>
+                                Aucun remboursement enregistré
+                              </div>
+                            ) : (
+                              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                                {credit.payments.map((payment, index) => (
+                                  <div key={payment.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 15px", background: "var(--color-surface)", borderRadius: "8px", border: "1px solid var(--color-border)" }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                                      <div style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#10b981", color: "white", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: "700", flexShrink: 0 }}>
+                                        {index + 1}
+                                      </div>
+                                      <div>
+                                        <div style={{ fontWeight: "600", color: "#10b981" }}>
+                                          +{payment.amount.toLocaleString("fr-FR")} FCFA
+                                        </div>
+                                        <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                                          {payment.note}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div style={{ textAlign: "right", fontSize: "12px", color: "var(--color-text-muted)" }}>
+                                      <div>{payment.paidBy || "Système"}</div>
+                                      <div>{new Date(payment.createdAt).toLocaleString("fr-FR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
+                                    </div>
+                                  </div>
+                                ))}
+                                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px", fontSize: "13px", color: "var(--color-text-secondary)" }}>
+                                  Total remboursé : <strong style={{ marginLeft: "6px", color: "#10b981" }}>{(credit.amount - credit.remainingAmount).toLocaleString("fr-FR")} FCFA</strong>
+                                </div>
+                              </div>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     )}

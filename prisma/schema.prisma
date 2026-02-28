@@ -92,8 +92,20 @@ model Credit {
   createdBy       String?  // ✅ Nom du caissier qui a accordé le crédit
   createdAt       DateTime @default(now())
 
-  customer        Customer @relation(fields: [customerId], references: [id])
-  store           Store?   @relation(fields: [storeId], references: [id])
+  customer        Customer        @relation(fields: [customerId], references: [id])
+  store           Store?          @relation(fields: [storeId], references: [id])
+  payments        CreditPayment[] // ✅ Historique des remboursements
+}
+
+model CreditPayment {
+  id        String   @id @default(cuid())
+  creditId  String
+  amount    Float
+  paidBy    String?  // Nom du caissier
+  note      String?
+  createdAt DateTime @default(now())
+
+  credit    Credit @relation(fields: [creditId], references: [id], onDelete: Cascade)
 }
 model Return {
   id          String   @id @default(cuid())

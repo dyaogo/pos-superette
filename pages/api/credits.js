@@ -13,6 +13,9 @@ async function handler(req, res) {
 
       const credits = await prisma.credit.findMany({
         where,
+        include: {
+          payments: { orderBy: { createdAt: 'asc' } } // ✅ Historique des remboursements
+        },
         orderBy: { createdAt: 'desc' }
       });
       res.status(200).json(credits);
