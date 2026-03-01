@@ -693,154 +693,198 @@ export default function POSPage() {
       <div style={{ flex: 2, padding: "20px", overflow: "auto" }}>
         <h1 style={{ marginBottom: "20px" }}>Point de Vente</h1>
 
-        {/* Indicateur de session */}
+        {/* Indicateur de session — compact */}
         {!cashSession ? (
           <div
             style={{
-              padding: "15px 20px",
-              background: "rgba(239, 68, 68, 0.1)",
-              border: "2px solid var(--color-danger)",
-              borderRadius: "8px",
-              marginBottom: "20px",
+              padding: "10px 16px",
+              background: "rgba(239,68,68,0.08)",
+              border: "1.5px solid var(--color-danger)",
+              borderRadius: "10px",
+              marginBottom: "16px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: "12px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <AlertTriangle size={24} color="var(--color-danger)" />
-              <div>
-                <div style={{ fontWeight: "600", fontSize: "16px" }}>
-                  Caisse fermée
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "var(--color-text-secondary)",
-                  }}
-                >
-                  Ouvrez une session pour commencer les ventes
-                </div>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <AlertTriangle size={18} color="var(--color-danger)" />
+              <span style={{ fontWeight: "600", fontSize: "14px", color: "var(--color-danger)" }}>
+                Caisse fermée
+              </span>
+              <span style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+                — Ouvrez une session pour vendre
+              </span>
             </div>
             <button
               onClick={() => setShowSessionModal(true)}
               style={{
-                padding: "10px 20px",
+                padding: "7px 16px",
                 background: "var(--color-success)",
                 color: "white",
                 border: "none",
                 borderRadius: "8px",
                 cursor: "pointer",
-                fontWeight: "600",
+                fontWeight: "700",
+                fontSize: "13px",
+                flexShrink: 0,
               }}
             >
-              Ouvrir la caisse
+              ▶ Ouvrir
             </button>
           </div>
         ) : (
           <div
             style={{
-              padding: "15px 20px",
-              background: "rgba(16, 185, 129, 0.1)",
-              border: "2px solid var(--color-success)",
-              borderRadius: "8px",
-              marginBottom: "20px",
+              padding: "10px 16px",
+              background: "rgba(16,185,129,0.08)",
+              border: "1.5px solid var(--color-success)",
+              borderRadius: "10px",
+              marginBottom: "16px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
+              gap: "12px",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: "15px" }}>
-              <CheckCircle size={24} color="var(--color-success)" />
-              <div>
-                <div style={{ fontWeight: "600", fontSize: "16px" }}>
-                  Session ouverte
-                </div>
-                <div
-                  style={{
-                    fontSize: "14px",
-                    color: "var(--color-text-secondary)",
-                  }}
-                >
-                  Fond de caisse: {cashSession.openingAmount.toLocaleString()}{" "}
-                  FCFA • Ouvert par {cashSession.openedBy} •{" "}
-                  {new Date(cashSession.openedAt).toLocaleTimeString("fr-FR")}
-                </div>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+              <CheckCircle size={18} color="var(--color-success)" style={{ flexShrink: 0 }} />
+              <span style={{ fontWeight: "700", fontSize: "14px", color: "var(--color-success)", flexShrink: 0 }}>
+                Session ouverte
+              </span>
+              <span
+                style={{
+                  fontSize: "12px",
+                  color: "var(--color-text-muted)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {cashSession.openingAmount.toLocaleString()} FCFA • {cashSession.openedBy} • {new Date(cashSession.openedAt).toLocaleTimeString("fr-FR")}
+              </span>
             </div>
-
-            {/* ✨ MODIFIÉ - Bouton Fermer caisse accessible à tous les utilisateurs */}
             <button
               onClick={async () => {
-                await loadCashOperations(); // Recharger les opérations avant d'ouvrir
+                await loadCashOperations();
                 setShowCloseModal(true);
               }}
               style={{
-                padding: "10px 20px",
-                background: "var(--color-danger)",
-                color: "white",
-                border: "none",
+                padding: "7px 14px",
+                background: "transparent",
+                color: "var(--color-danger)",
+                border: "1.5px solid var(--color-danger)",
                 borderRadius: "8px",
                 cursor: "pointer",
-                fontWeight: "600",
+                fontWeight: "700",
+                fontSize: "13px",
+                flexShrink: 0,
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--color-danger)";
+                e.currentTarget.style.color = "white";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = "var(--color-danger)";
               }}
             >
-              Fermer la caisse
+              ■ Fermer
             </button>
           </div>
         )}
 
         {/* Barre de recherche et filtres */}
         <div style={{ marginBottom: "20px" }}>
+          {/* Barre de recherche */}
+          <div style={{ position: "relative", marginBottom: "12px" }}>
+            <Search
+              size={20}
+              style={{
+                position: "absolute",
+                left: "14px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                color: "var(--color-text-muted)",
+                pointerEvents: "none",
+              }}
+            />
+            <input
+              id="product-search"
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="🔍  Rechercher par nom ou code-barres... (F1)"
+              autoFocus
+              style={{
+                width: "100%",
+                padding: "13px 44px 13px 44px",
+                border: "2px solid var(--color-border)",
+                borderRadius: "12px",
+                fontSize: "15px",
+                background: "var(--color-surface)",
+                color: "var(--color-text-primary)",
+                boxSizing: "border-box",
+                transition: "border-color 0.2s",
+                outline: "none",
+              }}
+              onFocus={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; }}
+              onBlur={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; }}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                style={{
+                  position: "absolute",
+                  right: "12px",
+                  top: "50%",
+                  transform: "translateY(-50%)",
+                  background: "var(--color-surface-hover)",
+                  border: "none",
+                  borderRadius: "50%",
+                  width: "24px",
+                  height: "24px",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "var(--color-text-muted)",
+                  fontSize: "16px",
+                  lineHeight: 1,
+                }}
+                title="Effacer"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          {/* Filtres catégories - pilules horizontales scrollables */}
           <div
             style={{
               display: "flex",
-              gap: "10px",
-              alignItems: "center",
-              flexWrap: "wrap",
+              gap: "8px",
+              overflowX: "auto",
+              paddingBottom: "4px",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none",
             }}
           >
-            <div style={{ position: "relative", flex: "1", minWidth: "250px" }}>
-              <Search
-                size={20}
-                style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--color-text-muted)",
-                }}
-              />
-              <input
-                id="product-search"
-                type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Rechercher un produit..."
-                autoFocus
-                style={{
-                  width: "100%",
-                  padding: "12px 12px 12px 45px",
-                  border: "2px solid var(--color-border)",
-                  borderRadius: "8px",
-                  fontSize: "16px",
-                  background: "var(--color-surface)",
-                  color: "var(--color-text-primary)",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-              {[
-                "Toutes",
-                ...new Set(productCatalog.map((p) => p.category)),
-              ].map((cat) => (
+            {[
+              "Toutes",
+              ...new Set(productCatalog.map((p) => p.category)),
+            ].map((cat) => {
+              const count = cat === "Toutes"
+                ? productCatalog.length
+                : productCatalog.filter((p) => p.category === cat).length;
+              return (
                 <button
                   key={cat}
                   onClick={() => setCategoryFilter(cat)}
                   style={{
-                    padding: "10px 16px",
+                    padding: "7px 14px",
                     background:
                       categoryFilter === cat
                         ? "var(--color-primary)"
@@ -848,35 +892,51 @@ export default function POSPage() {
                     color:
                       categoryFilter === cat
                         ? "white"
-                        : "var(--color-text-primary)",
-                    border: `2px solid ${
+                        : "var(--color-text-secondary)",
+                    border: `1.5px solid ${
                       categoryFilter === cat
                         ? "var(--color-primary)"
                         : "var(--color-border)"
                     }`,
-                    borderRadius: "8px",
+                    borderRadius: "20px",
                     cursor: "pointer",
-                    fontSize: "14px",
-                    fontWeight: "600",
-                    transition: "all 0.2s",
+                    fontSize: "13px",
+                    fontWeight: categoryFilter === cat ? "700" : "500",
+                    transition: "all 0.15s",
                     whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
                   }}
                   onMouseEnter={(e) => {
                     if (categoryFilter !== cat) {
-                      e.currentTarget.style.background =
-                        "var(--color-surface-hover)";
+                      e.currentTarget.style.borderColor = "var(--color-primary)";
+                      e.currentTarget.style.color = "var(--color-primary)";
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (categoryFilter !== cat) {
-                      e.currentTarget.style.background = "var(--color-surface)";
+                      e.currentTarget.style.borderColor = "var(--color-border)";
+                      e.currentTarget.style.color = "var(--color-text-secondary)";
                     }
                   }}
                 >
                   {cat}
+                  <span
+                    style={{
+                      background: categoryFilter === cat ? "rgba(255,255,255,0.25)" : "var(--color-surface-hover)",
+                      borderRadius: "10px",
+                      padding: "1px 6px",
+                      fontSize: "11px",
+                      fontWeight: "600",
+                    }}
+                  >
+                    {count}
+                  </span>
                 </button>
-              ))}
-            </div>
+              );
+            })}
           </div>
         </div>
 
@@ -1049,107 +1109,240 @@ export default function POSPage() {
         )}
 
         {/* Grille de produits */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))",
-            gap: "15px",
-            marginTop: "20px",
-          }}
-        >
-          {filteredProducts.map((product) => (
-            <div
-              key={product.id}
-              id={`product-${product.id}`}
-              onClick={() => addToCart(product)}
+        {filteredProducts.length === 0 && searchTerm ? (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "60px 20px",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            <div style={{ fontSize: "48px", marginBottom: "12px" }}>🔍</div>
+            <div style={{ fontSize: "16px", fontWeight: "600", marginBottom: "6px" }}>
+              Aucun produit trouvé
+            </div>
+            <div style={{ fontSize: "14px" }}>
+              Aucun résultat pour «&nbsp;<strong>{searchTerm}</strong>&nbsp;»
+            </div>
+            <button
+              onClick={() => setSearchTerm("")}
               style={{
-                background: "var(--color-surface)",
-                border: "2px solid var(--color-border)",
-                borderRadius: "12px",
-                padding: "10px",
+                marginTop: "16px",
+                padding: "8px 20px",
+                background: "var(--color-primary)",
+                color: "white",
+                border: "none",
+                borderRadius: "20px",
                 cursor: "pointer",
-                transition: "all 0.2s",
-                display: "flex",
-                flexDirection: "column",
-                gap: "8px",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-primary)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.1)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--color-border)";
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.boxShadow = "none";
+                fontSize: "14px",
+                fontWeight: "600",
               }}
             >
-              {product.image ? (
-                <img
-                  src={product.image}
-                  alt={product.name}
-                  style={{
-                    width: "100%",
-                    height: "80px",
-                    objectFit: "cover",
-                    borderRadius: "8px",
-                    background: "var(--color-surface-hover)",
-                  }}
-                />
-              ) : (
+              Effacer la recherche
+            </button>
+          </div>
+        ) : (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+              gap: "12px",
+              marginTop: "16px",
+            }}
+          >
+            {filteredProducts.map((product) => {
+              const isLowStock = product.stock !== undefined && product.stock <= 3;
+              const isOutOfStock = product.stock !== undefined && product.stock <= 0;
+              return (
                 <div
+                  key={product.id}
+                  id={`product-${product.id}`}
+                  onClick={() => !isOutOfStock && addToCart(product)}
                   style={{
-                    width: "100%",
-                    height: "80px",
-                    background: "var(--color-surface-hover)",
-                    borderRadius: "8px",
+                    background: "var(--color-surface)",
+                    border: `2px solid ${isOutOfStock ? "var(--color-danger)" : "var(--color-border)"}`,
+                    borderRadius: "12px",
+                    padding: "0",
+                    cursor: isOutOfStock ? "not-allowed" : "pointer",
+                    transition: "all 0.18s",
                     display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: "var(--color-text-muted)",
-                    fontSize: "36px",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                    position: "relative",
+                    opacity: isOutOfStock ? 0.6 : 1,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isOutOfStock) {
+                      e.currentTarget.style.borderColor = "var(--color-primary)";
+                      e.currentTarget.style.transform = "translateY(-3px)";
+                      e.currentTarget.style.boxShadow = "0 6px 16px rgba(59,130,246,0.18)";
+                      const overlay = e.currentTarget.querySelector(".add-overlay");
+                      if (overlay) overlay.style.opacity = "1";
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isOutOfStock) {
+                      e.currentTarget.style.borderColor = isOutOfStock ? "var(--color-danger)" : "var(--color-border)";
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                      const overlay = e.currentTarget.querySelector(".add-overlay");
+                      if (overlay) overlay.style.opacity = "0";
+                    }
                   }}
                 >
-                  📦
-                </div>
-              )}
+                  {/* Image ou placeholder */}
+                  <div style={{ position: "relative" }}>
+                    {product.image ? (
+                      <img
+                        src={product.image}
+                        alt={product.name}
+                        style={{
+                          width: "100%",
+                          height: "90px",
+                          objectFit: "cover",
+                          display: "block",
+                        }}
+                      />
+                    ) : (
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "90px",
+                          background: "linear-gradient(135deg, var(--color-surface-hover), var(--color-border))",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: "32px",
+                        }}
+                      >
+                        📦
+                      </div>
+                    )}
 
-              <div>
-                <div
-                  style={{
-                    fontWeight: "600",
-                    fontSize: "14px",
-                    marginBottom: "4px",
-                  }}
-                >
-                  {product.name}
-                </div>
-                <div
-                  style={{
-                    fontSize: "16px",
-                    fontWeight: "bold",
-                    color: "var(--color-primary)",
-                  }}
-                >
-                  {product.sellingPrice.toLocaleString()} FCFA
-                </div>
+                    {/* Overlay "+ Ajouter" au survol */}
+                    <div
+                      className="add-overlay"
+                      style={{
+                        position: "absolute",
+                        inset: 0,
+                        background: "rgba(59,130,246,0.82)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        opacity: 0,
+                        transition: "opacity 0.18s",
+                        color: "white",
+                        fontWeight: "700",
+                        fontSize: "15px",
+                        gap: "6px",
+                      }}
+                    >
+                      <Plus size={18} />
+                      Ajouter
+                    </div>
 
-                {/* ✨ MODIFIÉ - Info stock visible seulement pour Admin et Manager */}
-                <PermissionGate roles={["admin", "manager"]}>
-                  <div
-                    style={{
-                      fontSize: "12px",
-                      color: "var(--color-text-secondary)",
-                      marginTop: "4px",
-                    }}
-                  >
-                    Stock: {product.stock}
+                    {/* Badge stock faible */}
+                    {isLowStock && !isOutOfStock && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "6px",
+                          left: "6px",
+                          background: "rgba(245,158,11,0.9)",
+                          color: "white",
+                          fontSize: "10px",
+                          fontWeight: "700",
+                          padding: "2px 7px",
+                          borderRadius: "8px",
+                        }}
+                      >
+                        ⚠ Stock bas
+                      </div>
+                    )}
+                    {isOutOfStock && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "6px",
+                          left: "6px",
+                          background: "rgba(239,68,68,0.9)",
+                          color: "white",
+                          fontSize: "10px",
+                          fontWeight: "700",
+                          padding: "2px 7px",
+                          borderRadius: "8px",
+                        }}
+                      >
+                        Rupture
+                      </div>
+                    )}
                   </div>
-                </PermissionGate>
-              </div>
-            </div>
-          ))}
-        </div>
+
+                  {/* Infos produit */}
+                  <div style={{ padding: "10px 10px 12px" }}>
+                    {/* Badge catégorie */}
+                    {product.category && (
+                      <div
+                        style={{
+                          fontSize: "10px",
+                          fontWeight: "600",
+                          color: "var(--color-primary)",
+                          background: "rgba(59,130,246,0.1)",
+                          borderRadius: "6px",
+                          padding: "2px 7px",
+                          display: "inline-block",
+                          marginBottom: "5px",
+                          maxWidth: "100%",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {product.category}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        fontWeight: "600",
+                        fontSize: "13px",
+                        marginBottom: "5px",
+                        lineHeight: "1.3",
+                        display: "-webkit-box",
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: "vertical",
+                        overflow: "hidden",
+                      }}
+                    >
+                      {product.name}
+                    </div>
+                    <div
+                      style={{
+                        fontSize: "15px",
+                        fontWeight: "800",
+                        color: "var(--color-primary)",
+                      }}
+                    >
+                      {product.sellingPrice.toLocaleString()} <span style={{ fontSize: "11px", fontWeight: "600" }}>FCFA</span>
+                    </div>
+
+                    <PermissionGate roles={["admin", "manager"]}>
+                      <div
+                        style={{
+                          fontSize: "11px",
+                          color: isLowStock ? "#f59e0b" : "var(--color-text-muted)",
+                          marginTop: "3px",
+                          fontWeight: isLowStock ? "600" : "400",
+                        }}
+                      >
+                        Stock: {product.stock ?? "—"}
+                      </div>
+                    </PermissionGate>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Colonne droite - Panier */}
@@ -1162,17 +1355,60 @@ export default function POSPage() {
           flexDirection: "column",
         }}
       >
-        <div style={{ padding: "20px", borderBottom: "1px solid #e5e7eb" }}>
+        <div style={{ padding: "16px 16px 12px", borderBottom: "1px solid var(--color-border)" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
-              gap: "10px",
-              marginBottom: "15px",
+              justifyContent: "space-between",
+              marginBottom: "12px",
             }}
           >
-            <ShoppingCart size={24} />
-            <h2 style={{ margin: 0 }}>Panier ({itemsCount})</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <ShoppingCart size={20} color="var(--color-primary)" />
+              <h2 style={{ margin: 0, fontSize: "16px" }}>Panier</h2>
+              {itemsCount > 0 && (
+                <span
+                  style={{
+                    background: "var(--color-primary)",
+                    color: "white",
+                    borderRadius: "12px",
+                    padding: "2px 9px",
+                    fontSize: "12px",
+                    fontWeight: "700",
+                  }}
+                >
+                  {itemsCount}
+                </span>
+              )}
+            </div>
+            {cart.length > 0 && (
+              <button
+                onClick={() => { if (confirm("Vider le panier ?")) setCart([]); }}
+                style={{
+                  padding: "4px 10px",
+                  background: "transparent",
+                  border: "1px solid var(--color-border)",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                  color: "var(--color-text-muted)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.borderColor = "#ef4444";
+                  e.currentTarget.style.color = "#ef4444";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.borderColor = "var(--color-border)";
+                  e.currentTarget.style.color = "var(--color-text-muted)";
+                }}
+              >
+                <Trash2 size={12} /> Vider (F2)
+              </button>
+            )}
           </div>
 
           <select
@@ -1463,127 +1699,222 @@ export default function POSPage() {
           )}
         </div>
 
-        <div style={{ flex: 1, overflow: "auto", padding: "15px", minHeight: 0 }}>
+        <div style={{ flex: 1, overflow: "auto", padding: "12px 15px", minHeight: 0 }}>
           {cart.length === 0 ? (
-            <p
+            <div
               style={{
-                textAlign: "center",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "50px 20px",
                 color: "var(--color-text-muted)",
-                marginTop: "40px",
+                textAlign: "center",
               }}
             >
-              Panier vide
-            </p>
-          ) : (
-            cart.map((item) => (
               <div
-                key={item.id}
                 style={{
+                  width: "72px",
+                  height: "72px",
+                  borderRadius: "50%",
+                  background: "var(--color-surface-hover)",
                   display: "flex",
-                  justifyContent: "space-between",
                   alignItems: "center",
-                  padding: "12px",
-                  border: "1px solid var(--color-border)",
-                  borderRadius: "8px",
-                  marginBottom: "10px",
+                  justifyContent: "center",
+                  marginBottom: "16px",
                 }}
               >
-                <div style={{ flex: 1 }}>
-                  <p style={{ margin: "0 0 5px 0", fontWeight: "500" }}>
-                    {item.name}
-                  </p>
-                  <p
-                    style={{
-                      margin: 0,
-                      fontSize: "14px",
-                      color: "var(--color-text-secondary)",
-                    }}
-                  >
-                    {item.sellingPrice} FCFA × {item.quantity}
-                  </p>
-                </div>
-
-                <div
-                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
-                >
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                    style={{
-                      padding: "5px",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "4px",
-                      background: "var(--color-surface)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Minus size={16} />
-                  </button>
-
-                  <span
-                    style={{
-                      minWidth: "30px",
-                      textAlign: "center",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    {item.quantity}
-                  </span>
-
-                  <button
-                    onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                    style={{
-                      padding: "5px",
-                      border: "1px solid var(--color-border)",
-                      borderRadius: "4px",
-                      background: "var(--color-surface)",
-                      cursor: "pointer",
-                    }}
-                  >
-                    <Plus size={16} />
-                  </button>
-
-                  <button
-                    onClick={() => removeFromCart(item.id)}
-                    style={{
-                      padding: "5px",
-                      border: "none",
-                      background: "transparent",
-                      cursor: "pointer",
-                      color: "#ef4444",
-                    }}
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-
-                <div style={{ marginLeft: "10px", fontWeight: "bold" }}>
-                  {(item.sellingPrice * item.quantity).toLocaleString()} FCFA
-                </div>
+                <ShoppingCart size={32} style={{ color: "var(--color-text-muted)", opacity: 0.5 }} />
               </div>
-            ))
+              <div style={{ fontWeight: "600", fontSize: "15px", marginBottom: "6px" }}>
+                Panier vide
+              </div>
+              <div style={{ fontSize: "13px", lineHeight: "1.5" }}>
+                Cliquez sur un produit<br />pour l'ajouter au panier
+              </div>
+            </div>
+          ) : (
+            cart.map((item) => {
+              // Couleur d'initiale basée sur le nom du produit
+              const colors = ["#3b82f6","#10b981","#f59e0b","#ef4444","#8b5cf6","#06b6d4","#ec4899"];
+              const colorIdx = item.name.charCodeAt(0) % colors.length;
+              const itemColor = colors[colorIdx];
+              return (
+                <div
+                  key={item.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    padding: "10px 12px",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "10px",
+                    marginBottom: "8px",
+                    background: "var(--color-surface)",
+                    transition: "border-color 0.15s",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "var(--color-primary)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border)"; }}
+                >
+                  {/* Initiale colorée */}
+                  <div
+                    style={{
+                      width: "38px",
+                      height: "38px",
+                      borderRadius: "8px",
+                      background: itemColor + "22",
+                      border: `2px solid ${itemColor}44`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: "800",
+                      fontSize: "16px",
+                      color: itemColor,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {item.name.charAt(0).toUpperCase()}
+                  </div>
+
+                  {/* Nom + prix unitaire */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontWeight: "600",
+                        fontSize: "13px",
+                        marginBottom: "2px",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {item.name}
+                    </div>
+                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                      {item.sellingPrice.toLocaleString()} FCFA
+                    </div>
+                  </div>
+
+                  {/* Contrôles quantité */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "4px", flexShrink: 0 }}>
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        border: "1.5px solid var(--color-border)",
+                        borderRadius: "7px",
+                        background: "var(--color-bg)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: item.quantity === 1 ? "#ef4444" : "var(--color-text-primary)",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = item.quantity === 1 ? "rgba(239,68,68,0.1)" : "var(--color-surface-hover)";
+                        e.currentTarget.style.borderColor = item.quantity === 1 ? "#ef4444" : "var(--color-primary)";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "var(--color-bg)";
+                        e.currentTarget.style.borderColor = "var(--color-border)";
+                      }}
+                    >
+                      {item.quantity === 1 ? <Trash2 size={13} /> : <Minus size={13} />}
+                    </button>
+
+                    <span
+                      style={{
+                        minWidth: "28px",
+                        textAlign: "center",
+                        fontWeight: "700",
+                        fontSize: "15px",
+                      }}
+                    >
+                      {item.quantity}
+                    </span>
+
+                    <button
+                      onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                      style={{
+                        width: "28px",
+                        height: "28px",
+                        border: "1.5px solid var(--color-primary)",
+                        borderRadius: "7px",
+                        background: "rgba(59,130,246,0.08)",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "var(--color-primary)",
+                        transition: "all 0.15s",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = "var(--color-primary)";
+                        e.currentTarget.style.color = "white";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = "rgba(59,130,246,0.08)";
+                        e.currentTarget.style.color = "var(--color-primary)";
+                      }}
+                    >
+                      <Plus size={13} />
+                    </button>
+                  </div>
+
+                  {/* Total ligne */}
+                  <div
+                    style={{
+                      fontWeight: "700",
+                      fontSize: "13px",
+                      color: "var(--color-primary)",
+                      minWidth: "70px",
+                      textAlign: "right",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {(item.sellingPrice * item.quantity).toLocaleString()}
+                    <span style={{ fontSize: "10px", fontWeight: "500", marginLeft: "2px" }}>FCFA</span>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
 
         <div
           style={{
-            padding: "20px",
-            borderTop: "2px solid #e5e7eb",
+            padding: "16px",
+            borderTop: "2px solid var(--color-border)",
             background: "var(--color-surface-hover)",
           }}
         >
+          {/* Ligne nb articles + total */}
           <div
             style={{
               display: "flex",
               justifyContent: "space-between",
-              fontSize: "24px",
-              fontWeight: "bold",
-              marginBottom: "20px",
+              alignItems: "flex-end",
+              marginBottom: "14px",
+              paddingBottom: "14px",
+              borderBottom: cart.length > 0 ? "1px solid var(--color-border)" : "none",
             }}
           >
-            <span>Total</span>
-            <span style={{ color: "#3b82f6" }}>
-              {total.toLocaleString()} FCFA
-            </span>
+            <div>
+              <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginBottom: "2px" }}>
+                {cart.length > 0 ? `${cart.length} article${cart.length > 1 ? "s" : ""} • ${itemsCount} unité${itemsCount > 1 ? "s" : ""}` : "Panier vide"}
+              </div>
+              <div style={{ fontSize: "13px", fontWeight: "600" }}>Total à payer</div>
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <span style={{ fontSize: "26px", fontWeight: "800", color: "var(--color-primary)" }}>
+                {total.toLocaleString()}
+              </span>
+              <span style={{ fontSize: "13px", fontWeight: "600", color: "var(--color-primary)", marginLeft: "4px" }}>
+                FCFA
+              </span>
+            </div>
           </div>
 
           <button
