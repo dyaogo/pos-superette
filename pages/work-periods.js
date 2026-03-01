@@ -310,7 +310,7 @@ export default function WorkPeriodsPage() {
                     session.status === "open"
                       ? "rgba(16, 185, 129, 0.1)"
                       : "rgba(107, 114, 128, 0.1)",
-                  color: session.status === "open" ? "#10b981" : "#6b7280",
+                  color: session.status === "open" ? "#10b981" : "var(--color-text-secondary)",
                 }}
               >
                 {session.status === "open" ? "🟢 Ouverte" : "⚫ Fermée"}

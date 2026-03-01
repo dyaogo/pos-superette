@@ -157,7 +157,7 @@ const BarcodeSystem = () => {
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'space-between',
-          background: 'white',
+          background: 'var(--color-surface)',
           color: 'black'
         }}>
           {barcodeSettings.includeStore && (
@@ -175,7 +175,7 @@ const BarcodeSystem = () => {
             fontSize: '20px',
             textAlign: 'center',
             letterSpacing: '2px',
-            background: 'white',
+            background: 'var(--color-surface)',
             padding: '4px',
             margin: '4px 0'
           }}>
@@ -196,13 +196,13 @@ const BarcodeSystem = () => {
           padding: '12px',
           borderRadius: '4px',
           width: '200px',
-          background: 'white',
+          background: 'var(--color-surface)',
           color: 'black'
         }}>
           <div style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>
             {product.name}
           </div>
-          <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '8px' }}>
+          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>
             {product.category} | SKU: {product.sku}
           </div>
           <div style={{ fontSize: '24px', fontWeight: 'bold', color: '#3b82f6', textAlign: 'center' }}>
@@ -227,7 +227,7 @@ const BarcodeSystem = () => {
           padding: '6px',
           borderRadius: '4px',
           width: '120px',
-          background: 'white',
+          background: 'var(--color-surface)',
           color: 'black'
         }}>
           <div style={{ fontSize: '20px', fontWeight: 'bold', textAlign: 'center', color: '#ef4444' }}>
@@ -257,7 +257,7 @@ const BarcodeSystem = () => {
         <h2 style={{
           fontSize: '20px',
           fontWeight: 'bold',
-          color: isDark ? '#f7fafc' : '#2d3748',
+          color: var(--color-text-primary),
           display: 'flex',
           alignItems: 'center',
           gap: '10px'
@@ -308,7 +308,7 @@ const BarcodeSystem = () => {
 
       {/* Paramètres d'étiquettes */}
       <div style={{
-        background: isDark ? '#374151' : '#f7fafc',
+        background: var(--color-surface),
         padding: '15px',
         borderRadius: '8px',
         marginBottom: '20px'
@@ -317,7 +317,7 @@ const BarcodeSystem = () => {
           fontSize: '16px',
           fontWeight: '600',
           marginBottom: '15px',
-          color: isDark ? '#f7fafc' : '#2d3748',
+          color: var(--color-text-primary),
           display: 'flex',
           alignItems: 'center',
           gap: '8px'
@@ -337,10 +337,10 @@ const BarcodeSystem = () => {
               style={{
                 width: '100%',
                 padding: '8px',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                border: `1px solid ${var(--color-border)}`,
                 borderRadius: '6px',
                 background: isDark ? '#2d3748' : 'white',
-                color: isDark ? '#f7fafc' : '#2d3748'
+                color: var(--color-text-primary)
               }}
             >
               <option value="standard">Standard (code-barres)</option>
@@ -360,7 +360,7 @@ const BarcodeSystem = () => {
                   checked={barcodeSettings.includePrice}
                   onChange={(e) => setBarcodeSettings({...barcodeSettings, includePrice: e.target.checked})}
                 />
-                <span style={{ color: isDark ? '#f7fafc' : '#2d3748' }}>Afficher le prix</span>
+                <span style={{ color: var(--color-text-primary) }}>Afficher le prix</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
                 <input
@@ -368,7 +368,7 @@ const BarcodeSystem = () => {
                   checked={barcodeSettings.includeName}
                   onChange={(e) => setBarcodeSettings({...barcodeSettings, includeName: e.target.checked})}
                 />
-                <span style={{ color: isDark ? '#f7fafc' : '#2d3748' }}>Afficher le nom</span>
+                <span style={{ color: var(--color-text-primary) }}>Afficher le nom</span>
               </label>
               <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px' }}>
                 <input
@@ -376,7 +376,7 @@ const BarcodeSystem = () => {
                   checked={barcodeSettings.includeStore}
                   onChange={(e) => setBarcodeSettings({...barcodeSettings, includeStore: e.target.checked})}
                 />
-                <span style={{ color: isDark ? '#f7fafc' : '#2d3748' }}>Afficher le magasin</span>
+                <span style={{ color: var(--color-text-primary) }}>Afficher le magasin</span>
               </label>
             </div>
           </div>
@@ -394,7 +394,7 @@ const BarcodeSystem = () => {
           <h3 style={{
             fontSize: '16px',
             fontWeight: '600',
-            color: isDark ? '#f7fafc' : '#2d3748'
+            color: var(--color-text-primary)
           }}>
             Sélectionner les produits
           </h3>
@@ -402,8 +402,8 @@ const BarcodeSystem = () => {
             onClick={selectAllProducts}
             style={{
               padding: '6px 12px',
-              background: isDark ? '#4a5568' : '#e2e8f0',
-              color: isDark ? '#f7fafc' : '#2d3748',
+              background: var(--color-border),
+              color: var(--color-text-primary),
               border: 'none',
               borderRadius: '6px',
               cursor: 'pointer',
@@ -417,15 +417,15 @@ const BarcodeSystem = () => {
         <div style={{
           maxHeight: '400px',
           overflowY: 'auto',
-          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          border: `1px solid ${var(--color-border)}`,
           borderRadius: '8px'
         }}>
           <table style={{ width: '100%' }}>
             <thead style={{ 
               position: 'sticky', 
               top: 0, 
-              background: isDark ? '#374151' : '#f8fafc',
-              borderBottom: `2px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+              background: var(--color-bg),
+              borderBottom: `2px solid ${var(--color-border)}`
             }}>
               <tr>
                 <th style={{ padding: '10px', textAlign: 'left', width: '40px' }}>
@@ -457,9 +457,9 @@ const BarcodeSystem = () => {
                 const barcode = product.barcode || generateEAN13(product.id);
                 return (
                   <tr key={product.id} style={{ 
-                    borderBottom: `1px solid ${isDark ? '#374151' : '#f1f5f9'}`,
+                    borderBottom: `1px solid ${var(--color-bg)}`,
                     background: selectedProducts.includes(product.id) ? 
-                      (isDark ? '#374151' : '#eff6ff') : 'transparent'
+                      (var(--color-bg)) : 'transparent'
                   }}>
                     <td style={{ padding: '10px' }}>
                       <input
@@ -468,19 +468,19 @@ const BarcodeSystem = () => {
                         onChange={() => toggleProductSelection(product.id)}
                       />
                     </td>
-                    <td style={{ padding: '10px', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                    <td style={{ padding: '10px', color: var(--color-text-primary) }}>
                       <div style={{ fontWeight: '600' }}>{product.name}</div>
                       <div style={{ fontSize: '12px', color: isDark ? '#a0aec0' : '#718096' }}>
                         {product.category}
                       </div>
                     </td>
-                    <td style={{ padding: '10px', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                    <td style={{ padding: '10px', color: var(--color-text-primary) }}>
                       {product.sku}
                     </td>
-                    <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '12px', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                    <td style={{ padding: '10px', fontFamily: 'monospace', fontSize: '12px', color: var(--color-text-primary) }}>
                       {barcode}
                     </td>
-                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: isDark ? '#f7fafc' : '#2d3748' }}>
+                    <td style={{ padding: '10px', textAlign: 'right', fontWeight: '600', color: var(--color-text-primary) }}>
                       {product.price} {appSettings?.currency}
                     </td>
                     <td style={{ padding: '10px', textAlign: 'center' }}>
@@ -539,7 +539,7 @@ const BarcodeSystem = () => {
               alignItems: 'center',
               marginBottom: '20px'
             }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: isDark ? '#f7fafc' : '#2d3748' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: var(--color-text-primary) }}>
                 Aperçu avant impression ({selectedProducts.length} étiquettes)
               </h3>
               <button
@@ -558,7 +558,7 @@ const BarcodeSystem = () => {
             
             {/* Zone d'aperçu */}
             <div style={{
-              background: 'white',
+              background: 'var(--color-surface)',
               padding: '20px',
               borderRadius: '8px',
               marginBottom: '20px',

@@ -275,7 +275,7 @@ export default function ReceptionModule() {
           <h1 style={{ fontSize: '28px', fontWeight: '700', marginBottom: '8px' }}>
             📦 Réception de Commandes
           </h1>
-          <p style={{ color: '#6b7280' }}>
+          <p style={{ color: 'var(--color-text-secondary)' }}>
             Enregistrez les marchandises reçues et ajustez le stock
           </p>
         </div>
@@ -320,11 +320,11 @@ export default function ReceptionModule() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 400px', gap: '20px' }}>
           {/* Colonne gauche - Liste des produits à réceptionner */}
           <div style={{
-            background: 'white',
+            background: 'var(--color-surface)',
             borderRadius: '12px',
             padding: '20px',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-            border: '1px solid #e5e7eb'
+            border: '1px solid var(--color-border)'
           }}>
             <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>
               Produits à réceptionner ({receptionItems.length})
@@ -337,7 +337,7 @@ export default function ReceptionModule() {
                 left: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
-                color: '#9ca3af'
+                color: 'var(--color-text-secondary)'
               }} />
               <input
                 type="text"
@@ -347,13 +347,13 @@ export default function ReceptionModule() {
                 style={{
                   width: '100%',
                   padding: '12px 12px 12px 44px',
-                  border: '2px solid #e5e7eb',
+                  border: '2px solid var(--color-border)',
                   borderRadius: '8px',
                   fontSize: '14px',
                   transition: 'all 0.2s'
                 }}
                 onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+                onBlur={(e) => e.target.style.borderColor = 'var(--color-border)'}
               />
 
               {/* Résultats de recherche */}
@@ -363,8 +363,8 @@ export default function ReceptionModule() {
                   top: '100%',
                   left: 0,
                   right: 0,
-                  background: 'white',
-                  border: '2px solid #e5e7eb',
+                  background: 'var(--color-surface)',
+                  border: '2px solid var(--color-border)',
                   borderRadius: '8px',
                   marginTop: '4px',
                   maxHeight: '300px',
@@ -388,7 +388,7 @@ export default function ReceptionModule() {
                       <div style={{ fontWeight: '600', marginBottom: '4px' }}>
                         {product.name}
                       </div>
-                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                      <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
                         {product.category} • Stock actuel: {product.stock} • {product.sellingPrice} FCFA
                       </div>
                     </div>
@@ -405,7 +405,7 @@ export default function ReceptionModule() {
                 background: '#f3f4f6',
                 border: '2px dashed #d1d5db',
                 borderRadius: '8px',
-                color: '#6b7280',
+                color: 'var(--color-text-secondary)',
                 fontWeight: '600',
                 cursor: 'pointer',
                 marginBottom: '20px',
@@ -423,7 +423,7 @@ export default function ReceptionModule() {
               <div style={{
                 textAlign: 'center',
                 padding: '60px 20px',
-                color: '#9ca3af'
+                color: 'var(--color-text-secondary)'
               }}>
                 <Package size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
                 <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -437,23 +437,23 @@ export default function ReceptionModule() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: '#f9fafb', borderBottom: '2px solid #e5e7eb' }}>
-                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>
+                    <tr style={{ background: 'var(--color-bg)', borderBottom: '2px solid var(--color-border)' }}>
+                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>
                         PRODUIT
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>
+                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>
                         STOCK ACTUEL
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>
+                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>
                         QUANTITÉ
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>
+                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>
                         PRIX D'ACHAT
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>
+                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>
                         TOTAL
                       </th>
-                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: '#6b7280' }}>
+                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-secondary)' }}>
                         ACTION
                       </th>
                     </tr>
@@ -463,9 +463,9 @@ export default function ReceptionModule() {
                       <tr key={index} style={{ borderBottom: '1px solid #f3f4f6' }}>
                         <td style={{ padding: '12px' }}>
                           <div style={{ fontWeight: '600' }}>{item.name}</div>
-                          <div style={{ fontSize: '12px', color: '#6b7280' }}>{item.category}</div>
+                          <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>{item.category}</div>
                         </td>
-                        <td style={{ padding: '12px', textAlign: 'center', color: '#6b7280' }}>
+                        <td style={{ padding: '12px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
                           {item.currentStock}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>
@@ -477,7 +477,7 @@ export default function ReceptionModule() {
                             style={{
                               width: '80px',
                               padding: '6px',
-                              border: '1px solid #e5e7eb',
+                              border: '1px solid var(--color-border)',
                               borderRadius: '6px',
                               textAlign: 'center',
                               fontWeight: '600'
@@ -494,7 +494,7 @@ export default function ReceptionModule() {
                             style={{
                               width: '100px',
                               padding: '6px',
-                              border: '1px solid #e5e7eb',
+                              border: '1px solid var(--color-border)',
                               borderRadius: '6px',
                               textAlign: 'right'
                             }}
@@ -530,11 +530,11 @@ export default function ReceptionModule() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Statistiques */}
             <div style={{
-              background: 'white',
+              background: 'var(--color-surface)',
               borderRadius: '12px',
               padding: '20px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              border: '1px solid #e5e7eb'
+              border: '1px solid var(--color-border)'
             }}>
               <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
                 📊 Récapitulatif
@@ -542,14 +542,14 @@ export default function ReceptionModule() {
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ color: '#6b7280' }}>Produits</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Produits</span>
                   <span style={{ fontWeight: '600' }}>{receptionStats.totalItems}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #f3f4f6' }}>
-                  <span style={{ color: '#6b7280' }}>Quantité totale</span>
+                  <span style={{ color: 'var(--color-text-secondary)' }}>Quantité totale</span>
                   <span style={{ fontWeight: '600' }}>{receptionStats.totalQuantity}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', background: '#f0f9ff', margin: '0 -20px', padding: '12px 20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', background: 'var(--color-bg)', margin: '0 -20px', padding: '12px 20px' }}>
                   <span style={{ fontWeight: '600', color: '#1e40af' }}>Valeur totale</span>
                   <span style={{ fontSize: '18px', fontWeight: '700', color: '#1e40af' }}>
                     {receptionStats.totalValue.toLocaleString()} FCFA
@@ -560,18 +560,18 @@ export default function ReceptionModule() {
 
             {/* Informations fournisseur */}
             <div style={{
-              background: 'white',
+              background: 'var(--color-surface)',
               borderRadius: '12px',
               padding: '20px',
               boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              border: '1px solid #e5e7eb'
+              border: '1px solid var(--color-border)'
             }}>
               <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px' }}>
                 ℹ️ Informations
               </h3>
 
               <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-primary)', marginBottom: '6px' }}>
                   Fournisseur *
                 </label>
                 <input
@@ -582,7 +582,7 @@ export default function ReceptionModule() {
                   style={{
                     width: '100%',
                     padding: '10px',
-                    border: '2px solid #e5e7eb',
+                    border: '2px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '14px'
                   }}
@@ -590,7 +590,7 @@ export default function ReceptionModule() {
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: 'var(--color-text-primary)', marginBottom: '6px' }}>
                   Notes (optionnel)
                 </label>
                 <textarea
@@ -601,7 +601,7 @@ export default function ReceptionModule() {
                   style={{
                     width: '100%',
                     padding: '10px',
-                    border: '2px solid #e5e7eb',
+                    border: '2px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '14px',
                     resize: 'vertical'
@@ -643,11 +643,11 @@ export default function ReceptionModule() {
       {/* Vue Historique */}
       {activeView === 'history' && (
         <div style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '20px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
           <h2 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '20px' }}>
             Historique des réceptions
@@ -657,7 +657,7 @@ export default function ReceptionModule() {
             <div style={{
               textAlign: 'center',
               padding: '60px 20px',
-              color: '#9ca3af'
+              color: 'var(--color-text-secondary)'
             }}>
               <FileText size={48} style={{ margin: '0 auto 16px', opacity: 0.5 }} />
               <p style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
@@ -674,7 +674,7 @@ export default function ReceptionModule() {
                   key={reception.id}
                   style={{
                     padding: '20px',
-                    border: '2px solid #e5e7eb',
+                    border: '2px solid var(--color-border)',
                     borderRadius: '12px',
                     transition: 'all 0.2s'
                   }}
@@ -684,7 +684,7 @@ export default function ReceptionModule() {
                       <div style={{ fontSize: '16px', fontWeight: '600', marginBottom: '8px' }}>
                         📦 {reception.supplier}
                       </div>
-                      <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: '#6b7280' }}>
+                      <div style={{ display: 'flex', gap: '16px', fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                         <span>
                           <Calendar size={14} style={{ display: 'inline', marginRight: '4px' }} />
                           {new Date(reception.date).toLocaleDateString('fr-FR')}
@@ -700,7 +700,7 @@ export default function ReceptionModule() {
                       <div style={{ fontSize: '20px', fontWeight: '700', color: '#3b82f6' }}>
                         {reception.totalValue.toLocaleString()} FCFA
                       </div>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
+                      <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
                         {reception.totalItems} produit(s) • {reception.totalQuantity} unités
                       </div>
                     </div>
@@ -709,10 +709,10 @@ export default function ReceptionModule() {
                   {reception.notes && (
                     <div style={{
                       padding: '12px',
-                      background: '#f9fafb',
+                      background: 'var(--color-bg)',
                       borderRadius: '8px',
                       fontSize: '13px',
-                      color: '#6b7280',
+                      color: 'var(--color-text-secondary)',
                       marginBottom: '16px'
                     }}>
                       📝 {reception.notes}
@@ -733,7 +733,7 @@ export default function ReceptionModule() {
                     <div style={{ marginTop: '12px', overflowX: 'auto' }}>
                       <table style={{ width: '100%', fontSize: '13px', borderCollapse: 'collapse' }}>
                         <thead>
-                          <tr style={{ background: '#f9fafb' }}>
+                          <tr style={{ background: 'var(--color-bg)' }}>
                             <th style={{ padding: '8px', textAlign: 'left', fontWeight: '600' }}>Produit</th>
                             <th style={{ padding: '8px', textAlign: 'center', fontWeight: '600' }}>Qté</th>
                             <th style={{ padding: '8px', textAlign: 'right', fontWeight: '600' }}>Prix unitaire</th>
@@ -777,7 +777,7 @@ export default function ReceptionModule() {
           zIndex: 1000
         }}>
           <div style={{
-            background: 'white',
+            background: 'var(--color-surface)',
             borderRadius: '16px',
             padding: '24px',
             maxWidth: '500px',
@@ -816,7 +816,7 @@ export default function ReceptionModule() {
                   style={{
                     width: '100%',
                     padding: '10px',
-                    border: '2px solid #e5e7eb',
+                    border: '2px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '14px'
                   }}
@@ -833,7 +833,7 @@ export default function ReceptionModule() {
                   style={{
                     width: '100%',
                     padding: '10px',
-                    border: '2px solid #e5e7eb',
+                    border: '2px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '14px'
                   }}
@@ -859,7 +859,7 @@ export default function ReceptionModule() {
                     style={{
                       width: '100%',
                       padding: '10px',
-                      border: '2px solid #e5e7eb',
+                      border: '2px solid var(--color-border)',
                       borderRadius: '8px',
                       fontSize: '14px'
                     }}
@@ -878,7 +878,7 @@ export default function ReceptionModule() {
                     style={{
                       width: '100%',
                       padding: '10px',
-                      border: '2px solid #e5e7eb',
+                      border: '2px solid var(--color-border)',
                       borderRadius: '8px',
                       fontSize: '14px'
                     }}
@@ -898,7 +898,7 @@ export default function ReceptionModule() {
                   style={{
                     width: '100%',
                     padding: '10px',
-                    border: '2px solid #e5e7eb',
+                    border: '2px solid var(--color-border)',
                     borderRadius: '8px',
                     fontSize: '14px'
                   }}
@@ -940,7 +940,7 @@ export default function ReceptionModule() {
           zIndex: 2000
         }}>
           <div style={{
-            background: 'white',
+            background: 'var(--color-surface)',
             padding: '24px',
             borderRadius: '12px',
             textAlign: 'center'

@@ -11,7 +11,7 @@ const AccountingModule = dynamic(
     loading: () => (
       <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: '18px', color: '#6b7280' }}>Chargement du module comptabilité...</div>
+          <div style={{ fontSize: '18px', color: "var(--color-text-secondary)" }}>Chargement du module comptabilité...</div>
         </div>
       </div>
     ),

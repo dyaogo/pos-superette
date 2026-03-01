@@ -537,12 +537,12 @@ const PhysicalInventoryModule = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: isDark ? '#0f172a' : '#f8fafc'
+      background: var(--color-bg)
     }}>
       {/* Header Modern */}
       <div style={{
         background: isDark ? '#1e293b' : 'white',
-        borderBottom: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+        borderBottom: `1px solid ${var(--color-border)}`,
         padding: '20px 24px'
       }}>
         <div style={{
@@ -599,7 +599,7 @@ const PhysicalInventoryModule = () => {
                 width: '8px',
                 height: '8px',
                 borderRadius: '50%',
-                background: 'white',
+                background: 'var(--color-surface)',
                 animation: 'pulse 2s infinite'
               }} />
               <div>
@@ -687,7 +687,7 @@ const PhysicalInventoryModule = () => {
               background: isDark ? '#1e293b' : 'white',
               borderRadius: '16px',
               padding: '32px',
-              border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+              border: `1px solid ${var(--color-border)}`,
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
               marginBottom: '24px'
             }}>
@@ -729,7 +729,7 @@ const PhysicalInventoryModule = () => {
                     fontSize: '14px',
                     fontWeight: '600',
                     marginBottom: '8px',
-                    color: isDark ? '#f1f5f9' : '#374151'
+                    color: var(--color-text-primary)
                   }}>
                     Nom de l'inventaire *
                   </label>
@@ -741,9 +741,9 @@ const PhysicalInventoryModule = () => {
                     style={{
                       width: '100%',
                       padding: '12px 16px',
-                      border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                      border: `2px solid ${var(--color-border)}`,
                       borderRadius: '10px',
-                      background: isDark ? '#334155' : '#f8fafc',
+                      background: var(--color-bg),
                       color: isDark ? '#f1f5f9' : '#0f172a',
                       fontSize: '14px',
                       transition: 'all 0.2s ease'
@@ -753,7 +753,7 @@ const PhysicalInventoryModule = () => {
                       e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
                     }}
                     onBlur={(e) => {
-                      e.target.style.borderColor = isDark ? '#334155' : '#e2e8f0';
+                      e.target.style.borderColor = var(--color-border);
                       e.target.style.boxShadow = 'none';
                     }}
                   />
@@ -765,7 +765,7 @@ const PhysicalInventoryModule = () => {
                    fontSize: '14px',
                    fontWeight: '600',
                    marginBottom: '8px',
-                   color: isDark ? '#f1f5f9' : '#374151'
+                   color: var(--color-text-primary)
                  }}>
                    Assigné à
                  </label>
@@ -775,9 +775,9 @@ const PhysicalInventoryModule = () => {
                    style={{
                      width: '100%',
                      padding: '12px 16px',
-                     border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                     border: `2px solid ${var(--color-border)}`,
                      borderRadius: '10px',
-                     background: isDark ? '#334155' : '#f8fafc',
+                     background: var(--color-bg),
                      color: isDark ? '#f1f5f9' : '#0f172a',
                      fontSize: '14px'
                    }}
@@ -798,7 +798,7 @@ const PhysicalInventoryModule = () => {
                  fontSize: '14px',
                  fontWeight: '600',
                  marginBottom: '8px',
-                 color: isDark ? '#f1f5f9' : '#374151'
+                 color: var(--color-text-primary)
                }}>
                  Notes et instructions (optionnel)
                </label>
@@ -810,9 +810,9 @@ const PhysicalInventoryModule = () => {
                  style={{
                    width: '100%',
                    padding: '12px 16px',
-                   border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                   border: `2px solid ${var(--color-border)}`,
                    borderRadius: '10px',
-                   background: isDark ? '#334155' : '#f8fafc',
+                   background: var(--color-bg),
                    color: isDark ? '#f1f5f9' : '#0f172a',
                    fontSize: '14px',
                    resize: 'vertical',
@@ -867,8 +867,8 @@ const PhysicalInventoryModule = () => {
                  style={{
                    padding: '14px 28px',
                    background: 'transparent',
-                   color: isDark ? '#f1f5f9' : '#374151',
-                   border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                   color: var(--color-text-primary),
+                   border: `2px solid ${var(--color-border)}`,
                    borderRadius: '10px',
                    fontWeight: '600',
                    cursor: 'pointer',
@@ -883,8 +883,8 @@ const PhysicalInventoryModule = () => {
                    e.target.style.color = '#3b82f6';
                  }}
                  onMouseLeave={(e) => {
-                   e.target.style.borderColor = isDark ? '#334155' : '#e2e8f0';
-                   e.target.style.color = isDark ? '#f1f5f9' : '#374151';
+                   e.target.style.borderColor = var(--color-border);
+                   e.target.style.color = var(--color-text-primary);
                  }}
                >
                  <History size={20} />
@@ -934,7 +934,7 @@ const PhysicalInventoryModule = () => {
                    background: isDark ? '#1e293b' : 'white',
                    borderRadius: '16px',
                    padding: '24px',
-                   border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                   border: `1px solid ${var(--color-border)}`,
                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
                    position: 'relative',
                    overflow: 'hidden'
@@ -971,7 +971,7 @@ const PhysicalInventoryModule = () => {
                    <span style={{
                      fontSize: '14px',
                      fontWeight: '600',
-                     color: isDark ? '#f1f5f9' : '#374151'
+                     color: var(--color-text-primary)
                    }}>
                      {stat.title}
                    </span>
@@ -997,7 +997,7 @@ const PhysicalInventoryModule = () => {
              background: isDark ? '#1e293b' : 'white',
              borderRadius: '16px',
              padding: '24px',
-             border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+             border: `1px solid ${var(--color-border)}`,
              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
              marginBottom: '24px'
            }}>
@@ -1080,8 +1080,8 @@ const PhysicalInventoryModule = () => {
                    style={{
                      padding: '10px 16px',
                      background: 'transparent',
-                     color: isDark ? '#f1f5f9' : '#374151',
-                     border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                     color: var(--color-text-primary),
+                     border: `1px solid ${var(--color-border)}`,
                      borderRadius: '8px',
                      fontWeight: '600',
                      cursor: 'pointer',
@@ -1199,7 +1199,7 @@ const PhysicalInventoryModule = () => {
              background: isDark ? '#1e293b' : 'white',
              borderRadius: '16px',
              padding: '20px',
-             border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+             border: `1px solid ${var(--color-border)}`,
              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
              marginBottom: '24px'
            }}>
@@ -1235,8 +1235,8 @@ const PhysicalInventoryModule = () => {
                        padding: '8px 12px',
                        background: countingMode === mode.key ? 
                          'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'transparent',
-                       color: countingMode === mode.key ? 'white' : (isDark ? '#f1f5f9' : '#374151'),
-                       border: `1px solid ${countingMode === mode.key ? '#3b82f6' : (isDark ? '#334155' : '#e2e8f0')}`,
+                       color: countingMode === mode.key ? 'white' : (var(--color-text-primary)),
+                       border: `1px solid ${countingMode === mode.key ? '#3b82f6' : (var(--color-border))}`,
                        borderRadius: '8px',
                        fontSize: '12px',
                        cursor: 'pointer',
@@ -1268,9 +1268,9 @@ const PhysicalInventoryModule = () => {
                    style={{
                      flex: 1,
                      padding: '12px 16px',
-                     border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                     border: `2px solid ${var(--color-border)}`,
                      borderRadius: '10px',
-                     background: isDark ? '#334155' : '#f8fafc',
+                     background: var(--color-bg),
                      color: isDark ? '#f1f5f9' : '#0f172a',
                      fontSize: '14px'
                    }}
@@ -1305,7 +1305,7 @@ const PhysicalInventoryModule = () => {
              background: isDark ? '#1e293b' : 'white',
              borderRadius: '16px',
              padding: '20px',
-             border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+             border: `1px solid ${var(--color-border)}`,
              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
              marginBottom: '24px'
            }}>
@@ -1333,9 +1333,9 @@ const PhysicalInventoryModule = () => {
                      style={{
                        width: '100%',
                        padding: '12px 12px 12px 40px',
-                       border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                       border: `2px solid ${var(--color-border)}`,
                        borderRadius: '10px',
-                       background: isDark ? '#334155' : '#f8fafc',
+                       background: var(--color-bg),
                        color: isDark ? '#f1f5f9' : '#0f172a',
                        fontSize: '14px'
                      }}
@@ -1349,8 +1349,8 @@ const PhysicalInventoryModule = () => {
                    padding: '12px 16px',
                    background: showAdvancedFilters ? 
                      'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'transparent',
-                   color: showAdvancedFilters ? 'white' : (isDark ? '#f1f5f9' : '#374151'),
-                   border: `2px solid ${showAdvancedFilters ? '#3b82f6' : (isDark ? '#334155' : '#e2e8f0')}`,
+                   color: showAdvancedFilters ? 'white' : (var(--color-text-primary)),
+                   border: `2px solid ${showAdvancedFilters ? '#3b82f6' : (var(--color-border))}`,
                    borderRadius: '10px',
                    cursor: 'pointer',
                    display: 'flex',
@@ -1370,8 +1370,8 @@ const PhysicalInventoryModule = () => {
                    style={{
                      padding: '12px',
                      background: 'transparent',
-                     color: isDark ? '#f1f5f9' : '#374151',
-                     border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                     color: var(--color-text-primary),
+                     border: `1px solid ${var(--color-border)}`,
                      borderRadius: '8px',
                      cursor: 'pointer'
                    }}
@@ -1386,8 +1386,8 @@ const PhysicalInventoryModule = () => {
                      padding: '12px',
                      background: autoSaveEnabled ? 
                        'linear-gradient(135deg, #10b981, #059669)' : 'transparent',
-                     color: autoSaveEnabled ? 'white' : (isDark ? '#f1f5f9' : '#374151'),
-                     border: `1px solid ${autoSaveEnabled ? '#10b981' : (isDark ? '#334155' : '#e2e8f0')}`,
+                     color: autoSaveEnabled ? 'white' : (var(--color-text-primary)),
+                     border: `1px solid ${autoSaveEnabled ? '#10b981' : (var(--color-border))}`,
                      borderRadius: '8px',
                      cursor: 'pointer'
                    }}
@@ -1401,7 +1401,7 @@ const PhysicalInventoryModule = () => {
              {/* Filtres avancés */}
              {showAdvancedFilters && (
                <div style={{
-                 borderTop: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                 borderTop: `1px solid ${var(--color-border)}`,
                  paddingTop: '16px',
                  display: 'grid',
                  gridTemplateColumns: window.innerWidth > 768 ? 'repeat(4, 1fr)' : '1fr',
@@ -1423,9 +1423,9 @@ const PhysicalInventoryModule = () => {
                      style={{
                        width: '100%',
                        padding: '8px 12px',
-                       border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                       border: `1px solid ${var(--color-border)}`,
                        borderRadius: '8px',
-                       background: isDark ? '#334155' : '#f8fafc',
+                       background: var(--color-bg),
                        color: isDark ? '#f1f5f9' : '#0f172a',
                        fontSize: '14px'
                      }}
@@ -1454,9 +1454,9 @@ const PhysicalInventoryModule = () => {
                      style={{
                        width: '100%',
                        padding: '8px 12px',
-                       border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                       border: `1px solid ${var(--color-border)}`,
                        borderRadius: '8px',
-                       background: isDark ? '#334155' : '#f8fafc',
+                       background: var(--color-bg),
                        color: isDark ? '#f1f5f9' : '#0f172a',
                        fontSize: '14px'
                      }}
@@ -1475,8 +1475,8 @@ const PhysicalInventoryModule = () => {
                      style={{
                        padding: '8px',
                        background: 'transparent',
-                       color: isDark ? '#f1f5f9' : '#374151',
-                       border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                       color: var(--color-text-primary),
+                       border: `1px solid ${var(--color-border)}`,
                        borderRadius: '6px',
                        cursor: 'pointer'
                      }}
@@ -1546,7 +1546,7 @@ const PhysicalInventoryModule = () => {
                      border: `2px solid ${
                        hasDiscrepancy ? (difference > 0 ? '#10b981' : '#ef4444') :
                        isCounted ? '#10b981' :
-                       (isDark ? '#334155' : '#e2e8f0')
+                       (var(--color-border))
                      }`,
                      boxShadow: hasDiscrepancy ? 
                        `0 4px 12px ${difference > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}` :
@@ -1657,7 +1657,7 @@ const PhysicalInventoryModule = () => {
                            padding: compactView ? '6px' : '8px',
                            borderRadius: '6px',
                            fontSize: '12px',
-                           color: isDark ? '#f1f5f9' : '#374151',
+                           color: var(--color-text-primary),
                            marginTop: '8px',
                            display: 'flex',
                            alignItems: 'center',
@@ -1711,9 +1711,9 @@ const PhysicalInventoryModule = () => {
                                  width: compactView ? '60px' : '80px',
                                  padding: compactView ? '6px' : '8px',
                                  textAlign: 'center',
-                                 border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                                 border: `2px solid ${var(--color-border)}`,
                                  borderRadius: '6px',
-                                 background: isDark ? '#334155' : '#f8fafc',
+                                 background: var(--color-bg),
                                  color: isDark ? '#f1f5f9' : '#0f172a',
                                  fontSize: compactView ? '14px' : '16px',
                                  fontWeight: '600'
@@ -1751,10 +1751,10 @@ const PhysicalInventoryModule = () => {
                                border: `2px solid ${
                                  hasDiscrepancy ? (difference > 0 ? '#10b981' : '#ef4444') :
                                  isCounted ? '#10b981' :
-                                 (isDark ? '#334155' : '#e2e8f0')
+                                 (var(--color-border))
                                }`,
                                borderRadius: '8px',
-                               background: isDark ? '#334155' : '#f8fafc',
+                               background: var(--color-bg),
                                color: isDark ? '#f1f5f9' : '#0f172a',
                                fontSize: compactView ? '14px' : '16px',
                                fontWeight: '600',
@@ -1801,9 +1801,9 @@ const PhysicalInventoryModule = () => {
                            style={{
                              width: '100%',
                              padding: '8px 12px',
-                             border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                             border: `1px solid ${var(--color-border)}`,
                              borderRadius: '6px',
-                             background: isDark ? '#334155' : '#f8fafc',
+                             background: var(--color-bg),
                              color: isDark ? '#f1f5f9' : '#0f172a',
                              fontSize: '12px'
                            }}
@@ -1828,7 +1828,7 @@ const PhysicalInventoryModule = () => {
                padding: '12px',
                borderRadius: '12px',
                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.15)',
-               border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`
+               border: `1px solid ${var(--color-border)}`
              }}>
                <button
                  onClick={() => navigateToProduct('prev')}
@@ -1885,7 +1885,7 @@ const PhysicalInventoryModule = () => {
                color: isDark ? '#94a3b8' : '#64748b',
                fontSize: '14px',
                marginTop: '16px',
-               border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`
+               border: `1px solid ${var(--color-border)}`
              }}>
                📊 Affichage des 20 premiers produits sur {filteredProducts.length} • 
                Utilisez la recherche pour affiner les résultats
@@ -1899,7 +1899,7 @@ const PhysicalInventoryModule = () => {
                borderRadius: '16px',
                padding: '48px 24px',
                textAlign: 'center',
-               border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+               border: `1px solid ${var(--color-border)}`,
                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
              }}>
                <Package size={48} color="#94a3b8" style={{ margin: '0 auto 16px' }} />
@@ -1932,7 +1932,7 @@ const PhysicalInventoryModule = () => {
              background: isDark ? '#1e293b' : 'white',
              borderRadius: '16px',
              padding: '32px',
-             border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+             border: `1px solid ${var(--color-border)}`,
              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
            }}>
              <div style={{
@@ -1978,8 +1978,8 @@ const PhysicalInventoryModule = () => {
                    style={{
                      padding: '10px 16px',
                      background: 'transparent',
-                     color: isDark ? '#f1f5f9' : '#374151',
-                     border: `2px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+                     color: var(--color-text-primary),
+                     border: `2px solid ${var(--color-border)}`,
                      borderRadius: '8px',
                      fontWeight: '600',
                      cursor: 'pointer',
@@ -2037,7 +2037,7 @@ const PhysicalInventoryModule = () => {
                    }}>
                      {sessionStats.discrepancies}
                    </div>
-                   <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                   <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                      Écarts détectés
                    </div>
                  </div>
@@ -2051,7 +2051,7 @@ const PhysicalInventoryModule = () => {
                    }}>
                      {sessionStats.totalDiscrepancyValue.toLocaleString()} {appSettings?.currency || 'FCFA'}
                    </div>
-                   <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                   <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                      Impact financier
                    </div>
                  </div>
@@ -2065,7 +2065,7 @@ const PhysicalInventoryModule = () => {
                    }}>
                      {sessionStats.positiveAdjustments}
                    </div>
-                   <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                   <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                      Ajustements +
                    </div>
                  </div>
@@ -2079,7 +2079,7 @@ const PhysicalInventoryModule = () => {
                    }}>
                      {sessionStats.negativeAdjustments}
                    </div>
-                   <div style={{ fontSize: '14px', color: '#6b7280' }}>
+                   <div style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                      Ajustements -
                    </div>
                  </div>
@@ -2090,7 +2090,7 @@ const PhysicalInventoryModule = () => {
              <div style={{
                textAlign: 'center',
                padding: '24px',
-               background: isDark ? '#334155' : '#f8fafc',
+               background: var(--color-bg),
                borderRadius: '12px',
                marginBottom: '24px'
              }}>
@@ -2121,7 +2121,7 @@ const PhysicalInventoryModule = () => {
              background: isDark ? '#1e293b' : 'white',
              borderRadius: '16px',
              padding: '32px',
-             border: `1px solid ${isDark ? '#334155' : '#e2e8f0'}`,
+             border: `1px solid ${var(--color-border)}`,
              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
            }}>
              <div style={{
@@ -2189,7 +2189,7 @@ const PhysicalInventoryModule = () => {
                    <div
                      key={session.id}
                      style={{
-                       background: isDark ? '#334155' : '#f8fafc',
+                       background: var(--color-bg),
                        borderRadius: '12px',
                        padding: '20px',
                        border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`,
@@ -2408,7 +2408,7 @@ const PhysicalInventoryModule = () => {
                <div style={{
                  textAlign: 'center',
                  padding: '48px 24px',
-                 background: isDark ? '#334155' : '#f8fafc',
+                 background: var(--color-bg),
                  borderRadius: '12px',
                  border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`
                }}>

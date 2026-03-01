@@ -312,12 +312,12 @@ const DashboardModule = () => {
 
   // Composant StatCard avec tendances
   const StatCard = ({ title, value, icon: Icon, trend, color, delay = 0, marginPercentage }) => (
-    <div 
+    <div
       style={{
-        background: isDark ? '#2d3748' : 'white',
+        background: isDark ? '#2d3748' : "var(--color-surface)",
         borderRadius: '16px',
         padding: '24px',
-        border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+        border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
         position: 'relative',
         overflow: 'hidden',
@@ -370,7 +370,7 @@ const DashboardModule = () => {
         <span style={{
           fontSize: '14px',
           fontWeight: '600',
-          color: isDark ? '#f1f5f9' : '#374151'
+          color: isDark ? '#f1f5f9' : "var(--color-text-primary)"
         }}>
           {title}
         </span>
@@ -380,7 +380,7 @@ const DashboardModule = () => {
       <div style={{
         fontSize: '32px',
         fontWeight: '800',
-        color: isDark ? '#f7fafc' : '#1a202c',
+        color: isDark ? '#f7fafc' : "var(--color-text-primary)",
         marginBottom: '12px',
         position: 'relative',
         zIndex: 1,
@@ -428,27 +428,27 @@ const DashboardModule = () => {
   // Composant graphique simple
   const SimpleChart = ({ data, title, subtitle }) => {
     const maxValue = Math.max(...data.map(d => Math.max(d.ventes, d.marges)));
-    
+
     return (
       <div style={{
-        background: isDark ? '#2d3748' : 'white',
+        background: isDark ? '#2d3748' : "var(--color-surface)",
         borderRadius: '16px',
         padding: '24px',
-        border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+        border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
       }}>
         <div style={{ marginBottom: '24px' }}>
           <h3 style={{
             fontSize: '18px',
             fontWeight: '700',
-            color: isDark ? '#f7fafc' : '#1a202c',
+            color: isDark ? '#f7fafc' : "var(--color-text-primary)",
             margin: '0 0 4px 0'
           }}>
             {title}
           </h3>
           <p style={{
             fontSize: '14px',
-            color: isDark ? '#a0aec0' : '#64748b',
+            color: isDark ? '#a0aec0' : "var(--color-text-secondary)",
             margin: 0
           }}>
             {subtitle}
@@ -472,7 +472,7 @@ const DashboardModule = () => {
               }} />
               <span style={{
                 fontSize: '12px',
-                color: isDark ? '#a0aec0' : '#64748b'
+                color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
               }}>
                 Ventes
               </span>
@@ -486,7 +486,7 @@ const DashboardModule = () => {
               }} />
               <span style={{
                 fontSize: '12px',
-                color: isDark ? '#a0aec0' : '#64748b'
+                color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
               }}>
                 Marges Brutes
               </span>
@@ -547,7 +547,7 @@ const DashboardModule = () => {
                 {/* Label */}
                 <span style={{
                   fontSize: '11px',
-                  color: isDark ? '#a0aec0' : '#64748b',
+                  color: isDark ? '#a0aec0' : "var(--color-text-secondary)",
                   fontWeight: '500'
                 }}>
                   {item.label}
@@ -611,7 +611,7 @@ const DashboardModule = () => {
     return (
       <div style={{
         padding: '24px',
-        background: isDark ? '#1a202c' : '#f7fafc',
+        background: isDark ? '#1a202c' : "var(--color-bg)",
         minHeight: '100vh',
         display: 'flex',
         alignItems: 'center',
@@ -620,7 +620,7 @@ const DashboardModule = () => {
         gap: '20px'
       }}>
         <RefreshCw size={48} style={{ animation: 'spin 1s linear infinite', color: '#3b82f6' }} />
-        <p style={{ color: isDark ? '#a0aec0' : '#64748b', fontSize: '16px' }}>Chargement des données...</p>
+        <p style={{ color: isDark ? '#a0aec0' : "var(--color-text-secondary)", fontSize: '16px' }}>Chargement des données...</p>
         <style>
           {`
             @keyframes spin {
@@ -636,7 +636,7 @@ const DashboardModule = () => {
   return (
     <div style={{
       padding: '24px',
-      background: isDark ? '#1a202c' : '#f7fafc',
+      background: isDark ? '#1a202c' : "var(--color-bg)",
       minHeight: '100vh'
     }}>
       {/* Animations CSS */}
@@ -672,7 +672,7 @@ const DashboardModule = () => {
           <h1 style={{
             fontSize: '32px',
             fontWeight: '800',
-            color: isDark ? '#f7fafc' : '#1a202c',
+            color: isDark ? '#f7fafc' : "var(--color-text-primary)",
             margin: '0 0 8px 0',
             background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)',
             WebkitBackgroundClip: 'text',
@@ -683,7 +683,7 @@ const DashboardModule = () => {
           </h1>
           <p style={{
             fontSize: '16px',
-            color: isDark ? '#a0aec0' : '#64748b',
+            color: isDark ? '#a0aec0' : "var(--color-text-secondary)",
             margin: 0
           }}>
             Vue d'ensemble • {new Date().toLocaleDateString('fr-FR', { 
@@ -700,10 +700,10 @@ const DashboardModule = () => {
           {/* Type de période */}
           <div style={{
             display: 'flex',
-            background: isDark ? '#2d3748' : 'white',
+            background: isDark ? '#2d3748' : "var(--color-surface)",
             borderRadius: '12px',
             padding: '4px',
-            border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+            border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
             boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
           }}>
             {['today', 'week', 'month', 'year'].map(period => (
@@ -718,7 +718,7 @@ const DashboardModule = () => {
                   border: 'none',
                   borderRadius: '8px',
                   background: selectedPeriod === period ? '#3b82f6' : 'transparent',
-                  color: selectedPeriod === period ? 'white' : isDark ? '#a0aec0' : '#64748b',
+                  color: selectedPeriod === period ? 'white' : isDark ? '#a0aec0' : "var(--color-text-secondary)",
                   fontWeight: '500',
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
@@ -740,20 +740,20 @@ const DashboardModule = () => {
             padding: '12px 16px',
             background: isDark ? '#2d3748' : 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
             borderRadius: '12px',
-            border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+            border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`
           }}>
             <button
               onClick={() => setPeriodOffset(prev => prev - 1)}
               style={{
                 padding: '8px',
-                background: isDark ? '#374151' : 'white',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                background: isDark ? '#374151' : "var(--color-surface)",
+                border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
                 borderRadius: '6px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: isDark ? '#a0aec0' : '#374151',
+                color: isDark ? '#a0aec0' : "var(--color-text-primary)",
                 transition: 'all 0.2s'
               }}
               title="Période précédente"
@@ -766,7 +766,7 @@ const DashboardModule = () => {
               textAlign: 'center',
               fontSize: '16px',
               fontWeight: '600',
-              color: isDark ? '#e2e8f0' : '#374151'
+              color: isDark ? '#e2e8f0' : "var(--color-text-primary)"
             }}>
               {(() => {
                 const monthNames = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -801,7 +801,7 @@ const DashboardModule = () => {
                 <span style={{
                   marginLeft: '8px',
                   fontSize: '12px',
-                  color: isDark ? '#9ca3af' : '#6b7280',
+                  color: isDark ? '#9ca3af' : "var(--color-text-secondary)",
                   fontWeight: '400'
                 }}>
                   ({periodOffset < 0 ? `${Math.abs(periodOffset)} période${Math.abs(periodOffset) > 1 ? 's' : ''} en arrière` : `Dans ${periodOffset} période${periodOffset > 1 ? 's' : ''}`})
@@ -813,14 +813,14 @@ const DashboardModule = () => {
               onClick={() => setPeriodOffset(prev => prev + 1)}
               style={{
                 padding: '8px',
-                background: isDark ? '#374151' : 'white',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+                background: isDark ? '#374151' : "var(--color-surface)",
+                border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
                 borderRadius: '6px',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: isDark ? '#a0aec0' : '#374151',
+                color: isDark ? '#a0aec0' : "var(--color-text-primary)",
                 transition: 'all 0.2s'
               }}
               title="Période suivante"
@@ -858,9 +858,9 @@ const DashboardModule = () => {
           gap: '12px',
           padding: '16px',
           marginBottom: '24px',
-          background: isDark ? '#2d3748' : 'white',
+          background: isDark ? '#2d3748' : "var(--color-surface)",
           borderRadius: '12px',
-          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
           boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)'
         }}>
           <div style={{
@@ -877,13 +877,13 @@ const DashboardModule = () => {
             <div style={{
               fontSize: '14px',
               fontWeight: '600',
-              color: isDark ? '#f7fafc' : '#2d3748'
+              color: isDark ? '#f7fafc' : "var(--color-text-primary)"
             }}>
               Magasin: {currentStore.name}
             </div>
             <div style={{
               fontSize: '12px',
-              color: isDark ? '#a0aec0' : '#64748b'
+              color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
             }}>
               Données filtrées pour ce magasin uniquement
             </div>
@@ -963,16 +963,16 @@ const DashboardModule = () => {
       }}>
         {/* Ventes récentes */}
         <div style={{
-          background: isDark ? '#2d3748' : 'white',
+          background: isDark ? '#2d3748' : "var(--color-surface)",
           borderRadius: '16px',
           padding: '24px',
-          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
         }}>
           <h3 style={{
             fontSize: '18px',
             fontWeight: '700',
-            color: isDark ? '#f7fafc' : '#1a202c',
+            color: isDark ? '#f7fafc' : "var(--color-text-primary)",
             margin: '0 0 20px 0',
             display: 'flex',
             alignItems: 'center',
@@ -992,23 +992,23 @@ const DashboardModule = () => {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '16px',
-                    background: isDark ? '#374151' : '#f8fafc',
+                    background: isDark ? '#374151' : "var(--color-bg)",
                     borderRadius: '8px',
-                    border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+                    border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`
                   }}
                 >
                   <div>
                     <div style={{
                       fontSize: '14px',
                       fontWeight: '600',
-                      color: isDark ? '#f7fafc' : '#2d3748',
+                      color: isDark ? '#f7fafc' : "var(--color-text-primary)",
                       marginBottom: '4px'
                     }}>
                       Vente #{sale.id}
                     </div>
                     <div style={{
                       fontSize: '12px',
-                      color: isDark ? '#a0aec0' : '#64748b'
+                      color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
                     }}>
                       {new Date(sale.createdAt || sale.date).toLocaleString('fr-FR', {
                         day: '2-digit',
@@ -1019,7 +1019,7 @@ const DashboardModule = () => {
                       })}
                     </div>
                   </div>
-                  
+
                   <div style={{ textAlign: 'right' }}>
                     <div style={{
                       fontSize: '16px',
@@ -1030,7 +1030,7 @@ const DashboardModule = () => {
                     </div>
                     <div style={{
                       fontSize: '12px',
-                      color: isDark ? '#a0aec0' : '#64748b'
+                      color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
                     }}>
                       {sale.items?.length || 0} article(s)
                     </div>
@@ -1042,7 +1042,7 @@ const DashboardModule = () => {
             <div style={{
               textAlign: 'center',
               padding: '40px',
-              color: isDark ? '#a0aec0' : '#64748b'
+              color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
             }}>
               <ShoppingCart size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
               <p>Aucune vente récente</p>
@@ -1052,16 +1052,16 @@ const DashboardModule = () => {
 
         {/* Top produits */}
         <div style={{
-          background: isDark ? '#2d3748' : 'white',
+          background: isDark ? '#2d3748' : "var(--color-surface)",
           borderRadius: '16px',
           padding: '24px',
-          border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+          border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
           boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
         }}>
           <h3 style={{
             fontSize: '18px',
             fontWeight: '700',
-            color: isDark ? '#f7fafc' : '#1a202c',
+            color: isDark ? '#f7fafc' : "var(--color-text-primary)",
             margin: '0 0 20px 0',
             display: 'flex',
             alignItems: 'center',
@@ -1081,9 +1081,9 @@ const DashboardModule = () => {
                     justifyContent: 'space-between',
                     alignItems: 'center',
                     padding: '16px',
-                    background: isDark ? '#374151' : '#f8fafc',
+                    background: isDark ? '#374151' : "var(--color-bg)",
                     borderRadius: '8px',
-                    border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+                    border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1105,14 +1105,14 @@ const DashboardModule = () => {
                       <div style={{
                         fontSize: '14px',
                         fontWeight: '600',
-                        color: isDark ? '#f7fafc' : '#2d3748',
+                        color: isDark ? '#f7fafc' : "var(--color-text-primary)",
                         marginBottom: '4px'
                       }}>
                         {product.name}
                       </div>
                       <div style={{
                         fontSize: '12px',
-                        color: isDark ? '#a0aec0' : '#64748b'
+                        color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
                       }}>
                         {product.sales} unités vendues
                       </div>
@@ -1133,7 +1133,7 @@ const DashboardModule = () => {
             <div style={{
               textAlign: 'center',
               padding: '40px',
-              color: isDark ? '#a0aec0' : '#64748b'
+              color: isDark ? '#a0aec0' : "var(--color-text-secondary)"
             }}>
               <Package size={48} style={{ marginBottom: '16px', opacity: 0.3 }} />
               <p>Aucun produit vendu</p>
@@ -1145,16 +1145,16 @@ const DashboardModule = () => {
       {/* Actions rapides */}
       <div style={{
         marginTop: '32px',
-        background: isDark ? '#2d3748' : 'white',
+        background: isDark ? '#2d3748' : "var(--color-surface)",
         borderRadius: '16px',
         padding: '24px',
-        border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+        border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
       }}>
         <h3 style={{
           fontSize: '18px',
           fontWeight: '700',
-          color: isDark ? '#f7fafc' : '#1a202c',
+          color: isDark ? '#f7fafc' : "var(--color-text-primary)",
           margin: '0 0 20px 0',
           display: 'flex',
           alignItems: 'center',
@@ -1183,11 +1183,11 @@ const DashboardModule = () => {
                 alignItems: 'center',
                 gap: '12px',
                 padding: '16px',
-                background: isDark ? '#374151' : '#f8fafc',
+                background: isDark ? '#374151' : "var(--color-bg)",
                 borderRadius: '8px',
                 cursor: 'pointer',
                 transition: 'all 0.2s ease',
-                border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`
+                border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`
               }}
               onMouseEnter={(e) => {
                 e.currentTarget.style.transform = 'translateY(-2px)';
@@ -1211,7 +1211,7 @@ const DashboardModule = () => {
               <span style={{
                 fontSize: '14px',
                 fontWeight: '600',
-                color: isDark ? '#f7fafc' : '#2d3748'
+                color: isDark ? '#f7fafc' : "var(--color-text-primary)"
               }}>
                 {action.title}
               </span>
@@ -1257,16 +1257,16 @@ const DashboardModule = () => {
       {/* ✅ Vue d'ensemble (comme dashboard.js) */}
       <div style={{
         marginTop: '32px',
-        background: isDark ? '#2d3748' : 'white',
+        background: isDark ? '#2d3748' : "var(--color-surface)",
         padding: '24px',
         borderRadius: '16px',
-        border: `1px solid ${isDark ? '#4a5568' : '#e2e8f0'}`,
+        border: `1px solid ${isDark ? '#4a5568' : 'var(--color-border)'}`,
         boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
       }}>
         <h3 style={{
           fontSize: '18px',
           fontWeight: '700',
-          color: isDark ? '#f7fafc' : '#1a202c',
+          color: isDark ? '#f7fafc' : "var(--color-text-primary)",
           margin: '0 0 20px 0'
         }}>
           Vue d'ensemble
@@ -1279,7 +1279,7 @@ const DashboardModule = () => {
           <div>
             <div style={{
               fontSize: '14px',
-              color: isDark ? '#a0aec0' : '#64748b',
+              color: isDark ? '#a0aec0' : "var(--color-text-secondary)",
               marginBottom: '8px'
             }}>
               Total Produits
@@ -1287,7 +1287,7 @@ const DashboardModule = () => {
             <div style={{
               fontSize: '24px',
               fontWeight: 'bold',
-              color: isDark ? '#f7fafc' : '#1e293b'
+              color: isDark ? '#f7fafc' : "var(--color-text-primary)"
             }}>
               {productCatalog.length}
             </div>
@@ -1295,7 +1295,7 @@ const DashboardModule = () => {
           <div>
             <div style={{
               fontSize: '14px',
-              color: isDark ? '#a0aec0' : '#64748b',
+              color: isDark ? '#a0aec0' : "var(--color-text-secondary)",
               marginBottom: '8px'
             }}>
               Total Clients
@@ -1303,7 +1303,7 @@ const DashboardModule = () => {
             <div style={{
               fontSize: '24px',
               fontWeight: 'bold',
-              color: isDark ? '#f7fafc' : '#1e293b'
+              color: isDark ? '#f7fafc' : "var(--color-text-primary)"
             }}>
               {customers.length}
             </div>
@@ -1311,7 +1311,7 @@ const DashboardModule = () => {
           <div>
             <div style={{
               fontSize: '14px',
-              color: isDark ? '#a0aec0' : '#64748b',
+              color: isDark ? '#a0aec0' : "var(--color-text-secondary)",
               marginBottom: '8px'
             }}>
               Toutes Ventes
@@ -1319,7 +1319,7 @@ const DashboardModule = () => {
             <div style={{
               fontSize: '24px',
               fontWeight: 'bold',
-              color: isDark ? '#f7fafc' : '#1e293b'
+              color: isDark ? '#f7fafc' : "var(--color-text-primary)"
             }}>
               {salesHistory.length}
             </div>
@@ -1327,7 +1327,7 @@ const DashboardModule = () => {
           <div>
             <div style={{
               fontSize: '14px',
-              color: isDark ? '#a0aec0' : '#64748b',
+              color: isDark ? '#a0aec0' : "var(--color-text-secondary)",
               marginBottom: '8px'
             }}>
               CA Total

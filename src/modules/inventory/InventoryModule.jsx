@@ -112,11 +112,11 @@ const useProductSearch = (products, searchQuery, selectedCategory, filters) => {
 
 const Card = ({ children, style = {}, className = '' }) => (
   <div style={{
-    background: 'white',
+    background: 'var(--color-surface)',
     borderRadius: '12px',
     padding: '20px',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    border: '1px solid #e5e7eb',
+    border: '1px solid var(--color-border)',
     ...style
   }} className={className}>
     {children}
@@ -145,8 +145,8 @@ const Button = ({ children, variant = 'primary', size = 'md', leftIcon, onClick,
       fontSize: size === 'sm' ? '14px' : '16px'
     },
     outline: {
-      background: 'white',
-      color: '#374151',
+      background: 'var(--color-surface)',
+      color: 'var(--color-text-primary)',
       border: '1px solid #d1d5db',
       padding: size === 'sm' ? '8px 12px' : '12px 16px',
       fontSize: size === 'sm' ? '14px' : '16px'
@@ -180,7 +180,7 @@ const SearchInput = ({ placeholder, value, onChange, onClear }) => (
       transform: 'translateY(-50%)',
       width: '20px',
       height: '20px',
-      color: '#9ca3af'
+      color: 'var(--color-text-secondary)'
     }} />
     <input
       type="text"
@@ -208,7 +208,7 @@ const SearchInput = ({ placeholder, value, onChange, onClear }) => (
           background: 'none',
           border: 'none',
           cursor: 'pointer',
-          color: '#9ca3af'
+          color: 'var(--color-text-secondary)'
         }}
       >
         <X style={{ width: '20px', height: '20px' }} />
@@ -384,7 +384,7 @@ const EditModal = ({ product, onClose, onSave, appSettings }) => {
                 height: '120px',
                 objectFit: 'cover',
                 borderRadius: '8px',
-                border: '2px solid #e5e7eb'
+                border: '2px solid var(--color-border)'
               }}
             />
           </div>
@@ -526,7 +526,7 @@ const EditModal = ({ product, onClose, onSave, appSettings }) => {
                   {margin}%
                 </span>
               </div>
-              <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+              <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
                 Profit par unité: {(parseFloat(formData.price) - parseFloat(formData.costPrice)).toLocaleString()} FCFA
               </div>
             </div>
@@ -593,7 +593,7 @@ const EditModal = ({ product, onClose, onSave, appSettings }) => {
               style={{
                 padding: '8px 16px',
                 backgroundColor: 'white',
-                color: '#374151',
+                color: 'var(--color-text-primary)',
                 border: '1px solid #d1d5db',
                 borderRadius: '8px',
                 cursor: 'pointer',
@@ -1146,7 +1146,7 @@ if (success) {
     padding: '24px',
     maxWidth: '1400px',
     margin: '0 auto',
-    backgroundColor: appSettings?.darkMode ? '#1a202c' : '#f9fafb',
+    backgroundColor: var(--color-bg),
     minHeight: '100vh'
   };
 
@@ -1226,7 +1226,7 @@ if (success) {
 
           <Card style={{
             background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
-            color: '#2d3748'
+            color: 'var(--color-text-primary)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
@@ -1254,7 +1254,7 @@ if (success) {
                   alignItems: 'center',
                   justifyContent: 'space-between',
                   padding: '12px',
-                  backgroundColor: '#f8fafc',
+                  backgroundColor: 'var(--color-bg)',
                   borderRadius: '8px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1337,7 +1337,7 @@ if (success) {
               <div style={{
                 marginTop: '16px',
                 paddingTop: '16px',
-                borderTop: '1px solid #e5e7eb',
+                borderTop: '1px solid var(--color-border)',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '8px'
@@ -1627,7 +1627,7 @@ if (success) {
              position: 'relative', // ✅ NOUVEAU
              border: isSelected
                ? '2px solid var(--color-primary)'
-               : isOutOfStock ? '2px solid #dc2626' : isLowStock ? '2px solid #f59e0b' : '1px solid #e5e7eb',
+               : isOutOfStock ? '2px solid #dc2626' : isLowStock ? '2px solid #f59e0b' : '1px solid var(--color-border)',
              backgroundColor: isSelected ? '#eff6ff' : 'white', // ✅ NOUVEAU
              transition: 'all 0.2s' // ✅ NOUVEAU
            }}>
@@ -1672,10 +1672,10 @@ if (success) {
 
              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                <div style={{ flex: 1 }}>
-                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: '#111827' }}>
+                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '600', color: 'var(--color-text-primary)' }}>
                    {product.name}
                  </h3>
-                 <p style={{ margin: '4px 0', fontSize: '14px', color: '#6b7280' }}>
+                 <p style={{ margin: '4px 0', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                    {product.category} • SKU: {product.sku}
                  </p>
                  <p style={{ margin: '4px 0', fontSize: '12px', color: '#059669', fontWeight: '600' }}>
@@ -1696,13 +1696,13 @@ if (success) {
 
              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
                <div>
-                 <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Prix de vente</span>
+                 <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'block' }}>Prix de vente</span>
                  <span style={{ fontSize: '16px', fontWeight: '600', color: '#059669' }}>
                    {product.sellingPrice?.toLocaleString()} {appSettings?.currency || 'FCFA'}
                  </span>
                </div>
                <div>
-                 <span style={{ fontSize: '12px', color: '#6b7280', display: 'block' }}>Stock actuel</span>
+                 <span style={{ fontSize: '12px', color: 'var(--color-text-secondary)', display: 'block' }}>Stock actuel</span>
                  <span style={{ fontSize: '16px', fontWeight: '600', color: isOutOfStock ? '#dc2626' : '#111827' }}>
                    {currentStock} unités
                  </span>
@@ -1815,7 +1815,7 @@ if (success) {
                  height: '120px',
                  objectFit: 'cover',
                  borderRadius: '8px',
-                 border: '2px solid #e5e7eb'
+                 border: '2px solid var(--color-border)'
                }}
              />
            </div>
@@ -1948,7 +1948,7 @@ if (success) {
                    {margin}%
                  </span>
                </div>
-               <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+               <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
                  Profit par unité: {(parseFloat(newProduct.price) - parseFloat(newProduct.costPrice)).toLocaleString()} FCFA
                </div>
              </div>
@@ -2074,7 +2074,7 @@ const renderEditProductModal = () => {
            <h2 style={{ margin: '0 0 8px 0', fontSize: '20px', fontWeight: '600' }}>
              Supprimer le produit
            </h2>
-           <p style={{ margin: '0 0 16px 0', color: '#6b7280' }}>
+           <p style={{ margin: '0 0 16px 0', color: 'var(--color-text-secondary)' }}>
              Êtes-vous sûr de vouloir supprimer "<strong>{deletingProduct.name}</strong>" ?
            </p>
            <p style={{ margin: '0 0 24px 0', fontSize: '14px', color: '#ef4444' }}>
@@ -2166,7 +2166,7 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
           <h3 style={{ margin: '0 0 8px 0', fontSize: '16px', fontWeight: '500' }}>
             {product.name}
           </h3>
-          <p style={{ margin: 0, fontSize: '14px', color: '#6b7280' }}>
+          <p style={{ margin: 0, fontSize: '14px', color: 'var(--color-text-secondary)' }}>
             Stock actuel: {currentStock} unités
           </p>
         </div>
@@ -2253,14 +2253,14 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
              margin: 0, 
              fontSize: '32px', 
              fontWeight: 'bold',
-             color: appSettings?.darkMode ? '#f7fafc' : '#1f2937'
+             color: var(--color-text-primary)
            }}>
              Gestion des Stocks
            </h1>
            <p style={{
              margin: '4px 0 0 0',
              fontSize: '16px',
-             color: appSettings?.darkMode ? '#a0aec0' : '#6b7280'
+             color: var(--color-text-secondary)
            }}>
              Magasin: {stores.find(s => s.id === currentStoreId)?.name || 'Non sélectionné'}
            </p>
@@ -2269,7 +2269,7 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
      </div>
 
      {/* Navigation par onglets */}
-     <div style={{ borderBottom: '1px solid #e5e7eb', marginBottom: '24px' }}>
+     <div style={{ borderBottom: '1px solid var(--color-border)', marginBottom: '24px' }}>
        <nav style={{ display: 'flex', gap: '32px', marginBottom: '-1px' }}>
          {tabs.map(tab => {
            const Icon = tab.icon;

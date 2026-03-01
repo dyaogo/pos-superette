@@ -239,7 +239,7 @@ export default function AccountingModule() {
         }}>
           Comptabilité
         </h1>
-        <p style={{ color: '#6b7280', fontSize: '14px' }}>
+        <p style={{ color: 'var(--color-text-secondary)', fontSize: '14px' }}>
           Gestion financière et rapports
         </p>
       </div>
@@ -249,7 +249,7 @@ export default function AccountingModule() {
         display: 'flex',
         gap: '8px',
         marginBottom: '24px',
-        borderBottom: '2px solid #e5e7eb'
+        borderBottom: '2px solid var(--color-border)'
       }}>
         {[
           { id: 'dashboard', label: 'Tableau de bord', icon: TrendingUp },
@@ -405,11 +405,11 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Chargement...</div>;
+    return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--color-text-secondary)' }}>Chargement...</div>;
   }
 
   if (!reportData || reportData.error) {
-    return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>
+    return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--color-text-secondary)' }}>
       Aucune donnée disponible{reportData?.error ? ': ' + reportData.error : ''}
     </div>;
   }
@@ -450,7 +450,7 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
                   padding: '8px 16px',
                   background: period === p.value ? '#667eea' : 'white',
                   color: period === p.value ? 'white' : '#374151',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '6px',
                   cursor: 'pointer',
                   fontSize: '14px',
@@ -495,20 +495,20 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
           padding: '12px 16px',
           background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
           borderRadius: '12px',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--color-border)'
         }}>
           <button
             onClick={() => setPeriodOffset(prev => prev - 1)}
             style={{
               padding: '8px',
-              background: 'white',
-              border: '1px solid #e5e7eb',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#374151',
+              color: 'var(--color-text-primary)',
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
@@ -523,14 +523,14 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
             textAlign: 'center',
             fontSize: '16px',
             fontWeight: '600',
-            color: '#374151'
+            color: 'var(--color-text-primary)'
           }}>
             {getPeriodLabel()}
             {periodOffset !== 0 && (
               <span style={{
                 marginLeft: '8px',
                 fontSize: '12px',
-                color: '#6b7280',
+                color: 'var(--color-text-secondary)',
                 fontWeight: '400'
               }}>
                 ({periodOffset < 0 ? `${Math.abs(periodOffset)} période${Math.abs(periodOffset) > 1 ? 's' : ''} en arrière` : `Dans ${periodOffset} période${periodOffset > 1 ? 's' : ''}`})
@@ -542,14 +542,14 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
             onClick={() => setPeriodOffset(prev => prev + 1)}
             style={{
               padding: '8px',
-              background: 'white',
-              border: '1px solid #e5e7eb',
+              background: 'var(--color-surface)',
+              border: '1px solid var(--color-border)',
               borderRadius: '6px',
               cursor: 'pointer',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: '#374151',
+              color: 'var(--color-text-primary)',
               transition: 'all 0.2s'
             }}
             onMouseEnter={(e) => e.currentTarget.style.background = '#f3f4f6'}
@@ -564,7 +564,7 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
               onClick={() => setPeriodOffset(0)}
               style={{
                 padding: '8px 16px',
-                background: '#667eea',
+                background: 'var(--color-primary)',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
@@ -588,31 +588,31 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
         borderRadius: '16px',
         padding: '24px',
         marginBottom: '24px',
-        border: '1px solid #e5e7eb'
+        border: '1px solid var(--color-border)'
       }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#374151' }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: 'var(--color-text-primary)' }}>
           📊 Compte de Résultat
         </h3>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #e5e7eb' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid var(--color-border)' }}>
             <span style={{ fontWeight: '600' }}>Chiffre d'affaires</span>
-            <span style={{ fontWeight: '600', color: '#10b981' }}>+ {revenue.toLocaleString()} FCFA</span>
+            <span style={{ fontWeight: '600', color: 'var(--color-success)' }}>+ {revenue.toLocaleString()} FCFA</span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 8px 20px', borderBottom: '1px solid #f3f4f6' }}>
-            <span style={{ color: '#6b7280' }}>Coût des marchandises vendues</span>
-            <span style={{ color: '#ef4444' }}>- {cogs.toLocaleString()} FCFA</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>Coût des marchandises vendues</span>
+            <span style={{ color: 'var(--color-error)' }}>- {cogs.toLocaleString()} FCFA</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '2px solid #667eea', background: '#f8f9ff', margin: '0 -12px', padding: '8px 12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '2px solid var(--color-primary)', background: 'var(--color-bg)', margin: '0 -12px', padding: '8px 12px' }}>
             <span style={{ fontWeight: '600' }}>= Marge brute</span>
             <span style={{ fontWeight: '600', color: grossProfit >= 0 ? '#10b981' : '#ef4444' }}>
               {grossProfit.toLocaleString()} FCFA ({grossMargin.toFixed(1)}%)
             </span>
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0 8px 20px', borderBottom: '1px solid #f3f4f6' }}>
-            <span style={{ color: '#6b7280' }}>Dépenses d'exploitation</span>
-            <span style={{ color: '#ef4444' }}>- {expenses.toLocaleString()} FCFA</span>
+            <span style={{ color: 'var(--color-text-secondary)' }}>Dépenses d'exploitation</span>
+            <span style={{ color: 'var(--color-error)' }}>- {expenses.toLocaleString()} FCFA</span>
           </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: netProfit >= 0 ? '#f0fdf4' : '#fef2f2', margin: '8px -12px -12px -12px', borderRadius: '0 0 16px 16px', borderTop: '2px solid ' + (netProfit >= 0 ? '#10b981' : '#ef4444') }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px', background: netProfit >= 0 ? '#f0fdf4' : '#fef2f2', margin: '8px -12px -12px -12px', borderRadius: '0 0 16px 16px', borderTop: '2px solid ' + (netProfit >= 0 ? 'var(--color-success)' : 'var(--color-error)') }}>
             <span style={{ fontWeight: '700', fontSize: '16px' }}>= BÉNÉFICE NET</span>
             <span style={{ fontWeight: '700', fontSize: '16px', color: netProfit >= 0 ? '#10b981' : '#ef4444' }}>
               {netProfit.toLocaleString()} FCFA ({netMargin.toFixed(1)}%)
@@ -675,7 +675,7 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
       {/* Expenses by Category */}
       {expensesByCategory && expensesByCategory.length > 0 && (
         <div style={{
-          background: 'white',
+          background: 'var(--color-surface)',
           borderRadius: '12px',
           padding: '24px',
           boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
@@ -692,12 +692,12 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
                 <div key={cat.categoryId} style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
                     <span style={{ fontWeight: '500' }}>{category?.name || 'Inconnu'}</span>
-                    <span style={{ color: '#6b7280' }}>{cat.total.toLocaleString()} FCFA ({percentage.toFixed(1)}%)</span>
+                    <span style={{ color: 'var(--color-text-secondary)' }}>{cat.total.toLocaleString()} FCFA ({percentage.toFixed(1)}%)</span>
                   </div>
                   <div style={{
                     width: '100%',
                     height: '8px',
-                    background: '#f3f4f6',
+                    background: 'var(--color-bg)',
                     borderRadius: '4px',
                     overflow: 'hidden'
                   }}>
@@ -723,20 +723,20 @@ function DashboardView({ reportData, loading, period, setPeriod, periodOffset, s
 function MetricCard({ title, value, icon: Icon, color, trend }) {
   return (
     <div style={{
-      background: 'white',
+      background: 'var(--color-surface)',
       borderRadius: '12px',
       padding: '20px',
       boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-      border: '1px solid #f3f4f6'
+      border: '1px solid var(--color-border)'
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '12px' }}>
-        <span style={{ fontSize: '14px', color: '#6b7280', fontWeight: '500' }}>{title}</span>
+        <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)', fontWeight: '500' }}>{title}</span>
         <Icon size={20} style={{ color }} />
       </div>
-      <div style={{ fontSize: '28px', fontWeight: 'bold', color: '#111827', marginBottom: '4px' }}>
+      <div style={{ fontSize: '28px', fontWeight: 'bold', color: 'var(--color-text-primary)', marginBottom: '4px' }}>
         {value}
       </div>
-      <div style={{ fontSize: '12px', color: '#9ca3af' }}>
+      <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
         {trend}
       </div>
     </div>
@@ -774,7 +774,7 @@ function ExpensesView({
         <div style={{ display: 'flex', gap: '12px', flex: 1 }}>
           {/* Search */}
           <div style={{ position: 'relative', flex: 1, maxWidth: '300px' }}>
-            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#9ca3af' }} />
+            <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-secondary)' }} />
             <input
               type="text"
               placeholder="Rechercher une dépense..."
@@ -783,7 +783,7 @@ function ExpensesView({
               style={{
                 width: '100%',
                 padding: '10px 12px 10px 40px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '14px'
               }}
@@ -796,7 +796,7 @@ function ExpensesView({
             onChange={(e) => setSelectedCategory(e.target.value)}
             style={{
               padding: '10px 12px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               borderRadius: '8px',
               fontSize: '14px',
               cursor: 'pointer'
@@ -832,33 +832,33 @@ function ExpensesView({
 
       {/* Expenses Table */}
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Chargement...</div>
+        <div style={{ textAlign: 'center', padding: '60px', color: 'var(--color-text-secondary)' }}>Chargement...</div>
       ) : expenses.length === 0 ? (
         <div style={{
           textAlign: 'center',
           padding: '60px',
-          background: 'white',
+          background: 'var(--color-surface)',
           borderRadius: '12px',
-          color: '#6b7280'
+          color: 'var(--color-text-secondary)'
         }}>
           Aucune dépense trouvée
         </div>
       ) : (
         <>
           <div style={{
-            background: 'white',
+            background: 'var(--color-surface)',
             borderRadius: '12px',
             overflow: 'hidden',
             boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
           }}>
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Date</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Description</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Catégorie</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Montant</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase' }}>Actions</th>
+                <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Date</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Description</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Catégorie</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Montant</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'right', fontSize: '12px', fontWeight: '600', color: 'var(--color-text-secondary)', textTransform: 'uppercase' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -866,10 +866,10 @@ function ExpensesView({
                   const category = categories.find(c => c.id === expense.categoryId);
                   return (
                     <tr key={expense.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#374151' }}>
+                      <td style={{ padding: '16px', fontSize: '14px', color: 'var(--color-text-primary)' }}>
                         {new Date(expense.createdAt).toLocaleDateString('fr-FR')}
                       </td>
-                      <td style={{ padding: '16px', fontSize: '14px', color: '#374151' }}>
+                      <td style={{ padding: '16px', fontSize: '14px', color: 'var(--color-text-primary)' }}>
                         {expense.description}
                       </td>
                       <td style={{ padding: '16px' }}>
@@ -884,7 +884,7 @@ function ExpensesView({
                           {category?.name || 'Inconnu'}
                         </span>
                       </td>
-                      <td style={{ padding: '16px', fontSize: '14px', fontWeight: '600', color: '#374151', textAlign: 'right' }}>
+                      <td style={{ padding: '16px', fontSize: '14px', fontWeight: '600', color: 'var(--color-text-primary)', textAlign: 'right' }}>
                         {expense.amount.toLocaleString()} FCFA
                       </td>
                       <td style={{ padding: '16px', textAlign: 'right' }}>
@@ -893,11 +893,11 @@ function ExpensesView({
                             onClick={() => onEdit(expense)}
                             style={{
                               padding: '6px 12px',
-                              background: '#f3f4f6',
+                              background: 'var(--color-bg)',
                               border: 'none',
                               borderRadius: '6px',
                               cursor: 'pointer',
-                              color: '#667eea',
+                              color: 'var(--color-primary)',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
@@ -911,11 +911,11 @@ function ExpensesView({
                             onClick={() => onDelete(expense.id)}
                             style={{
                               padding: '6px 12px',
-                              background: '#fee2e2',
+                              background: 'var(--color-bg)',
                               border: 'none',
                               borderRadius: '6px',
                               cursor: 'pointer',
-                              color: '#dc2626',
+                              color: 'var(--color-error)',
                               display: 'flex',
                               alignItems: 'center',
                               gap: '4px',
@@ -948,7 +948,7 @@ function ExpensesView({
                 style={{
                   padding: '8px 16px',
                   background: currentPage === 1 ? '#f3f4f6' : 'white',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '6px',
                   cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
@@ -957,7 +957,7 @@ function ExpensesView({
               >
                 Précédent
               </button>
-              <span style={{ padding: '8px 16px', fontSize: '14px', color: '#6b7280' }}>
+              <span style={{ padding: '8px 16px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
                 Page {currentPage} sur {totalPages}
               </span>
               <button
@@ -966,7 +966,7 @@ function ExpensesView({
                 style={{
                   padding: '8px 16px',
                   background: currentPage === totalPages ? '#f3f4f6' : 'white',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '6px',
                   cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                   fontSize: '14px',
@@ -1036,17 +1036,17 @@ function CategoriesView({ categories, loading }) {
   };
 
   if (loading) {
-    return <div style={{ textAlign: 'center', padding: '60px', color: '#6b7280' }}>Chargement...</div>;
+    return <div style={{ textAlign: 'center', padding: '60px', color: 'var(--color-text-secondary)' }}>Chargement...</div>;
   }
 
   if (!categories || categories.length === 0) {
     return (
       <div style={{ textAlign: 'center', padding: '60px' }}>
         <div style={{ fontSize: '48px', marginBottom: '20px' }}>📋</div>
-        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px', color: '#374151' }}>
+        <h3 style={{ fontSize: '18px', fontWeight: '600', marginBottom: '12px', color: 'var(--color-text-primary)' }}>
           Aucune catégorie de dépenses
         </h3>
-        <p style={{ color: '#6b7280', marginBottom: '24px', maxWidth: '400px', margin: '0 auto 24px' }}>
+        <p style={{ color: 'var(--color-text-secondary)', marginBottom: '24px', maxWidth: '400px', margin: '0 auto 24px' }}>
           Pour commencer à enregistrer des dépenses, vous devez d'abord initialiser les catégories par défaut.
         </p>
         <button
@@ -1078,7 +1078,7 @@ function CategoriesView({ categories, loading }) {
         alignItems: 'center',
         marginBottom: '24px'
       }}>
-        <h2 style={{ fontSize: '18px', fontWeight: '600', color: '#374151', margin: 0 }}>
+        <h2 style={{ fontSize: '18px', fontWeight: '600', color: 'var(--color-text-primary)', margin: 0 }}>
           Catégories de dépenses ({categories.length})
         </h2>
         <button
@@ -1111,10 +1111,10 @@ function CategoriesView({ categories, loading }) {
           <div
             key={category.id}
             style={{
-              background: 'white',
+              background: 'var(--color-surface)',
               borderRadius: '12px',
               padding: '20px',
-              border: '1px solid #e5e7eb',
+              border: '1px solid var(--color-border)',
               boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
             }}
           >
@@ -1132,10 +1132,10 @@ function CategoriesView({ categories, loading }) {
                 <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: category.color }} />
               </div>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: '#111827' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: 'var(--color-text-primary)' }}>
                   {category.name}
                 </h3>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
                   {category.description}
                 </p>
               </div>
@@ -1147,10 +1147,10 @@ function CategoriesView({ categories, loading }) {
       <div style={{
         marginTop: '24px',
         padding: '16px',
-        background: '#f9fafb',
+        background: 'var(--color-bg)',
         borderRadius: '8px',
         textAlign: 'center',
-        color: '#6b7280',
+        color: 'var(--color-text-secondary)',
         fontSize: '14px'
       }}>
         Les catégories de dépenses vous permettent de mieux organiser vos finances.
@@ -1172,7 +1172,7 @@ function CategoryModal({ onClose, onSave }) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    color: '#667eea'
+    color: 'var(--color-primary)'
   });
 
   const predefinedColors = [
@@ -1206,7 +1206,7 @@ function CategoryModal({ onClose, onSave }) {
       padding: '20px'
     }} onClick={onClose}>
       <div style={{
-        background: 'white',
+        background: 'var(--color-surface)',
         borderRadius: '12px',
         padding: '24px',
         maxWidth: '500px',
@@ -1231,7 +1231,7 @@ function CategoryModal({ onClose, onSave }) {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '14px'
               }}
@@ -1250,7 +1250,7 @@ function CategoryModal({ onClose, onSave }) {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '14px',
                 resize: 'vertical'
@@ -1273,7 +1273,7 @@ function CategoryModal({ onClose, onSave }) {
                     height: '40px',
                     borderRadius: '8px',
                     background: color,
-                    border: formData.color === color ? '3px solid #111827' : '2px solid #e5e7eb',
+                    border: formData.color === color ? '3px solid #111827' : '2px solid var(--color-border)',
                     cursor: 'pointer',
                     transition: 'all 0.2s',
                     transform: formData.color === color ? 'scale(1.1)' : 'scale(1)'
@@ -1283,7 +1283,7 @@ function CategoryModal({ onClose, onSave }) {
               ))}
             </div>
             <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '14px', color: '#6b7280' }}>Ou choisir une couleur personnalisée:</span>
+              <span style={{ fontSize: '14px', color: 'var(--color-text-secondary)' }}>Ou choisir une couleur personnalisée:</span>
               <input
                 type="color"
                 value={formData.color}
@@ -1291,7 +1291,7 @@ function CategoryModal({ onClose, onSave }) {
                 style={{
                   width: '50px',
                   height: '35px',
-                  border: '1px solid #e5e7eb',
+                  border: '1px solid var(--color-border)',
                   borderRadius: '6px',
                   cursor: 'pointer'
                 }}
@@ -1302,11 +1302,11 @@ function CategoryModal({ onClose, onSave }) {
           {/* Preview */}
           <div style={{
             padding: '16px',
-            background: '#f9fafb',
+            background: 'var(--color-bg)',
             borderRadius: '8px',
-            border: '1px solid #e5e7eb'
+            border: '1px solid var(--color-border)'
           }}>
-            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>Aperçu:</div>
+            <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)', marginBottom: '8px' }}>Aperçu:</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{
                 width: '40px',
@@ -1320,10 +1320,10 @@ function CategoryModal({ onClose, onSave }) {
                 <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: formData.color }} />
               </div>
               <div>
-                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: '#111827' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', margin: 0, color: 'var(--color-text-primary)' }}>
                   {formData.name || 'Nom de la catégorie'}
                 </h3>
-                <p style={{ fontSize: '12px', color: '#6b7280', margin: '4px 0 0 0' }}>
+                <p style={{ fontSize: '12px', color: 'var(--color-text-secondary)', margin: '4px 0 0 0' }}>
                   {formData.description || 'Description de la catégorie'}
                 </p>
               </div>
@@ -1337,8 +1337,8 @@ function CategoryModal({ onClose, onSave }) {
               style={{
                 flex: 1,
                 padding: '10px',
-                background: '#f3f4f6',
-                color: '#374151',
+                background: 'var(--color-bg)',
+                color: 'var(--color-text-primary)',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',
@@ -1408,7 +1408,7 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
       padding: '20px'
     }} onClick={onClose}>
       <div style={{
-        background: 'white',
+        background: 'var(--color-surface)',
         borderRadius: '12px',
         padding: '24px',
         maxWidth: '500px',
@@ -1431,7 +1431,7 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '14px'
               }}
@@ -1457,7 +1457,7 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '14px'
               }}
@@ -1476,7 +1476,7 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                border: '1px solid #e5e7eb',
+                border: '1px solid var(--color-border)',
                 borderRadius: '8px',
                 fontSize: '14px',
                 resize: 'vertical'
@@ -1491,8 +1491,8 @@ function ExpenseModal({ expense, categories, onClose, onSave }) {
               style={{
                 flex: 1,
                 padding: '10px',
-                background: '#f3f4f6',
-                color: '#374151',
+                background: 'var(--color-bg)',
+                color: 'var(--color-text-primary)',
                 border: 'none',
                 borderRadius: '8px',
                 cursor: 'pointer',

@@ -218,7 +218,7 @@ function UsersPage() {
       case "cashier":
         return "#f59e0b";
       default:
-        return "#6b7280";
+        return "var(--color-text-secondary)";
     }
   };
 

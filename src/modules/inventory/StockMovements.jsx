@@ -33,7 +33,7 @@ const StockMovements = () => {
   });
 
   return (
-    <div style={{ background: 'white', padding: '20px', borderRadius: '12px' }}>
+    <div style={{ background: 'var(--color-surface)', padding: '20px', borderRadius: '12px' }}>
       <h2 style={{ marginTop: 0 }}>Historique des mouvements</h2>
       <div style={{ display: 'flex', gap: '12px', marginBottom: '20px', flexWrap: 'wrap' }}>
         <div>
@@ -56,11 +56,11 @@ const StockMovements = () => {
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', padding: '8px' }}>Date</th>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', padding: '8px' }}>Produit</th>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', padding: '8px' }}>Quantité</th>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', padding: '8px' }}>Type</th>
-            <th style={{ textAlign: 'left', borderBottom: '1px solid #e2e8f0', padding: '8px' }}>Note</th>
+            <th style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border)', padding: '8px' }}>Date</th>
+            <th style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border)', padding: '8px' }}>Produit</th>
+            <th style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border)', padding: '8px' }}>Quantité</th>
+            <th style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border)', padding: '8px' }}>Type</th>
+            <th style={{ textAlign: 'left', borderBottom: '1px solid var(--color-border)', padding: '8px' }}>Note</th>
           </tr>
         </thead>
         <tbody>
@@ -71,15 +71,15 @@ const StockMovements = () => {
           )}
           {filteredHistory.map((mvt) => (
             <tr key={mvt.id}>
-              <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>{
+              <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>{
                 mvt.date ? new Date(mvt.date).toLocaleDateString() : ''
               }</td>
-              <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>{mvt.productName}</td>
-              <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>{mvt.quantity}</td>
-              <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>{
+              <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>{mvt.productName}</td>
+              <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>{mvt.quantity}</td>
+              <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>{
                 mvt.quantity >= 0 ? 'Entrée' : 'Sortie'
               }</td>
-              <td style={{ padding: '8px', borderBottom: '1px solid #e2e8f0' }}>{mvt.reason}</td>
+              <td style={{ padding: '8px', borderBottom: '1px solid var(--color-border)' }}>{mvt.reason}</td>
             </tr>
           ))}
         </tbody>
