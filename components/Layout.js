@@ -9,7 +9,6 @@ import {
   FileText,
   Users,
   CreditCard,
-  Settings,
   Menu,
   X,
   ClipboardList,
@@ -135,12 +134,6 @@ export default function Layout({ children }) {
       icon: Clock,
       label: "Périodes de travail",
       permission: "view_reports",
-    },
-    {
-      path: "/settings",
-      icon: Settings,
-      label: "Paramètres",
-      permission: "view_settings",
     },
   ];
 
