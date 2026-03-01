@@ -125,6 +125,12 @@ export default function Layout({ children }) {
       permission: "view_accounting",
     },
     {
+      path: "/reports",
+      icon: BarChart3,
+      label: "Rapports",
+      permission: "view_reports",
+    },
+    {
       path: "/work-periods",
       icon: Clock,
       label: "Périodes de travail",
