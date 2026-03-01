@@ -1,6 +1,7 @@
 import "../src/index.css";
 import { AppProvider } from "../src/contexts/AppContext";
 import { AuthProvider } from "../src/contexts/AuthContext";
+import { ThemeProvider } from "../src/contexts/ThemeContext";
 import { OnlineProvider } from "../src/contexts/OnlineContext";
 import Layout from "../components/Layout";
 import ErrorBoundary from "../components/ErrorBoundary";
@@ -30,6 +31,7 @@ function MyApp({ Component, pageProps }) {
 
   return (
     <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
       <ErrorBoundary>
         <AuthProvider>
           <SentryProvider>
@@ -49,6 +51,7 @@ function MyApp({ Component, pageProps }) {
       </ErrorBoundary>
       {/* Devtools seulement en dev */}
       {process.env.NODE_ENV === 'development' && <ReactQueryDevtools initialIsOpen={false} />}
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

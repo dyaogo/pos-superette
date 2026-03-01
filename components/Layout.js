@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import Link from "next/link";
 import { useAuth } from "../src/contexts/AuthContext";
+import { useTheme } from "../src/contexts/ThemeContext";
 import {
   Home,
   ShoppingCart,
@@ -20,6 +21,8 @@ import {
   User,
   Calculator,
   Clock,
+  Sun,
+  Moon,
 } from "lucide-react";
 import StoreSelector from "./StoreSelector";
 import OnlineStatusBadge from "./OnlineStatusBadge";
@@ -27,6 +30,7 @@ import OnlineStatusBadge from "./OnlineStatusBadge";
 export default function Layout({ children }) {
   const router = useRouter();
   const { currentUser, logout, hasPermission, loading: authLoading } = useAuth();
+  const { isDark, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [isMobile, setIsMobile] = useState(false);
   const [isTablet, setIsTablet] = useState(false);
@@ -364,6 +368,56 @@ export default function Layout({ children }) {
                   </div>
                 </Link>
 
+                {/* Toggle thème */}
+                <button
+                  onClick={toggleTheme}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    background: "var(--color-bg)",
+                    color: "var(--color-text-primary)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    fontWeight: "500",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: "8px",
+                    marginBottom: "10px",
+                    fontSize: "14px",
+                    transition: "all 0.2s",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-surface-hover)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "var(--color-bg)")}
+                  title={isDark ? "Passer en mode clair" : "Passer en mode sombre"}
+                >
+                  <span style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                    {isDark ? <Sun size={16} color="#f59e0b" /> : <Moon size={16} color="#6366f1" />}
+                    {isDark ? "Mode clair" : "Mode sombre"}
+                  </span>
+                  {/* Toggle pill */}
+                  <div style={{
+                    width: "36px", height: "20px",
+                    borderRadius: "10px",
+                    background: isDark ? "#6366f1" : "#cbd5e1",
+                    position: "relative",
+                    transition: "background 0.2s",
+                    flexShrink: 0,
+                  }}>
+                    <div style={{
+                      position: "absolute",
+                      top: "2px",
+                      left: isDark ? "18px" : "2px",
+                      width: "16px", height: "16px",
+                      borderRadius: "50%",
+                      background: "white",
+                      transition: "left 0.2s",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                    }} />
+                  </div>
+                </button>
+
                 <button
                   onClick={logout}
                   style={{
@@ -393,24 +447,47 @@ export default function Layout({ children }) {
                 </button>
               </>
             ) : (
-              <button
-                onClick={logout}
-                style={{
-                  width: "100%",
-                  padding: "10px",
-                  background: "#ef4444",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "8px",
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-                title="Déconnexion"
-              >
-                <LogOut size={20} />
-              </button>
+              <>
+                {/* Toggle thème — icône seule */}
+                <button
+                  onClick={toggleTheme}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    background: "var(--color-bg)",
+                    color: "var(--color-text-primary)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    marginBottom: "8px",
+                  }}
+                  title={isDark ? "Mode clair" : "Mode sombre"}
+                >
+                  {isDark ? <Sun size={20} color="#f59e0b" /> : <Moon size={20} color="#6366f1" />}
+                </button>
+
+                <button
+                  onClick={logout}
+                  style={{
+                    width: "100%",
+                    padding: "10px",
+                    background: "#ef4444",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "8px",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                  title="Déconnexion"
+                >
+                  <LogOut size={20} />
+                </button>
+              </>
             )}
           </div>
         )}
