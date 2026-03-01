@@ -1,6 +1,6 @@
 import { Printer, Download, Share2, Zap, Unlink } from 'lucide-react';
 import { useApp } from '../src/contexts/AppContext';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 
 export default function ReceiptPrinter({ sale, onClose }) {
   const { currentStore } = useApp();
@@ -13,14 +13,6 @@ export default function ReceiptPrinter({ sale, onClose }) {
     taxRate: currentStore?.taxRate || 18,
     receiptFooter: 'Merci de votre visite !'
   };
-
-  // ✨ Auto-imprimer dès l'ouverture du modal (hardware Haixun)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      printReceipt();
-    }, 400);
-    return () => clearTimeout(timer);
-  }, []);
 
   const printReceipt = () => {
     const printWindow = window.open('', '', 'width=240,height=500');
