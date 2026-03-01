@@ -337,7 +337,7 @@ const BarcodeSystem = () => {
               style={{
                 width: '100%',
                 padding: '8px',
-                border: `1px solid ${var(--color-border)}`,
+                border: '1px solid var(--color-border)',
                 borderRadius: '6px',
                 background: isDark ? '#2d3748' : 'white',
                 color: 'var(--color-text-primary)'
@@ -417,7 +417,7 @@ const BarcodeSystem = () => {
         <div style={{
           maxHeight: '400px',
           overflowY: 'auto',
-          border: `1px solid ${var(--color-border)}`,
+          border: '1px solid var(--color-border)',
           borderRadius: '8px'
         }}>
           <table style={{ width: '100%' }}>
@@ -425,7 +425,7 @@ const BarcodeSystem = () => {
               position: 'sticky', 
               top: 0, 
               background: 'var(--color-bg)',
-              borderBottom: `2px solid ${var(--color-border)}`
+              borderBottom: '2px solid var(--color-border)'
             }}>
               <tr>
                 <th style={{ padding: '10px', textAlign: 'left', width: '40px' }}>
@@ -457,7 +457,7 @@ const BarcodeSystem = () => {
                 const barcode = product.barcode || generateEAN13(product.id);
                 return (
                   <tr key={product.id} style={{ 
-                    borderBottom: `1px solid ${var(--color-bg)}`,
+                    borderBottom: '1px solid var(--color-bg)',
                     background: selectedProducts.includes(product.id) ? 
                       (var(--color-bg)) : 'transparent'
                   }}>
