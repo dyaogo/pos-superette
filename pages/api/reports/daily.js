@@ -200,8 +200,11 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('Erreur rapport journalier:', error);
-    return res.status(500).json({ error: 'Erreur lors de la génération du rapport' });
+    console.error('Erreur rapport journalier:', error?.message || error, error?.stack);
+    return res.status(500).json({
+      error: 'Erreur lors de la génération du rapport',
+      detail: error?.message || String(error),
+    });
   } finally {
     await prisma.$disconnect();
   }
