@@ -537,7 +537,7 @@ const PhysicalInventoryModule = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: var(--color-bg)
+      background: 'var(--color-bg)'
     }}>
       {/* Header Modern */}
       <div style={{
@@ -729,7 +729,7 @@ const PhysicalInventoryModule = () => {
                     fontSize: '14px',
                     fontWeight: '600',
                     marginBottom: '8px',
-                    color: var(--color-text-primary)
+                    color: 'var(--color-text-primary)'
                   }}>
                     Nom de l'inventaire *
                   </label>
@@ -743,7 +743,7 @@ const PhysicalInventoryModule = () => {
                       padding: '12px 16px',
                       border: `2px solid ${var(--color-border)}`,
                       borderRadius: '10px',
-                      background: var(--color-bg),
+                      background: 'var(--color-bg)',
                       color: isDark ? '#f1f5f9' : '#0f172a',
                       fontSize: '14px',
                       transition: 'all 0.2s ease'
@@ -765,7 +765,7 @@ const PhysicalInventoryModule = () => {
                    fontSize: '14px',
                    fontWeight: '600',
                    marginBottom: '8px',
-                   color: var(--color-text-primary)
+                   color: 'var(--color-text-primary)'
                  }}>
                    Assigné à
                  </label>
@@ -777,7 +777,7 @@ const PhysicalInventoryModule = () => {
                      padding: '12px 16px',
                      border: `2px solid ${var(--color-border)}`,
                      borderRadius: '10px',
-                     background: var(--color-bg),
+                     background: 'var(--color-bg)',
                      color: isDark ? '#f1f5f9' : '#0f172a',
                      fontSize: '14px'
                    }}
@@ -798,7 +798,7 @@ const PhysicalInventoryModule = () => {
                  fontSize: '14px',
                  fontWeight: '600',
                  marginBottom: '8px',
-                 color: var(--color-text-primary)
+                 color: 'var(--color-text-primary)'
                }}>
                  Notes et instructions (optionnel)
                </label>
@@ -812,7 +812,7 @@ const PhysicalInventoryModule = () => {
                    padding: '12px 16px',
                    border: `2px solid ${var(--color-border)}`,
                    borderRadius: '10px',
-                   background: var(--color-bg),
+                   background: 'var(--color-bg)',
                    color: isDark ? '#f1f5f9' : '#0f172a',
                    fontSize: '14px',
                    resize: 'vertical',
@@ -867,7 +867,7 @@ const PhysicalInventoryModule = () => {
                  style={{
                    padding: '14px 28px',
                    background: 'transparent',
-                   color: var(--color-text-primary),
+                   color: 'var(--color-text-primary)',
                    border: `2px solid ${var(--color-border)}`,
                    borderRadius: '10px',
                    fontWeight: '600',
@@ -971,7 +971,7 @@ const PhysicalInventoryModule = () => {
                    <span style={{
                      fontSize: '14px',
                      fontWeight: '600',
-                     color: var(--color-text-primary)
+                     color: 'var(--color-text-primary)'
                    }}>
                      {stat.title}
                    </span>
@@ -1080,7 +1080,7 @@ const PhysicalInventoryModule = () => {
                    style={{
                      padding: '10px 16px',
                      background: 'transparent',
-                     color: var(--color-text-primary),
+                     color: 'var(--color-text-primary)',
                      border: `1px solid ${var(--color-border)}`,
                      borderRadius: '8px',
                      fontWeight: '600',
@@ -1270,7 +1270,7 @@ const PhysicalInventoryModule = () => {
                      padding: '12px 16px',
                      border: `2px solid ${var(--color-border)}`,
                      borderRadius: '10px',
-                     background: var(--color-bg),
+                     background: 'var(--color-bg)',
                      color: isDark ? '#f1f5f9' : '#0f172a',
                      fontSize: '14px'
                    }}
@@ -1335,7 +1335,7 @@ const PhysicalInventoryModule = () => {
                        padding: '12px 12px 12px 40px',
                        border: `2px solid ${var(--color-border)}`,
                        borderRadius: '10px',
-                       background: var(--color-bg),
+                       background: 'var(--color-bg)',
                        color: isDark ? '#f1f5f9' : '#0f172a',
                        fontSize: '14px'
                      }}
@@ -1370,7 +1370,7 @@ const PhysicalInventoryModule = () => {
                    style={{
                      padding: '12px',
                      background: 'transparent',
-                     color: var(--color-text-primary),
+                     color: 'var(--color-text-primary)',
                      border: `1px solid ${var(--color-border)}`,
                      borderRadius: '8px',
                      cursor: 'pointer'
@@ -1425,7 +1425,7 @@ const PhysicalInventoryModule = () => {
                        padding: '8px 12px',
                        border: `1px solid ${var(--color-border)}`,
                        borderRadius: '8px',
-                       background: var(--color-bg),
+                       background: 'var(--color-bg)',
                        color: isDark ? '#f1f5f9' : '#0f172a',
                        fontSize: '14px'
                      }}
@@ -1456,7 +1456,7 @@ const PhysicalInventoryModule = () => {
                        padding: '8px 12px',
                        border: `1px solid ${var(--color-border)}`,
                        borderRadius: '8px',
-                       background: var(--color-bg),
+                       background: 'var(--color-bg)',
                        color: isDark ? '#f1f5f9' : '#0f172a',
                        fontSize: '14px'
                      }}
@@ -1475,7 +1475,7 @@ const PhysicalInventoryModule = () => {
                      style={{
                        padding: '8px',
                        background: 'transparent',
-                       color: var(--color-text-primary),
+                       color: 'var(--color-text-primary)',
                        border: `1px solid ${var(--color-border)}`,
                        borderRadius: '6px',
                        cursor: 'pointer'
@@ -1657,7 +1657,7 @@ const PhysicalInventoryModule = () => {
                            padding: compactView ? '6px' : '8px',
                            borderRadius: '6px',
                            fontSize: '12px',
-                           color: var(--color-text-primary),
+                           color: 'var(--color-text-primary)',
                            marginTop: '8px',
                            display: 'flex',
                            alignItems: 'center',
@@ -1713,7 +1713,7 @@ const PhysicalInventoryModule = () => {
                                  textAlign: 'center',
                                  border: `2px solid ${var(--color-border)}`,
                                  borderRadius: '6px',
-                                 background: var(--color-bg),
+                                 background: 'var(--color-bg)',
                                  color: isDark ? '#f1f5f9' : '#0f172a',
                                  fontSize: compactView ? '14px' : '16px',
                                  fontWeight: '600'
@@ -1754,7 +1754,7 @@ const PhysicalInventoryModule = () => {
                                  (var(--color-border))
                                }`,
                                borderRadius: '8px',
-                               background: var(--color-bg),
+                               background: 'var(--color-bg)',
                                color: isDark ? '#f1f5f9' : '#0f172a',
                                fontSize: compactView ? '14px' : '16px',
                                fontWeight: '600',
@@ -1803,7 +1803,7 @@ const PhysicalInventoryModule = () => {
                              padding: '8px 12px',
                              border: `1px solid ${var(--color-border)}`,
                              borderRadius: '6px',
-                             background: var(--color-bg),
+                             background: 'var(--color-bg)',
                              color: isDark ? '#f1f5f9' : '#0f172a',
                              fontSize: '12px'
                            }}
@@ -1978,7 +1978,7 @@ const PhysicalInventoryModule = () => {
                    style={{
                      padding: '10px 16px',
                      background: 'transparent',
-                     color: var(--color-text-primary),
+                     color: 'var(--color-text-primary)',
                      border: `2px solid ${var(--color-border)}`,
                      borderRadius: '8px',
                      fontWeight: '600',
@@ -2090,7 +2090,7 @@ const PhysicalInventoryModule = () => {
              <div style={{
                textAlign: 'center',
                padding: '24px',
-               background: var(--color-bg),
+               background: 'var(--color-bg)',
                borderRadius: '12px',
                marginBottom: '24px'
              }}>
@@ -2189,7 +2189,7 @@ const PhysicalInventoryModule = () => {
                    <div
                      key={session.id}
                      style={{
-                       background: var(--color-bg),
+                       background: 'var(--color-bg)',
                        borderRadius: '12px',
                        padding: '20px',
                        border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`,
@@ -2408,7 +2408,7 @@ const PhysicalInventoryModule = () => {
                <div style={{
                  textAlign: 'center',
                  padding: '48px 24px',
-                 background: var(--color-bg),
+                 background: 'var(--color-bg)',
                  borderRadius: '12px',
                  border: `1px solid ${isDark ? '#475569' : '#e2e8f0'}`
                }}>

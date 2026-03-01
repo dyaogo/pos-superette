@@ -1146,7 +1146,7 @@ if (success) {
     padding: '24px',
     maxWidth: '1400px',
     margin: '0 auto',
-    backgroundColor: var(--color-bg),
+    backgroundColor: 'var(--color-bg)',
     minHeight: '100vh'
   };
 
@@ -2253,14 +2253,14 @@ const RestockModalContent = ({ product, onClose, onRestock, currentStock }) => {
              margin: 0, 
              fontSize: '32px', 
              fontWeight: 'bold',
-             color: var(--color-text-primary)
+             color: 'var(--color-text-primary)'
            }}>
              Gestion des Stocks
            </h1>
            <p style={{
              margin: '4px 0 0 0',
              fontSize: '16px',
-             color: var(--color-text-secondary)
+             color: 'var(--color-text-secondary)'
            }}>
              Magasin: {stores.find(s => s.id === currentStoreId)?.name || 'Non sélectionné'}
            </p>
