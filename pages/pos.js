@@ -129,7 +129,8 @@ export default function POSPage() {
       );
       audio.play().catch(() => {});
     } else {
-      alert(`Produit non trouvé: ${barcode}`);
+      // ✨ Toast au lieu de alert() - meilleure UX sur écran tactile Haixun
+      showToast(`❌ Produit non trouvé: ${barcode}`, 'error');
     }
   };
 

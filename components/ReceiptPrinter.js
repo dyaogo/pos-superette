@@ -1,8 +1,10 @@
-import { Printer, Download, Share2 } from 'lucide-react';
+import { Printer, Download, Share2, Zap, Unlink } from 'lucide-react';
 import { useApp } from '../src/contexts/AppContext';
+import { useEffect, useRef } from 'react';
 
 export default function ReceiptPrinter({ sale, onClose }) {
   const { currentStore } = useApp();
+  const serialPortRef = useRef(null);
 
   // Créer un objet settings depuis currentStore
   const settings = {
@@ -12,16 +14,66 @@ export default function ReceiptPrinter({ sale, onClose }) {
     receiptFooter: 'Merci de votre visite !'
   };
 
+  // ✨ Auto-imprimer dès l'ouverture du modal (hardware Haixun)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      printReceipt();
+    }, 400);
+    return () => clearTimeout(timer);
+  }, []);
+
   const printReceipt = () => {
-    const printWindow = window.open('', '', 'width=300,height=600');
+    const printWindow = window.open('', '', 'width=240,height=500');
+    if (!printWindow) return;
     printWindow.document.write(generateReceiptHTML(sale, settings));
     printWindow.document.close();
     printWindow.focus();
-    
     setTimeout(() => {
       printWindow.print();
       printWindow.close();
     }, 250);
+  };
+
+  // ✨ Connexion à l'imprimante/caisse via Web Serial API (Chrome/Edge uniquement)
+  const connectSerialPort = async () => {
+    if (!('serial' in navigator)) {
+      alert('Web Serial API non disponible.\nUtilisez Chrome ou Edge sur cet ordinateur.');
+      return null;
+    }
+    try {
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      serialPortRef.current = port;
+      return port;
+    } catch (err) {
+      if (err.name !== 'NotFoundError') {
+        console.error('Erreur connexion port série:', err);
+      }
+      return null;
+    }
+  };
+
+  // ✨ Ouvrir la caisse via commande ESC/POS (pin 2 du connecteur RJ11)
+  const openCashDrawer = async () => {
+    let port = serialPortRef.current;
+
+    // Si pas encore connecté, demander à l'utilisateur de choisir le port
+    if (!port || !port.writable) {
+      port = await connectSerialPort();
+      if (!port) return;
+    }
+
+    try {
+      const writer = port.writable.getWriter();
+      // ESC/POS : ESC p 0 25 250 → pulse sur pin 2 du tiroir-caisse
+      const command = new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]);
+      await writer.write(command);
+      writer.releaseLock();
+    } catch (err) {
+      console.error('Erreur ouverture caisse:', err);
+      // Réinitialiser le port en cas d'erreur
+      serialPortRef.current = null;
+    }
   };
 
   const downloadReceipt = () => {
@@ -37,7 +89,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
 
   const shareReceipt = async () => {
     const text = generateReceiptText(sale, settings);
-    
+
     if (navigator.share) {
       try {
         await navigator.share({
@@ -109,7 +161,28 @@ export default function ReceiptPrinter({ sale, onClose }) {
             }}
           >
             <Printer size={20} />
-            Imprimer
+            Imprimer (58mm)
+          </button>
+
+          {/* ✨ Bouton ouverture caisse */}
+          <button
+            onClick={openCashDrawer}
+            style={{
+              padding: '12px',
+              background: '#f59e0b',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              fontSize: '16px'
+            }}
+          >
+            <Zap size={20} />
+            Ouvrir la caisse
           </button>
 
           <button
@@ -172,7 +245,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
   );
 }
 
-// Générer le HTML du reçu pour impression
+// ✨ Générer le HTML du reçu pour impression 58mm
 function generateReceiptHTML(sale, settings) {
   return `
     <!DOCTYPE html>
@@ -182,81 +255,82 @@ function generateReceiptHTML(sale, settings) {
       <title>Reçu ${sale.receiptNumber || sale.id}</title>
       <style>
         @media print {
-          @page { margin: 0; size: 80mm auto; }
-          body { margin: 0; padding: 10mm; }
+          @page { margin: 0; size: 58mm auto; }
+          body { margin: 0; padding: 3mm 4mm; }
         }
         body {
           font-family: 'Courier New', monospace;
-          font-size: 12px;
-          width: 80mm;
+          font-size: 10px;
+          width: 58mm;
           margin: 0 auto;
+          padding: 3mm 4mm;
         }
         .center { text-align: center; }
         .bold { font-weight: bold; }
-        .line { border-top: 1px dashed #000; margin: 10px 0; }
+        .line { border-top: 1px dashed #000; margin: 6px 0; }
         table { width: 100%; border-collapse: collapse; }
-        td { padding: 2px 0; }
+        td { padding: 1px 0; }
         .right { text-align: right; }
+        .small { font-size: 9px; }
       </style>
     </head>
     <body>
-      <div class="center bold" style="font-size: 16px; margin-bottom: 10px;">
+      <div class="center bold" style="font-size: 13px; margin-bottom: 6px;">
         ${settings.companyName || 'SUPERETTE'}
       </div>
-      
-      <div class="center" style="margin-bottom: 10px;">
+
+      <div class="center small" style="margin-bottom: 6px;">
         Reçu N° ${sale.receiptNumber || sale.id.substring(0, 8)}
       </div>
-      
+
       <div class="line"></div>
-      
-      <div style="margin: 10px 0;">
-        Date: ${new Date(sale.createdAt).toLocaleString('fr-FR')}<br>
+
+      <div class="small" style="margin: 6px 0;">
+        ${new Date(sale.createdAt).toLocaleString('fr-FR')}<br>
         Caissier: ${sale.cashier || 'Admin'}
       </div>
-      
+
       <div class="line"></div>
-      
+
       <table>
         ${sale.items?.map(item => `
           <tr>
-            <td>${item.productName || item.product?.name}</td>
-            <td class="right">${item.quantity} x ${item.unitPrice}</td>
+            <td colspan="2" style="font-weight:bold;">${item.productName || item.product?.name}</td>
           </tr>
           <tr>
-            <td></td>
+            <td class="small">${item.quantity} x ${Number(item.unitPrice).toLocaleString()}</td>
             <td class="right bold">${(item.quantity * item.unitPrice).toLocaleString()} ${settings.currency}</td>
           </tr>
         `).join('')}
       </table>
-      
+
       <div class="line"></div>
-      
+
       <table>
-        <tr>
+        <tr class="small">
           <td>Sous-total:</td>
           <td class="right">${(sale.subtotal || sale.total / 1.18).toFixed(0)} ${settings.currency}</td>
         </tr>
-        <tr>
+        <tr class="small">
           <td>TVA (${settings.taxRate}%):</td>
           <td class="right">${(sale.tax || sale.total - sale.total / 1.18).toFixed(0)} ${settings.currency}</td>
         </tr>
-        <tr class="bold" style="font-size: 14px;">
+        <tr class="bold" style="font-size: 12px;">
           <td>TOTAL:</td>
-          <td class="right">${sale.total.toLocaleString()} ${settings.currency}</td>
+          <td class="right">${Number(sale.total).toLocaleString()} ${settings.currency}</td>
         </tr>
       </table>
-      
+
       <div class="line"></div>
-      
-      <div>
-        Paiement: ${sale.paymentMethod === 'cash' ? 'Espèces' : 
+
+      <div class="small">
+        Paiement: ${sale.paymentMethod === 'cash' ? 'Espèces' :
                     sale.paymentMethod === 'card' ? 'Carte' : 'Mobile Money'}
       </div>
-      
+
       <div class="line"></div>
-      
-      <div class="center" style="margin-top: 10px;">
+
+      <div class="center small" style="margin-top: 8px;">
         ${settings.receiptFooter || 'Merci de votre visite !'}
       </div>
     </body>
@@ -285,7 +359,7 @@ function generateReceiptPreview(sale, settings) {
     <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
     <div style="display: flex; justify-content: space-between; font-weight: bold;">
       <span>TOTAL:</span>
-      <span>${sale.total.toLocaleString()} ${settings.currency}</span>
+      <span>${Number(sale.total).toLocaleString()} ${settings.currency}</span>
     </div>
     <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
     <div style="text-align: center;">${settings.receiptFooter}</div>
@@ -309,9 +383,9 @@ ${item.quantity} x ${item.unitPrice} = ${(item.quantity * item.unitPrice).toLoca
 `).join('')}
 ━━━━━━━━━━━━━━━━━━━━
 
-TOTAL: ${sale.total.toLocaleString()} ${settings.currency}
+TOTAL: ${Number(sale.total).toLocaleString()} ${settings.currency}
 
-Paiement: ${sale.paymentMethod === 'cash' ? 'Espèces' : 
+Paiement: ${sale.paymentMethod === 'cash' ? 'Espèces' :
             sale.paymentMethod === 'card' ? 'Carte' : 'Mobile Money'}
 
 ━━━━━━━━━━━━━━━━━━━━
