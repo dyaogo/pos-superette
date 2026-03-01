@@ -459,7 +459,7 @@ const BarcodeSystem = () => {
                   <tr key={product.id} style={{ 
                     borderBottom: '1px solid var(--color-bg)',
                     background: selectedProducts.includes(product.id) ? 
-                      (var(--color-bg)) : 'transparent'
+                      'var(--color-bg)' : 'transparent'
                   }}>
                     <td style={{ padding: '10px' }}>
                       <input

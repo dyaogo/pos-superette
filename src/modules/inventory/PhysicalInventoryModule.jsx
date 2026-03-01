@@ -1235,8 +1235,8 @@ const PhysicalInventoryModule = () => {
                        padding: '8px 12px',
                        background: countingMode === mode.key ? 
                          'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'transparent',
-                       color: countingMode === mode.key ? 'white' : (var(--color-text-primary)),
-                       border: `1px solid ${countingMode === mode.key ? '#3b82f6' : (var(--color-border))}`,
+                       color: countingMode === mode.key ? 'white' : 'var(--color-text-primary)',
+                       border: `1px solid ${countingMode === mode.key ? '#3b82f6' : 'var(--color-border)'}`,
                        borderRadius: '8px',
                        fontSize: '12px',
                        cursor: 'pointer',
@@ -1349,8 +1349,8 @@ const PhysicalInventoryModule = () => {
                    padding: '12px 16px',
                    background: showAdvancedFilters ? 
                      'linear-gradient(135deg, #3b82f6, #1d4ed8)' : 'transparent',
-                   color: showAdvancedFilters ? 'white' : (var(--color-text-primary)),
-                   border: `2px solid ${showAdvancedFilters ? '#3b82f6' : (var(--color-border))}`,
+                   color: showAdvancedFilters ? 'white' : 'var(--color-text-primary)',
+                   border: `2px solid ${showAdvancedFilters ? '#3b82f6' : 'var(--color-border)'}`,
                    borderRadius: '10px',
                    cursor: 'pointer',
                    display: 'flex',
@@ -1386,8 +1386,8 @@ const PhysicalInventoryModule = () => {
                      padding: '12px',
                      background: autoSaveEnabled ? 
                        'linear-gradient(135deg, #10b981, #059669)' : 'transparent',
-                     color: autoSaveEnabled ? 'white' : (var(--color-text-primary)),
-                     border: `1px solid ${autoSaveEnabled ? '#10b981' : (var(--color-border))}`,
+                     color: autoSaveEnabled ? 'white' : 'var(--color-text-primary)',
+                     border: `1px solid ${autoSaveEnabled ? '#10b981' : 'var(--color-border)'}`,
                      borderRadius: '8px',
                      cursor: 'pointer'
                    }}
@@ -1546,7 +1546,7 @@ const PhysicalInventoryModule = () => {
                      border: `2px solid ${
                        hasDiscrepancy ? (difference > 0 ? '#10b981' : '#ef4444') :
                        isCounted ? '#10b981' :
-                       (var(--color-border))
+                       'var(--color-border)'
                      }`,
                      boxShadow: hasDiscrepancy ? 
                        `0 4px 12px ${difference > 0 ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)'}` :
@@ -1751,7 +1751,7 @@ const PhysicalInventoryModule = () => {
                                border: `2px solid ${
                                  hasDiscrepancy ? (difference > 0 ? '#10b981' : '#ef4444') :
                                  isCounted ? '#10b981' :
-                                 (var(--color-border))
+                                 'var(--color-border)'
                                }`,
                                borderRadius: '8px',
                                background: 'var(--color-bg)',
