@@ -2,6 +2,16 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+// Exécute une requête Prisma et renvoie un fallback en cas d'erreur
+async function safeQuery(queryFn, fallback) {
+  try {
+    return await queryFn();
+  } catch (err) {
+    console.warn('safeQuery fallback:', err?.message);
+    return fallback;
+  }
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -25,64 +35,64 @@ export default async function handler(req, res) {
       await Promise.all([
 
         // Infos du magasin
-        prisma.store.findUnique({ where: { id: storeId } }),
+        safeQuery(() => prisma.store.findUnique({ where: { id: storeId } }), null),
 
         // Ventes du jour avec articles
-        prisma.sale.findMany({
+        safeQuery(() => prisma.sale.findMany({
           where: {
             storeId,
             createdAt: { gte: startOfDay, lte: endOfDay },
           },
           include: { items: true, customer: true },
           orderBy: { createdAt: 'desc' },
-        }),
+        }), []),
 
         // Session de caisse du jour (la plus récente)
-        prisma.cashSession.findFirst({
+        safeQuery(() => prisma.cashSession.findFirst({
           where: {
             storeId,
             openedAt: { gte: startOfDay, lte: endOfDay },
           },
           include: { operations: { orderBy: { createdAt: 'asc' } } },
           orderBy: { openedAt: 'desc' },
-        }),
+        }), null),
 
         // Crédits accordés ce jour
-        prisma.credit.findMany({
+        safeQuery(() => prisma.credit.findMany({
           where: {
             storeId,
             createdAt: { gte: startOfDay, lte: endOfDay },
           },
           include: { customer: true },
-        }),
+        }), []),
 
         // Remboursements reçus ce jour (via relation Credit → storeId)
-        prisma.creditPayment.findMany({
+        safeQuery(() => prisma.creditPayment.findMany({
           where: {
             createdAt: { gte: startOfDay, lte: endOfDay },
             credit: { storeId },
           },
           include: { credit: { include: { customer: true } } },
-        }),
+        }), []),
 
         // Retours traités ce jour
-        prisma.return.findMany({
+        safeQuery(() => prisma.return.findMany({
           where: {
             storeId,
             createdAt: { gte: startOfDay, lte: endOfDay },
           },
           include: { items: true },
-        }),
+        }), []),
 
         // Dépenses du jour
-        prisma.expense.findMany({
+        safeQuery(() => prisma.expense.findMany({
           where: {
             storeId,
             createdAt: { gte: startOfDay, lte: endOfDay },
           },
           include: { category: true },
           orderBy: { createdAt: 'desc' },
-        }),
+        }), []),
       ]);
 
     // ─── Agrégation des ventes ─────────────────────────────────────────────
