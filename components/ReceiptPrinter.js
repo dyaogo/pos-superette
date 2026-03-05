@@ -2,10 +2,13 @@ import { Printer, Download, Share2, Zap, X } from 'lucide-react';
 import { useApp } from '../src/contexts/AppContext';
 import { useRef, useEffect, useCallback } from 'react';
 
+// ✨ Variable module-level : le port série persiste entre les montages/démontages
+// (pas de re-sélection à chaque nouvelle vente)
+let _drawerPort = null;
+
 export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
   const { currentStore } = useApp();
   const iframeRef = useRef(null);
-  const serialPortRef = useRef(null);
 
   // ✅ FIX: ?? au lieu de || pour que 0% TVA soit valide
   const settings = {
@@ -59,28 +62,50 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     }
 
     try {
-      let port = serialPortRef.current;
-
-      // Demander le port si pas encore connecté (ou port fermé)
-      if (!port || !port.readable) {
-        port = await navigator.serial.requestPort();
-        await port.open({ baudRate: 9600 });
-        serialPortRef.current = port;
+      // Étape 1 : Réutiliser le port déjà ouvert (persisté entre les ventes)
+      if (_drawerPort && _drawerPort.writable) {
+        await sendDrawerPulse(_drawerPort);
+        return;
       }
 
-      const writer = port.writable.getWriter();
-      // ESC/POS : ouvrir tiroir-caisse — pulse sur pin 2 du connecteur RJ11
-      // Commande: ESC p 0 25 250
-      await writer.write(new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]));
-      writer.releaseLock();
+      // Étape 2 : Tenter de récupérer un port déjà autorisé (sans popup)
+      const grantedPorts = await navigator.serial.getPorts();
+      if (grantedPorts.length > 0) {
+        const port = grantedPorts[0];
+        try {
+          await port.open({ baudRate: 9600 });
+          _drawerPort = port;
+          await sendDrawerPulse(_drawerPort);
+          return;
+        } catch {
+          // Port déjà ouvert par une autre instance → on l'utilise tel quel
+          _drawerPort = port;
+          await sendDrawerPulse(_drawerPort);
+          return;
+        }
+      }
+
+      // Étape 3 : Première utilisation → afficher la popup de sélection (une seule fois)
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      _drawerPort = port;
+      await sendDrawerPulse(_drawerPort);
 
     } catch (err) {
       if (err.name !== 'NotFoundError') {
         console.error('Erreur ouverture tiroir-caisse:', err);
         alert(`Erreur tiroir-caisse : ${err.message}`);
       }
-      serialPortRef.current = null;
+      _drawerPort = null;
     }
+  };
+
+  // Envoie la commande ESC/POS pour déclencher le tiroir
+  const sendDrawerPulse = async (port) => {
+    const writer = port.writable.getWriter();
+    // ESC p 0 25 250 — pulse sur pin 2 du connecteur RJ11
+    await writer.write(new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]));
+    writer.releaseLock();
   };
 
   // ──────────────────────────────────────────────────────────────
