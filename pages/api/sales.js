@@ -97,6 +97,7 @@ async function handler(req, res) {
 
     // CORRECTION : Utiliser le storeId fourni, sinon chercher/créer un magasin
     let finalStoreId = storeId;
+    let storeTaxRate = 0; // Taux TVA du magasin — par défaut 0% (pas de TVA)
 
     if (!finalStoreId) {
       let store = await prisma.store.findFirst();
@@ -107,22 +108,32 @@ async function handler(req, res) {
             code: 'MAG001',
             name: 'Superette Centre',
             currency: 'FCFA',
-            taxRate: 18
+            taxRate: 0  // ✅ FIX: Par défaut 0% (pas de TVA implicite)
           }
         });
       }
 
       finalStoreId = store.id;
+      storeTaxRate = store.taxRate ?? 0;  // ✅ FIX: ?? au lieu de || pour accepter 0%
+    } else {
+      // ✅ FIX: Lire le taux TVA réel du magasin au lieu de le hardcoder
+      const store = await prisma.store.findUnique({
+        where: { id: finalStoreId },
+        select: { taxRate: true }
+      });
+      storeTaxRate = store?.taxRate ?? 0;
     }
-    
+
     // Calculer les montants
     // Les unitPrice (sellingPrice) sont des prix TTC (toutes taxes comprises)
-    // Il faut donc EXTRAIRE la TVA du total TTC, pas l'ajouter par-dessus
+    // ✅ FIX: Utiliser le taux TVA du magasin, pas un taux hardcodé à 18%
     const totalTTC = items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0);
-    const taxRate = 0.18;
-    const subtotal = Math.round((totalTTC / (1 + taxRate)) * 100) / 100; // Prix HT
-    const tax = Math.round((totalTTC - subtotal) * 100) / 100;           // TVA extraite
-    const totalAmount = totalTTC;                                          // Total TTC (= ce que le client paie)
+    const taxRateDecimal = storeTaxRate / 100;  // ex. 18 → 0.18 ; 0 → 0.00
+    const subtotal = storeTaxRate === 0
+      ? totalTTC  // Pas de TVA : subtotal = total
+      : Math.round((totalTTC / (1 + taxRateDecimal)) * 100) / 100;
+    const tax = Math.round((totalTTC - subtotal) * 100) / 100;  // 0 si taux = 0%
+    const totalAmount = totalTTC;  // Total TTC (= ce que le client paie)
 
     // 🛡️ FIX #5 — Vérification de stock côté serveur avant transaction
     const stockInsuffisant = [];

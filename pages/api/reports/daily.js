@@ -97,9 +97,19 @@ export default async function handler(req, res) {
 
     // ─── Agrégation des ventes ─────────────────────────────────────────────
 
-    const salesTotal    = sales.reduce((sum, s) => sum + s.total, 0);
-    const salesSubtotal = sales.reduce((sum, s) => sum + (s.subtotal || s.total / 1.18), 0);
-    const salesTax      = sales.reduce((sum, s) => sum + (s.tax || s.total - s.total / 1.18), 0);
+    // ✅ FIX: Lire le vrai taux TVA du magasin ; 0 || 18 serait faux si taux = 0%
+    const storeTaxRate = store?.taxRate ?? 0;  // ex. 0, 18, 19.6…
+    const storeTaxMultiplier = storeTaxRate > 0 ? (1 + storeTaxRate / 100) : 1;
+
+    const salesTotal = sales.reduce((sum, s) => sum + s.total, 0);
+
+    // ✅ FIX: Recalculer sous-total et TVA à partir du taux actuel du magasin.
+    // On ne lit PAS s.tax depuis la DB car les anciennes ventes ont pu être
+    // enregistrées avec un taux incorrect (bug antérieur hardcodé à 18%).
+    const salesSubtotal = storeTaxRate === 0
+      ? salesTotal  // Pas de TVA → subtotal = total
+      : Math.round((salesTotal / storeTaxMultiplier) * 100) / 100;
+    const salesTax = Math.round((salesTotal - salesSubtotal) * 100) / 100;
 
     // Ventilation par mode de paiement
     const byPaymentMethod = {};
@@ -130,7 +140,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       date:  targetDate.toISOString().split('T')[0],
       store: store
-        ? { id: store.id, name: store.name, currency: store.currency || 'FCFA', taxRate: store.taxRate || 18 }
+        ? { id: store.id, name: store.name, currency: store.currency || 'FCFA', taxRate: store.taxRate ?? 0 }  // ✅ FIX: ?? pas || (0% est valide)
         : null,
 
       sales: {
