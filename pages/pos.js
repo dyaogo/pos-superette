@@ -2013,7 +2013,7 @@ export default function POSPage() {
       </div>
 
       {showReceipt && lastSale && (
-        <ReceiptPrinter sale={lastSale} onClose={() => setShowReceipt(false)} />
+        <ReceiptPrinter sale={lastSale} onClose={() => setShowReceipt(false)} autoPrint={true} />
       )}
 
       {showSessionModal && (
