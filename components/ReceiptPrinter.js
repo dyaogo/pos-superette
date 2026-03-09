@@ -1,6 +1,6 @@
 import { Printer, Download, Share2, Zap, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { useApp } from '../src/contexts/AppContext';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 
 // Nom de l'imprimante Windows — modifiable via localStorage si nécessaire
 const PRINTER_NAME = () =>
@@ -122,6 +122,7 @@ function buildESCPOS(sale, settings, openDrawer = false) {
 // ═══════════════════════════════════════════════════════════════════════════════
 export default function ReceiptPrinter({ sale, onClose }) {
   const { currentStore } = useApp();
+  const iframeRef = useRef(null);
 
   const [status, setStatus] = useState({ type: 'idle', msg: '' });
 
@@ -132,7 +133,24 @@ export default function ReceiptPrinter({ sale, onClose }) {
     receiptFooter: currentStore?.receiptFooter || 'Merci de votre visite !',
   };
 
+  // ── Impression dialogue Windows (iframe caché) — fallback universel ──────
+  const printViaDialog = useCallback(() => {
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    const doc = iframe.contentDocument || iframe.contentWindow?.document;
+    if (!doc) return;
+    doc.open();
+    doc.write(generateReceiptHTML(sale, settings));
+    doc.close();
+    iframe.onload = () => {
+      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); }
+      catch { /* ignore */ }
+    };
+  }, [sale, settings]);
+
   // ── Impression directe via API Next.js (PowerShell WritePrinter) ──────────
+  // → fonctionne sur le terminal Windows (production)
+  // → bascule automatiquement sur le dialogue si le serveur est Linux (dev)
   const print = useCallback(async (alsoOpenDrawer = false) => {
     setStatus({ type: 'idle', msg: 'Impression en cours…' });
     try {
@@ -145,13 +163,17 @@ export default function ReceiptPrinter({ sale, onClose }) {
       const data = await resp.json();
       if (data.ok) {
         setStatus({ type: 'ok', msg: 'Ticket imprimé ✓' + (alsoOpenDrawer ? ' + tiroir ouvert ✓' : '') });
-      } else {
-        setStatus({ type: 'error', msg: `Erreur impression: ${data.error || 'inconnue'}` });
+        return;
       }
-    } catch (err) {
-      setStatus({ type: 'error', msg: `Erreur impression: ${err.message}` });
+      // Serveur non-Windows → fallback dialogue
+      printViaDialog();
+      setStatus({ type: 'ok', msg: 'Dialogue d\'impression ouvert' });
+    } catch {
+      // Réseau KO → fallback dialogue
+      printViaDialog();
+      setStatus({ type: 'ok', msg: 'Dialogue d\'impression ouvert' });
     }
-  }, [sale, settings]);
+  }, [sale, settings, printViaDialog]);
 
   // ── Tiroir seul ───────────────────────────────────────────────────────────
   const openDrawer = useCallback(async () => {
@@ -209,6 +231,13 @@ export default function ReceiptPrinter({ sale, onClose }) {
   });
 
   return (
+    <>
+    {/* iframe caché pour impression via dialogue Windows (fallback) */}
+    <iframe
+      ref={iframeRef}
+      title="receipt-print"
+      style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', border: 'none' }}
+    />
     <div style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.55)',
@@ -292,6 +321,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 
