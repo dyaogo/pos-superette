@@ -20,7 +20,7 @@ import {
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
-import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange } from "../lib/customerDisplay";
+import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable } from "../lib/customerDisplay";
 
 export default function POSPage() {
   const {
@@ -61,6 +61,7 @@ export default function POSPage() {
 
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
+  const [displayTestStatus, setDisplayTestStatus] = useState(null); // null | 'testing' | 'ok' | 'err'
 
   // 📺 Afficheur client — mise à jour automatique quand le panier change
   useEffect(() => {
@@ -714,7 +715,41 @@ export default function POSPage() {
     <div style={{ display: "flex", height: "calc(100vh - 70px)" }}>
       {/* Colonne gauche - Produits */}
       <div style={{ flex: 2, padding: "20px", overflow: "auto" }}>
-        <h1 style={{ marginBottom: "20px" }}>Point de Vente</h1>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+          <h1 style={{ margin: 0 }}>Point de Vente</h1>
+          {isDisplayAvailable() && (
+            <button
+              title="Sélectionner le port de l'afficheur client et envoyer un message de test"
+              onClick={async () => {
+                setDisplayTestStatus('testing');
+                try {
+                  const portName = await selectDisplayPort();
+                  if (!portName) { setDisplayTestStatus(null); return; }
+                  await displayIdle(currentStore?.name || 'SUPERETTE');
+                  setDisplayTestStatus('ok');
+                  setTimeout(() => setDisplayTestStatus(null), 3000);
+                } catch (e) {
+                  console.error('Afficheur test:', e);
+                  setDisplayTestStatus('err');
+                  setTimeout(() => setDisplayTestStatus(null), 4000);
+                }
+              }}
+              style={{
+                padding: "6px 14px",
+                fontSize: "12px",
+                fontWeight: "600",
+                borderRadius: "8px",
+                border: "1.5px solid " + (displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-border)"),
+                background: displayTestStatus === 'ok' ? "rgba(16,185,129,0.1)" : displayTestStatus === 'err' ? "rgba(239,68,68,0.1)" : "var(--color-surface)",
+                color: displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-text-muted)",
+                cursor: displayTestStatus === 'testing' ? "wait" : "pointer",
+                transition: "all 0.2s",
+              }}
+            >
+              {displayTestStatus === 'testing' ? '⏳ Connexion…' : displayTestStatus === 'ok' ? '✅ Afficheur OK' : displayTestStatus === 'err' ? '❌ Échec' : '📺 Tester l\'afficheur'}
+            </button>
+          )}
+        </div>
 
         {/* Indicateur de session — compact */}
         {!cashSession ? (
