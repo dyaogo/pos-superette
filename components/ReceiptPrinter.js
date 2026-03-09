@@ -1,16 +1,17 @@
-import { Printer, Download, Share2, Zap, X, Settings, CheckCircle, AlertCircle } from 'lucide-react';
+import { Printer, Download, Share2, Zap, X, CheckCircle, AlertCircle } from 'lucide-react';
 import { useApp } from '../src/contexts/AppContext';
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 
-// ── Config sauvegardée (localStorage) ────────────────────────────────────────
+// Nom de l'imprimante Windows — modifiable via localStorage si nécessaire
+const PRINTER_NAME = () =>
+  (typeof window !== 'undefined' && localStorage.getItem('printer_windows_name')) || 'POS58 Printer';
 
-function getSavedConfig() {
-  if (typeof window === 'undefined') return { paperWidth: 58, printMode: 'dialog' };
-  return {
-    paperWidth: parseInt(localStorage.getItem('printer_paper_width') || '58', 10),
-    printMode:  localStorage.getItem('printer_print_mode') || 'dialog',
-  };
-}
+// Largeur papier — 58 mm = 32 colonnes
+const PAPER_WIDTH = 58;
+const COLS        = 32;
+
+// Agent local Windows (printer-agent/start.bat sur le PC de caisse)
+const AGENT_URL   = 'http://127.0.0.1:6543';
 
 // ── Encodage Code Page 850 (latin / français) ─────────────────────────────────
 const CP850 = {
@@ -47,26 +48,26 @@ const CMD = {
 };
 
 // ── Génération du ticket ESC/POS ──────────────────────────────────────────────
-// cols : 32 pour 58 mm, 42 pour 80 mm
-function buildESCPOS(sale, settings, cols = 32, openDrawer = true) {
+function buildESCPOS(sale, settings, openDrawer = false) {
   const bytes = [];
   const push  = (...b) => bytes.push(...b);
   const flat  = (arr)  => push(...arr);
   const text  = (str)  => push(...encodeCP850(str));
   const line  = (str = '') => { text(str); push(LF); };
-  const divider = () => line('-'.repeat(cols));
+  const divider = () => line('-'.repeat(COLS));
   const twoCol  = (left, right) => {
     const l = String(left), r = String(right);
-    const space = cols - l.length - r.length;
+    const space = COLS - l.length - r.length;
     if (space >= 0) line(l + ' '.repeat(space) + r);
-    else            line(l.substring(0, cols - r.length - 1) + ' ' + r);
+    else            line(l.substring(0, COLS - r.length - 1) + ' ' + r);
   };
 
   // En-tête
-  flat(CMD.init); flat(CMD.cp850); flat(CMD.alignCenter); flat(CMD.boldOn); flat(CMD.dblSize);
+  flat(CMD.init); flat(CMD.cp850); flat(CMD.alignCenter);
+  flat(CMD.boldOn); flat(CMD.dblSize);
   line(settings.companyName || 'SUPERETTE');
   flat(CMD.normalSize); flat(CMD.boldOff);
-  line(`Recu N°: ${sale.receiptNumber || sale.id.substring(0, 8)}`);
+  line(`Recu N: ${sale.receiptNumber || sale.id.substring(0, 8)}`);
   line(new Date(sale.createdAt).toLocaleString('fr-FR'));
   flat(CMD.alignLeft); divider();
 
@@ -75,7 +76,7 @@ function buildESCPOS(sale, settings, cols = 32, openDrawer = true) {
     const name   = item.productName || item.product?.name || '';
     const qtyStr = `  ${item.quantity} x ${Number(item.unitPrice).toLocaleString()}`;
     const totStr = `${(item.quantity * item.unitPrice).toLocaleString()} ${settings.currency}`;
-    flat(CMD.boldOn);  line(name.substring(0, cols));
+    flat(CMD.boldOn);  line(name.substring(0, COLS));
     flat(CMD.boldOff); twoCol(qtyStr, totStr);
   });
   divider();
@@ -105,7 +106,7 @@ function buildESCPOS(sale, settings, cols = 32, openDrawer = true) {
   if (sale.cashier) twoCol('Caissier:', sale.cashier);
   divider();
 
-  // Pied de page + coupe + tiroir
+  // Pied + coupe + tiroir
   flat(CMD.alignCenter);
   line(settings.receiptFooter || 'Merci de votre visite !');
   flat(CMD.alignLeft);
@@ -118,131 +119,62 @@ function buildESCPOS(sale, settings, cols = 32, openDrawer = true) {
 // ═══════════════════════════════════════════════════════════════════════════════
 // COMPOSANT PRINCIPAL
 // ═══════════════════════════════════════════════════════════════════════════════
-export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
+export default function ReceiptPrinter({ sale, onClose }) {
   const { currentStore } = useApp();
-  const iframeRef = useRef(null);
-  const cfg = getSavedConfig();
 
-  const [paperWidth,   setPaperWidth]   = useState(cfg.paperWidth);
-  const [printMode,    setPrintMode]    = useState(cfg.printMode); // 'windows' | 'dialog'
-  const [portStatus,   setPortStatus]   = useState('idle');
-  const [showSettings, setShowSettings] = useState(false);
-  const [statusMsg,    setStatusMsg]    = useState('');
+  const [status, setStatus] = useState({ type: 'idle', msg: '' });
 
   const settings = {
-    companyName:   currentStore?.name           || 'SUPERETTE',
-    currency:      currentStore?.currency       || 'FCFA',
-    taxRate:       currentStore?.taxRate        ?? 0,
-    receiptFooter: currentStore?.receiptFooter  || 'Merci de votre visite !',
+    companyName:   currentStore?.name          || 'SUPERETTE',
+    currency:      currentStore?.currency      || 'FCFA',
+    taxRate:       currentStore?.taxRate       ?? 0,
+    receiptFooter: currentStore?.receiptFooter || 'Merci de votre visite !',
   };
-  const cols = paperWidth >= 80 ? 42 : 32;
 
-  // Sauvegarder la config à chaque changement
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('printer_paper_width', paperWidth);
-    localStorage.setItem('printer_print_mode',  printMode);
-  }, [paperWidth, printMode]);
-
-  // ── Agent local Windows (printer-agent/start.bat) ────────────────────────
-  const AGENT_URL = 'http://127.0.0.1:6543';
-
-  // ── Impression via dialogue Windows ──────────────────────────────────────
-  const printViaDialog = useCallback(() => {
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-    const doc = iframe.contentDocument || iframe.contentWindow?.document;
-    if (!doc) return;
-    doc.open();
-    doc.write(generateReceiptHTML(sale, settings, paperWidth));
-    doc.close();
-    iframe.onload = () => {
-      try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); }
-      catch {}
-    };
-    setStatusMsg('Dialogue d\'impression ouvert');
-  }, [sale, settings, paperWidth]);
-
-  // ── Impression ESC/POS via agent local Windows ───────────────────────────
-  const printViaWindowsESCPOS = useCallback(async (alsoOpenDrawer = true) => {
+  // ── Impression directe via agent Windows ─────────────────────────────────
+  const print = useCallback(async (alsoOpenDrawer = false) => {
+    setStatus({ type: 'idle', msg: 'Impression en cours…' });
     try {
-      setPortStatus('idle');
-      setStatusMsg('Envoi à l\'imprimante…');
-      const printerName = localStorage.getItem('printer_windows_name') || 'POS58';
-      const bytes = buildESCPOS(sale, settings, cols, alsoOpenDrawer);
+      const bytes = buildESCPOS(sale, settings, alsoOpenDrawer);
       const resp  = await fetch(`${AGENT_URL}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ printerName, bytes }),
+        body: JSON.stringify({ printerName: PRINTER_NAME(), bytes }),
       });
       const data = await resp.json();
       if (data.ok) {
-        setPortStatus('ok');
-        setStatusMsg('Ticket imprimé ✓' + (alsoOpenDrawer ? ' + tiroir ouvert ✓' : ''));
-        return true;
-      }
-      setPortStatus('error');
-      setStatusMsg(`Erreur: ${data.error || 'inconnue'}`);
-      return false;
-    } catch (err) {
-      setPortStatus('error');
-      setStatusMsg(`Agent introuvable — démarrez printer-agent/start.bat (${err.message})`);
-      return false;
-    }
-  }, [sale, settings, cols]);
-
-  // ── Bouton "Imprimer" ─────────────────────────────────────────────────────
-  const handlePrint = () => {
-    if (printMode === 'windows') printViaWindowsESCPOS(false);
-    else printViaDialog();
-  };
-
-  // ── Auto-impression après une vente ──────────────────────────────────────
-  useEffect(() => {
-    if (!autoPrint) return;
-    const timer = setTimeout(async () => {
-      if (printMode === 'windows') {
-        const ok = await printViaWindowsESCPOS(false);
-        if (!ok) printViaDialog();
+        setStatus({ type: 'ok', msg: 'Ticket imprimé ✓' + (alsoOpenDrawer ? ' + tiroir ouvert ✓' : '') });
       } else {
-        printViaDialog();
+        setStatus({ type: 'error', msg: `Erreur: ${data.error || 'inconnue'}` });
       }
-    }, 600);
-    return () => clearTimeout(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoPrint]);
+    } catch (err) {
+      setStatus({ type: 'error', msg: `Agent introuvable — démarrez printer-agent/start.bat (${err.message})` });
+    }
+  }, [sale, settings]);
 
-  // ── Tiroir-caisse ─────────────────────────────────────────────────────────
-  const openCashDrawer = useCallback(async () => {
+  // ── Tiroir seul ───────────────────────────────────────────────────────────
+  const openDrawer = useCallback(async () => {
+    setStatus({ type: 'idle', msg: 'Ouverture du tiroir…' });
     try {
-      setPortStatus('idle');
-      setStatusMsg('Ouverture du tiroir…');
-      const printerName = localStorage.getItem('printer_windows_name') || 'POS58';
-      const url = printMode === 'windows' ? `${AGENT_URL}/drawer` : '/api/printer/open-drawer';
-      const resp = await fetch(url, {
+      const resp = await fetch(`${AGENT_URL}/drawer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ printerName }),
+        body: JSON.stringify({ printerName: PRINTER_NAME() }),
       });
       const data = await resp.json();
       if (data.ok) {
-        setPortStatus('ok');
-        setStatusMsg('Tiroir ouvert ✓');
+        setStatus({ type: 'ok',    msg: 'Tiroir ouvert ✓' });
       } else {
-        setPortStatus('error');
-        setStatusMsg(`Erreur tiroir: ${data.error || 'inconnue'}`);
+        setStatus({ type: 'error', msg: `Erreur tiroir: ${data.error || 'inconnue'}` });
       }
     } catch (err) {
-      setPortStatus('error');
-      setStatusMsg(printMode === 'windows'
-        ? 'Agent introuvable — démarrez printer-agent/start.bat'
-        : `Erreur tiroir: ${err.message}`);
+      setStatus({ type: 'error', msg: `Agent introuvable — démarrez printer-agent/start.bat` });
     }
-  }, [printMode]);
+  }, []);
 
   // ── Téléchargement HTML ───────────────────────────────────────────────────
   const downloadReceipt = () => {
-    const html = generateReceiptHTML(sale, settings, paperWidth);
+    const html = generateReceiptHTML(sale, settings);
     const blob = new Blob([html], { type: 'text/html' });
     const url  = URL.createObjectURL(blob);
     const a    = document.createElement('a');
@@ -264,7 +196,6 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     }
   };
 
-  const statusColor = { ok: '#10b981', error: '#ef4444', idle: '#6b7280' }[portStatus];
   const btn = (bg, outline = false) => ({
     padding: '13px 16px',
     background: outline ? 'transparent' : bg,
@@ -275,199 +206,98 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px',
     fontSize: '15px', fontWeight: '600', width: '100%', minHeight: '50px',
   });
-  const selectStyle = {
-    padding: '8px 10px', borderRadius: '8px',
-    border: '1px solid var(--color-border, #d1d5db)',
-    background: 'var(--color-surface)', color: 'var(--color-text)',
-    fontSize: '13px', flex: 1,
-  };
 
   return (
-    <>
-      {/* iframe caché pour impression dialogue */}
-      <iframe
-        ref={iframeRef}
-        title="receipt-print"
-        style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', border: 'none' }}
-      />
-
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.55)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 2000,
+    }}>
       <div style={{
-        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-        background: 'rgba(0,0,0,0.55)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        zIndex: 2000,
+        background: 'var(--color-bg)',
+        borderRadius: '16px',
+        padding: '24px',
+        width: '340px',
+        maxWidth: '95vw',
+        maxHeight: '92vh',
+        overflowY: 'auto',
+        boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
       }}>
-        <div style={{
-          background: 'var(--color-bg)',
-          borderRadius: '16px',
-          padding: '24px',
-          width: '340px',
-          maxWidth: '95vw',
-          maxHeight: '92vh',
-          overflowY: 'auto',
-          boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
-        }}>
-          {/* En-tête */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ margin: 0, fontSize: '18px' }}>🧾 Reçu de vente</h2>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => setShowSettings(v => !v)} style={{
-                background: showSettings ? 'var(--color-primary)' : 'transparent',
-                color: showSettings ? 'white' : 'var(--color-text-muted)',
-                border: '1px solid var(--color-border)', borderRadius: '8px',
-                padding: '6px 10px', cursor: 'pointer',
-              }}>
-                <Settings size={16} />
-              </button>
-              <button onClick={onClose} style={{
-                background: 'transparent', color: 'var(--color-text-muted)',
-                border: '1px solid var(--color-border)', borderRadius: '8px',
-                padding: '6px 10px', cursor: 'pointer',
-              }}>
-                <X size={16} />
-              </button>
-            </div>
-          </div>
-
-          {/* Panneau de configuration */}
-          {showSettings && (
-            <div style={{
-              background: 'var(--color-surface)',
-              border: '1px solid var(--color-border)',
-              borderRadius: '10px',
-              padding: '14px',
-              marginBottom: '14px',
-              fontSize: '13px',
-            }}>
-              <div style={{ fontWeight: '700', marginBottom: '10px', color: '#3b82f6' }}>
-                ⚙️ Configuration imprimante
-              </div>
-
-              {/* Mode d'impression */}
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Mode d'impression</label>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
-                <button onClick={() => setPrintMode('windows')} style={{
-                  padding: '9px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
-                  background: printMode === 'windows' ? '#059669' : 'transparent',
-                  color: printMode === 'windows' ? 'white' : 'var(--color-text)',
-                  border: '2px solid #059669', textAlign: 'left',
-                }}>
-                  🖨️ ESC/POS via agent Windows ★ <span style={{ fontSize: '10px', opacity: 0.85 }}>(recommandé — LPT1, tiroir inclus)</span>
-                </button>
-                <button onClick={() => setPrintMode('dialog')} style={{
-                  padding: '9px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
-                  background: printMode === 'dialog' ? '#3b82f6' : 'transparent',
-                  color: printMode === 'dialog' ? 'white' : 'var(--color-text)',
-                  border: '2px solid #3b82f6', textAlign: 'left',
-                }}>
-                  🗔 Dialogue Windows <span style={{ fontSize: '10px', opacity: 0.85 }}>(Ctrl+P, tiroir séparé)</span>
-                </button>
-              </div>
-
-              {/* Largeur papier */}
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Largeur du papier</label>
-              <select value={paperWidth} onChange={e => setPaperWidth(Number(e.target.value))}
-                style={{ ...selectStyle, marginBottom: '12px', width: '100%' }}>
-                <option value={58}>58 mm (standard caisse)</option>
-                <option value={80}>80 mm (grand format)</option>
-              </select>
-
-              {/* Nom imprimante */}
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>
-                Nom de l'imprimante Windows
-              </label>
-              <input
-                type="text"
-                defaultValue={typeof window !== 'undefined' ? (localStorage.getItem('printer_windows_name') || 'POS58') : 'POS58'}
-                onBlur={e => {
-                  if (typeof window !== 'undefined')
-                    localStorage.setItem('printer_windows_name', e.target.value.trim() || 'POS58');
-                }}
-                placeholder="T8DLabel Printer"
-                style={{ ...selectStyle, marginBottom: '10px', width: '100%' }}
-              />
-
-              {printMode === 'windows' && (
-                <div style={{ fontSize: '11px', color: '#065f46', lineHeight: '1.6', background: '#d1fae5', padding: '8px', borderRadius: '6px', border: '1px solid #6ee7b7' }}>
-                  <strong>Mode ESC/POS actif</strong><br />
-                  L'agent local (printer-agent/start.bat) envoie les données directement à l'imprimante Windows. Coupe-papier et tiroir-caisse inclus dans le même envoi.
-                </div>
-              )}
-              {printMode === 'dialog' && (
-                <div style={{ fontSize: '11px', color: '#1e40af', lineHeight: '1.6', background: '#eff6ff', padding: '8px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
-                  <strong>Mode Dialogue actif</strong><br />
-                  Le dialogue Windows (Ctrl+P) s'ouvre. Le tiroir s'ouvre via l'API serveur.
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Statut */}
-          {statusMsg && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              padding: '8px 12px', borderRadius: '8px',
-              background: portStatus === 'ok' ? '#d1fae5' : portStatus === 'error' ? '#fee2e2' : '#f3f4f6',
-              color: statusColor,
-              marginBottom: '12px', fontSize: '13px', fontWeight: '600',
-            }}>
-              {portStatus === 'ok'    && <CheckCircle size={16} />}
-              {portStatus === 'error' && <AlertCircle size={16} />}
-              {statusMsg}
-            </div>
-          )}
-
-          {/* Prévisualisation du reçu */}
-          <div style={{
-            background: 'var(--color-surface-hover, #f9fafb)',
-            padding: '14px', borderRadius: '10px', marginBottom: '16px',
-            fontFamily: 'monospace', fontSize: '11px',
-            maxHeight: '220px', overflow: 'auto',
+        {/* En-tête */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={{ margin: 0, fontSize: '18px' }}>🧾 Reçu de vente</h2>
+          <button onClick={onClose} style={{
+            background: 'transparent', color: 'var(--color-text-muted)',
+            border: '1px solid var(--color-border)', borderRadius: '8px',
+            padding: '6px 10px', cursor: 'pointer',
           }}>
-            <div dangerouslySetInnerHTML={{ __html: generateReceiptPreview(sale, settings) }} />
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Statut */}
+        {status.msg && (
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            padding: '8px 12px', borderRadius: '8px', marginBottom: '12px',
+            background: status.type === 'ok' ? '#d1fae5' : status.type === 'error' ? '#fee2e2' : '#f3f4f6',
+            color:      status.type === 'ok' ? '#10b981' : status.type === 'error' ? '#ef4444' : '#6b7280',
+            fontSize: '13px', fontWeight: '600',
+          }}>
+            {status.type === 'ok'    && <CheckCircle size={16} />}
+            {status.type === 'error' && <AlertCircle  size={16} />}
+            {status.msg}
           </div>
+        )}
 
-          {/* Boutons d'action */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button onClick={handlePrint} style={btn('#3b82f6')}>
-              <Printer size={20} />
-              {printMode === 'windows' ? 'Imprimer ESC/POS (Windows)' : 'Imprimer (dialogue Windows)'}
-            </button>
+        {/* Prévisualisation du reçu */}
+        <div style={{
+          background: 'var(--color-surface-hover, #f9fafb)',
+          padding: '14px', borderRadius: '10px', marginBottom: '16px',
+          fontFamily: 'monospace', fontSize: '11px',
+          maxHeight: '220px', overflow: 'auto',
+        }}>
+          <div dangerouslySetInnerHTML={{ __html: generateReceiptPreview(sale, settings) }} />
+        </div>
 
-            <button onClick={openCashDrawer} style={btn('#f59e0b')}>
-              <Zap size={20} /> Ouvrir le tiroir-caisse
-            </button>
+        {/* Boutons d'action */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
 
-            <button
-              onClick={() => printMode === 'windows' ? printViaWindowsESCPOS(true) : (printViaDialog(), openCashDrawer())}
-              style={btn('#059669')}
-            >
-              <Printer size={18} /><Zap size={18} /> Imprimer + Ouvrir tiroir
-            </button>
+          <button onClick={() => print(false)} style={btn('#3b82f6')}>
+            <Printer size={20} /> Imprimer
+          </button>
 
-            <button onClick={downloadReceipt} style={btn('#10b981')}>
-              <Download size={20} /> Télécharger le reçu (.html)
-            </button>
+          <button onClick={openDrawer} style={btn('#f59e0b')}>
+            <Zap size={20} /> Ouvrir le tiroir-caisse
+          </button>
 
-            <button onClick={shareReceipt} style={btn('#8b5cf6')}>
-              <Share2 size={20} /> Partager (SMS / WhatsApp)
-            </button>
+          <button onClick={() => print(true)} style={btn('#059669')}>
+            <Printer size={18} /><Zap size={18} /> Imprimer + Ouvrir tiroir
+          </button>
 
-            <button onClick={onClose} style={btn('#6b7280', true)}>
-              Fermer
-            </button>
-          </div>
+          <button onClick={downloadReceipt} style={btn('#10b981')}>
+            <Download size={20} /> Télécharger le reçu (.html)
+          </button>
+
+          <button onClick={shareReceipt} style={btn('#8b5cf6')}>
+            <Share2 size={20} /> Partager (SMS / WhatsApp)
+          </button>
+
+          <button onClick={onClose} style={btn('#6b7280', true)}>
+            Fermer
+          </button>
+
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// Génération HTML pour impression dialogue
+// Génération HTML (téléchargement)
 // ═══════════════════════════════════════════════════════════════════════════════
-function generateReceiptHTML(sale, settings, paperWidth = 58) {
-  const mmWidth  = `${paperWidth}mm`;
+function generateReceiptHTML(sale, settings) {
   const taxRate  = settings.taxRate ?? 0;
   const taxMult  = taxRate > 0 ? (1 + taxRate / 100) : 1;
   const subtotal = taxRate === 0 ? sale.total : Math.round((sale.total / taxMult) * 100) / 100;
@@ -480,10 +310,10 @@ function generateReceiptHTML(sale, settings, paperWidth = 58) {
   <title>Reçu ${sale.receiptNumber || sale.id}</title>
   <style>
     @media print {
-      @page { margin: 0; size: ${mmWidth} auto; }
+      @page { margin: 0; size: ${PAPER_WIDTH}mm auto; }
       body  { margin: 0; padding: 3mm 4mm; }
     }
-    body { font-family: 'Courier New', monospace; font-size: 10px; width: ${mmWidth}; margin: 0 auto; padding: 3mm 4mm; }
+    body { font-family: 'Courier New', monospace; font-size: 10px; width: ${PAPER_WIDTH}mm; margin: 0 auto; padding: 3mm 4mm; }
     .center { text-align: center; }
     .bold   { font-weight: bold; }
     .right  { text-align: right; }
