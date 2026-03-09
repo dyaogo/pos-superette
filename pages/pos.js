@@ -20,7 +20,7 @@ import {
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
-import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable, testDisplayFormat } from "../lib/customerDisplay";
+import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable, testDisplayFormat, testDisplayBaud } from "../lib/customerDisplay";
 
 export default function POSPage() {
   const {
@@ -739,69 +739,89 @@ export default function POSPage() {
           <div style={{
             marginBottom: "16px", padding: "12px 16px",
             background: "var(--color-surface)", border: "1.5px solid var(--color-border)",
-            borderRadius: "10px",
+            borderRadius: "10px", fontSize: "12px",
           }}>
-            <div style={{ fontSize: "12px", fontWeight: "700", color: "var(--color-text-muted)", marginBottom: "10px" }}>
-              DIAGNOSTIC AFFICHEUR — envoyer 1500 en différents formats
+            {/* Section baud rate */}
+            <div style={{ fontWeight: "700", color: "var(--color-text-muted)", marginBottom: "8px" }}>
+              ÉTAPE 1 — Tester la vitesse (baud rate) · envoie "1500\r" à chaque fois
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
+              {[1200, 2400, 4800, 9600, 19200, 38400, 115200].map(baud => (
+                <button key={baud} onClick={async () => {
+                  setDisplayTestStatus('testing');
+                  try {
+                    await testDisplayBaud(baud);
+                    setDisplayTestStatus('ok_b' + baud);
+                    setTimeout(() => setDisplayTestStatus(null), 3000);
+                  } catch (e) {
+                    setDisplayTestStatus('err');
+                    setTimeout(() => setDisplayTestStatus(null), 3000);
+                  }
+                }} style={{
+                  padding: "5px 10px", fontWeight: "600", borderRadius: "6px", cursor: "pointer",
+                  border: "1.5px solid " + (displayTestStatus === 'ok_b' + baud ? "var(--color-success)" : "var(--color-border)"),
+                  background: displayTestStatus === 'ok_b' + baud ? "rgba(16,185,129,0.12)" : "var(--color-bg)",
+                  color: displayTestStatus === 'ok_b' + baud ? "var(--color-success)" : "var(--color-text-primary)",
+                }}>
+                  {baud}
+                </button>
+              ))}
+            </div>
+
+            {/* Section format */}
+            <div style={{ fontWeight: "700", color: "var(--color-text-muted)", marginBottom: "8px" }}>
+              ÉTAPE 2 — Tester le format (une fois le bon baud rate trouvé)
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
               {[
-                { mode: 0, label: '0 — "1500"' },
-                { mode: 1, label: '1 — "00001500"' },
-                { mode: 2, label: '2 — "1500\\r"' },
-                { mode: 3, label: '3 — "00001500\\r"' },
-                { mode: 4, label: '4 — STX "1500" ETX' },
-                { mode: 5, label: '5 — STX "00001500" ETX' },
+                { mode: 0, label: '"1500"' },
+                { mode: 1, label: '"00001500"' },
+                { mode: 2, label: '"1500\\r"' },
+                { mode: 3, label: '"00001500\\r"' },
+                { mode: 4, label: 'STX "1500" ETX' },
+                { mode: 5, label: 'STX "00001500" ETX' },
               ].map(({ mode, label }) => (
-                <button
-                  key={mode}
-                  onClick={async () => {
-                    setDisplayTestStatus('testing');
-                    try {
-                      await testDisplayFormat(1500, mode);
-                      setDisplayTestStatus('ok_' + mode);
-                      setTimeout(() => setDisplayTestStatus(null), 2000);
-                    } catch (e) {
-                      setDisplayTestStatus('err');
-                      setTimeout(() => setDisplayTestStatus(null), 3000);
-                    }
-                  }}
-                  style={{
-                    padding: "5px 10px", fontSize: "11px", fontWeight: "600",
-                    borderRadius: "6px", cursor: "pointer",
-                    border: "1.5px solid " + (displayTestStatus === 'ok_' + mode ? "var(--color-success)" : "var(--color-border)"),
-                    background: displayTestStatus === 'ok_' + mode ? "rgba(16,185,129,0.12)" : "var(--color-bg)",
-                    color: displayTestStatus === 'ok_' + mode ? "var(--color-success)" : "var(--color-text-primary)",
-                  }}
-                >
+                <button key={mode} onClick={async () => {
+                  setDisplayTestStatus('testing');
+                  try {
+                    await testDisplayFormat(1500, mode);
+                    setDisplayTestStatus('ok_f' + mode);
+                    setTimeout(() => setDisplayTestStatus(null), 2000);
+                  } catch {
+                    setDisplayTestStatus('err');
+                    setTimeout(() => setDisplayTestStatus(null), 3000);
+                  }
+                }} style={{
+                  padding: "5px 10px", fontWeight: "600", borderRadius: "6px", cursor: "pointer",
+                  border: "1.5px solid " + (displayTestStatus === 'ok_f' + mode ? "var(--color-success)" : "var(--color-border)"),
+                  background: displayTestStatus === 'ok_f' + mode ? "rgba(16,185,129,0.12)" : "var(--color-bg)",
+                  color: displayTestStatus === 'ok_f' + mode ? "var(--color-success)" : "var(--color-text-primary)",
+                }}>
                   {label}
                 </button>
               ))}
-              <button
-                onClick={async () => {
-                  setDisplayTestStatus('testing');
-                  try {
-                    const p = await selectDisplayPort();
-                    if (p) { setDisplayTestStatus('ok'); setTimeout(() => setDisplayTestStatus(null), 2000); }
-                    else setDisplayTestStatus(null);
-                  } catch { setDisplayTestStatus('err'); setTimeout(() => setDisplayTestStatus(null), 3000); }
-                }}
-                style={{
-                  padding: "5px 10px", fontSize: "11px", fontWeight: "600",
-                  borderRadius: "6px", cursor: "pointer",
-                  border: "1.5px solid var(--color-primary)",
-                  background: "transparent", color: "var(--color-primary)",
-                  marginLeft: "auto",
-                }}
-              >
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "var(--color-text-muted)" }}>
+                {displayTestStatus === 'testing' && '⏳ Envoi en cours…'}
+                {displayTestStatus && displayTestStatus.startsWith('ok') && '✅ Envoyé — "1500" est-il lisible sur l\'afficheur ?'}
+                {displayTestStatus === 'err' && '❌ Erreur — le port est peut-être fermé, essaie "Changer port"'}
+                {!displayTestStatus && 'Commence par tester chaque baud rate — arrête-toi dès que 1500 s\'affiche'}
+              </span>
+              <button onClick={async () => {
+                setDisplayTestStatus('testing');
+                try {
+                  const p = await selectDisplayPort();
+                  if (p) { setDisplayTestStatus(null); } else setDisplayTestStatus(null);
+                } catch { setDisplayTestStatus('err'); setTimeout(() => setDisplayTestStatus(null), 3000); }
+              }} style={{
+                padding: "5px 10px", fontWeight: "600", borderRadius: "6px", cursor: "pointer",
+                border: "1.5px solid var(--color-primary)", background: "transparent", color: "var(--color-primary)",
+                whiteSpace: "nowrap", marginLeft: "12px",
+              }}>
                 🔌 Changer port
               </button>
-            </div>
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "8px" }}>
-              {displayTestStatus === 'testing' && '⏳ Envoi…'}
-              {displayTestStatus && displayTestStatus.startsWith('ok') && '✅ Envoyé — regarde l\'afficheur, est-ce que 1500 est lisible ?'}
-              {displayTestStatus === 'err' && '❌ Erreur — vérifie le port COM2'}
-              {!displayTestStatus && 'Clique sur un format → si 1500 s\'affiche lisiblement, c\'est le bon !'}
             </div>
           </div>
         )}
