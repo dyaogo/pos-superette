@@ -362,14 +362,18 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     };
   }, [sale, settings, paperWidth]);
 
-  // ── Impression ESC/POS via API Windows (mode 'windows' — WritePrinter) ───
+  // ── Impression ESC/POS via agent local (mode 'windows') ──────────────────
+  // L'agent (printer-agent/index.js) tourne sur le PC de caisse Windows et
+  // écoute sur http://127.0.0.1:6543. Le serveur Next.js peut être distant.
+  const AGENT_URL = 'http://127.0.0.1:6543';
+
   const printViaWindowsESCPOS = useCallback(async (alsoOpenDrawer = true) => {
     try {
       setPortStatus('idle');
-      setStatusMsg('Envoi ESC/POS à l\'imprimante Windows…');
+      setStatusMsg('Envoi ESC/POS à l\'agent local…');
       const printerName = localStorage.getItem('printer_windows_name') || 'POS58';
       const bytes = buildESCPOS(sale, settings, cols, alsoOpenDrawer);
-      const resp = await fetch('/api/printer/print-escpos', {
+      const resp = await fetch(`${AGENT_URL}/print`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ printerName, bytes }),
@@ -387,7 +391,7 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
       }
     } catch (err) {
       setPortStatus('error');
-      setStatusMsg(`Erreur impression: ${err.message}`);
+      setStatusMsg(`Agent introuvable — démarrez printer-agent/start.bat sur ce PC (${err.message})`);
       console.error('[print-escpos]', err);
       return false;
     }
@@ -418,13 +422,18 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPrint]);
 
-  // ── Tiroir-caisse via API serveur (mode dialogue / LPT1 / Windows printer) ─
+  // ── Tiroir-caisse via agent local (mode 'windows') ou API serveur (autres) ─
   const openDrawerViaAPI = useCallback(async () => {
     try {
       setPortStatus('idle');
       setStatusMsg('Ouverture du tiroir…');
       const printerName = localStorage.getItem('printer_windows_name') || 'POS58';
-      const resp = await fetch('/api/printer/open-drawer', {
+      // Mode 'windows' : appel à l'agent local sur ce PC
+      // Autres modes : appel à la route serveur (utile si serveur sur Windows)
+      const url = printMode === 'windows'
+        ? `${AGENT_URL}/drawer`
+        : '/api/printer/open-drawer';
+      const resp = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ printerName }),
@@ -436,14 +445,16 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
       } else {
         setPortStatus('error');
         setStatusMsg(`Erreur tiroir: ${data.error || 'inconnue'}`);
-        console.error('[tiroir API]', data.error);
+        console.error('[tiroir]', data.error);
       }
     } catch (err) {
       setPortStatus('error');
-      setStatusMsg(`Erreur tiroir: ${err.message}`);
-      console.error('[tiroir API]', err);
+      setStatusMsg(printMode === 'windows'
+        ? `Agent introuvable — démarrez printer-agent/start.bat sur ce PC`
+        : `Erreur tiroir: ${err.message}`);
+      console.error('[tiroir]', err);
     }
-  }, []);
+  }, [printMode]);
 
   // ── Tiroir-caisse seul (port série si disponible, sinon API serveur) ───────
   const openCashDrawer = async () => {
