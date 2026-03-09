@@ -19,6 +19,14 @@ function getSavedConfig() {
   };
 }
 
+// Nom lisible du port à partir de ses infos USB
+function portDisplayName(info) {
+  if (!info) return null;
+  const vendors = { 0x1a86: 'CH340', 0x0403: 'FTDI', 0x067b: 'Prolific', 0x10c4: 'CP210x', 0x0483: 'STM32' };
+  const chip = vendors[info.usbVendorId] || `VID:${info.usbVendorId?.toString(16)}`;
+  return info.usbVendorId ? `Port USB-Série (${chip})` : 'Port série';
+}
+
 // ── Encodage Code Page 850 (Latin-1 / français) ──────────────────────────────
 // ESC t 0x02 → active CP850 sur l'imprimante, puis on envoie les octets CP850
 const CP850 = {
@@ -39,27 +47,76 @@ function encodeCP850(str) {
 }
 
 // ── Connexion / gestion du port série ────────────────────────────────────────
+// IMPORTANT : on ne réutilise un port accordé que s'il a été EXPLICITEMENT
+// choisi par l'utilisateur dans cette app (clé printer_port_info en localStorage).
+// Sans ça, Chrome peut silencieusement réutiliser un vieux port (scanner, etc.)
+// et write() réussit sans qu'aucun octet n'arrive à l'imprimante.
+
+function getSavedPortInfo() {
+  try { return JSON.parse(localStorage.getItem('printer_port_info') || 'null'); } catch { return null; }
+}
+function savePortInfo(port) {
+  try {
+    const info = port.getInfo ? port.getInfo() : {};
+    localStorage.setItem('printer_port_info', JSON.stringify(info));
+    return info;
+  } catch { return null; }
+}
+function clearSavedPort() {
+  localStorage.removeItem('printer_port_info');
+}
+
 async function ensurePortOpen(baudRate) {
-  // Port déjà ouvert et fonctionnel ?
+  // Port déjà ouvert dans cette session et fonctionnel ?
   if (_printerPort) {
     try {
       if (_printerPort.writable) return _printerPort;
-    } catch { /* port fermé */ }
+    } catch { /* port fermé entre-temps */ }
     _printerPort = null;
   }
 
-  // Ports déjà autorisés par l'utilisateur (sans popup) ?
-  const granted = await navigator.serial.getPorts();
-  if (granted.length > 0) {
-    const port = granted[0];
-    try { await port.open({ baudRate }); } catch { /* déjà ouvert → OK */ }
-    _printerPort = port;
-    return port;
+  // Essayer de retrouver le port EXPLICITEMENT sauvegardé
+  const savedInfo = getSavedPortInfo();
+  if (savedInfo) {
+    const granted = await navigator.serial.getPorts();
+    for (const port of granted) {
+      const info = port.getInfo ? port.getInfo() : {};
+      // Comparer vendorId + productId
+      if (info.usbVendorId === savedInfo.usbVendorId &&
+          info.usbProductId === savedInfo.usbProductId) {
+        try {
+          await port.open({ baudRate });
+        } catch (err) {
+          // "already open" est OK ; toute autre erreur remonte
+          if (!err.message?.toLowerCase().includes('already open') &&
+              !err.message?.toLowerCase().includes('already been opened')) {
+            throw err;
+          }
+        }
+        _printerPort = port;
+        return port;
+      }
+    }
+    // Port sauvegardé introuvable (débranché ?) → on demande de rechoisir
+    clearSavedPort();
   }
 
-  // Première utilisation → dialogue de sélection (geste utilisateur requis)
+  // Aucun port configuré → popup de sélection (nécessite un geste utilisateur)
   const port = await navigator.serial.requestPort();
   await port.open({ baudRate });
+  savePortInfo(port);
+  _printerPort = port;
+  return port;
+}
+
+// Sélection forcée (bouton "Changer de port") — toujours popup
+async function selectPortExplicitly(baudRate) {
+  const port = await navigator.serial.requestPort();
+  if (_printerPort && _printerPort !== port) {
+    try { await _printerPort.close(); } catch {}
+  }
+  await port.open({ baudRate });
+  savePortInfo(port);
   _printerPort = port;
   return port;
 }
@@ -197,6 +254,12 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
   const [portStatus,  setPortStatus]  = useState('idle');        // 'idle' | 'ok' | 'error'
   const [showSettings, setShowSettings] = useState(false);
   const [statusMsg,   setStatusMsg]   = useState('');
+  // Nom du port actuellement configuré (affiché dans l'UI)
+  const [portName, setPortName] = useState(() => {
+    if (typeof window === 'undefined') return null;
+    const info = getSavedPortInfo();
+    return info ? portDisplayName(info) : null;
+  });
 
   const settings = {
     companyName:   currentStore?.name       || 'SUPERETTE',
@@ -215,6 +278,28 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     localStorage.setItem('printer_print_mode',  printMode);
   }, [baudRate, paperWidth, printMode]);
 
+  // ── Sélection explicite du port (toujours popup) ─────────────────────────
+  const handleSelectPort = async () => {
+    if (!('serial' in navigator)) {
+      setPortStatus('error');
+      setStatusMsg('Web Serial non disponible — utilisez Chrome ou Edge');
+      return;
+    }
+    try {
+      setPortStatus('idle');
+      setStatusMsg('Sélection du port…');
+      const port = await selectPortExplicitly(baudRate);
+      const info = port.getInfo ? port.getInfo() : {};
+      const name = portDisplayName(info);
+      setPortName(name);
+      setPortStatus('ok');
+      setStatusMsg(`Port sélectionné : ${name}`);
+    } catch (err) {
+      if (err.name === 'NotFoundError') { setPortStatus('idle'); setStatusMsg('Sélection annulée'); }
+      else { setPortStatus('error'); setStatusMsg(`Erreur: ${err.message}`); _printerPort = null; }
+    }
+  };
+
   // ── Impression ESC/POS via port série (mode recommandé pour Haixun HX-K60) ─
   const printViaSerial = useCallback(async (alsoOpenDrawer = true) => {
     if (!('serial' in navigator)) {
@@ -227,12 +312,16 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
       setStatusMsg('Connexion à l\'imprimante…');
       const bytes = buildESCPOS(sale, settings, cols, alsoOpenDrawer);
       await writeToPort(bytes, baudRate);
+      // Rafraîchir le nom du port après connexion réussie
+      if (_printerPort) {
+        const info = _printerPort.getInfo ? _printerPort.getInfo() : {};
+        setPortName(portDisplayName(info));
+      }
       setPortStatus('ok');
       setStatusMsg('Ticket imprimé ✓');
       return true;
     } catch (err) {
       if (err.name === 'NotFoundError') {
-        // L'utilisateur a annulé le dialogue
         setPortStatus('idle');
         setStatusMsg('Sélection annulée');
       } else {
@@ -321,31 +410,32 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     }
   };
 
-  // ── Tester la connexion (envoi d'un caractère nul + son de bip) ───────────
+  // ── Tester la connexion (imprime une ligne de test) ───────────────────────
   const testConnection = async () => {
     if (!('serial' in navigator)) return;
     try {
       setPortStatus('idle');
       setStatusMsg('Test en cours…');
-      // Initialisation + bip sonore (BEL = 0x07) + "Test OK" + saut de ligne
       const testBytes = [
         ...CMD.init, ...CMD.cp850,
         ...CMD.alignCenter,
         0x07,  // BEL (bip si supporté)
         ...encodeCP850('=== TEST IMPRIMANTE ==='), LF,
-        ...encodeCP850(`Baud: ${baudRate}  Largeur: ${paperWidth}mm`), LF,
+        ...encodeCP850(`Baud: ${baudRate}  Papier: ${paperWidth}mm`), LF,
         ...encodeCP850('Connexion etablie !'), LF,
         LF, LF,
       ];
       await writeToPort(testBytes, baudRate);
-      setPortStatus('ok');
-      setStatusMsg(`Port connecté (${baudRate} baud) ✓`);
-    } catch (err) {
-      if (err.name !== 'NotFoundError') {
-        setPortStatus('error');
-        setStatusMsg(`Échec: ${err.message}`);
-        _printerPort = null;
+      if (_printerPort) {
+        const info = _printerPort.getInfo ? _printerPort.getInfo() : {};
+        const name = portDisplayName(info);
+        setPortName(name);
+        setPortStatus('ok');
+        setStatusMsg(`Connecté : ${name} (${baudRate} baud) — vérifiez que le texte s'est imprimé`);
       }
+    } catch (err) {
+      if (err.name === 'NotFoundError') { setPortStatus('idle'); setStatusMsg('Sélection annulée'); }
+      else { setPortStatus('error'); setStatusMsg(`Échec: ${err.message}`); _printerPort = null; }
     }
   };
 
@@ -355,8 +445,10 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
       try { await _printerPort.close(); } catch {}
       _printerPort = null;
     }
+    clearSavedPort();
+    setPortName(null);
     setPortStatus('idle');
-    setStatusMsg('Port déconnecté');
+    setStatusMsg('Port déconnecté — sélectionner à nouveau avant d\'imprimer');
   };
 
   // ── Téléchargement HTML du reçu ───────────────────────────────────────────
@@ -468,6 +560,27 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
                 ⚙️ Configuration imprimante (Haixun HX-K60)
               </div>
 
+              {/* Port actuel */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
+                padding: '8px 10px', borderRadius: '8px',
+                background: portName ? '#d1fae5' : '#fef3c7',
+                border: `1px solid ${portName ? '#6ee7b7' : '#fcd34d'}`,
+              }}>
+                <span style={{ fontSize: '16px' }}>{portName ? '🟢' : '🔴'}</span>
+                <div style={{ flex: 1, fontSize: '12px' }}>
+                  <div style={{ fontWeight: '700' }}>Port imprimante</div>
+                  <div style={{ color: '#6b7280' }}>{portName || 'Non configuré — cliquer "Sélectionner le port"'}</div>
+                </div>
+              </div>
+              <button onClick={handleSelectPort} style={{
+                width: '100%', padding: '9px', borderRadius: '8px',
+                background: '#3b82f6', color: 'white', border: 'none',
+                cursor: 'pointer', fontWeight: '700', fontSize: '13px', marginBottom: '12px',
+              }}>
+                {portName ? '🔄 Changer de port' : '🔌 Sélectionner le port imprimante'}
+              </button>
+
               {/* Mode d'impression */}
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Mode d'impression</label>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
@@ -531,11 +644,12 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
               </div>
 
               {/* Aide */}
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280', lineHeight: '1.5' }}>
-                <strong>Comment configurer :</strong><br />
-                1. Cliquer <em>Imprimer via ESC/POS</em> → sélectionner le port COM de l'imprimante<br />
-                2. Le tiroir-caisse (RJ11 de l'imprimante) utilisera le même port<br />
-                3. Si le port COM n'apparaît pas : installer le pilote USB-Série (CH340 ou FTDI)
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280', lineHeight: '1.6' }}>
+                <strong>Mise en route :</strong><br />
+                1. Cliquer <strong>"Sélectionner le port imprimante"</strong> ci-dessus<br />
+                2. Choisir le port COM de l'imprimante dans le popup (ex. COM3)<br />
+                3. Cliquer <strong>"Tester connexion"</strong> → un texte doit s'imprimer<br />
+                4. Si aucun port COM n'apparaît : installer le pilote <strong>CH340</strong> ou <strong>FTDI</strong>
               </div>
             </div>
           )}
