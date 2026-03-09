@@ -1,12 +1,10 @@
-import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync } from 'fs';
-import { join } from 'path';
-import { tmpdir } from 'os';
+import { runPS1 } from './_wsl-run-ps1';
 
 // ─── Endpoint : ouvre le tiroir-caisse via l'imprimante Windows ───────────────
 // Envoie les octets ESC/POS (commandes tiroir pin2 + pin5) directement à
 // l'imprimante Windows nommée "printerName" (défaut : POS58) en utilisant
 // l'API Win32 WritePrinter — indépendamment du mode d'impression de l'app.
+// Fonctionne depuis WSL (powershell.exe via /mnt/c/Windows/Temp/).
 // ─────────────────────────────────────────────────────────────────────────────
 export default function handler(req, res) {
   if (req.method !== 'POST') {
@@ -20,7 +18,21 @@ export default function handler(req, res) {
   // ESC/POS : ESC p 0 (pin 2) + ESC p 1 (pin 5) — les deux pour compatibilité
   const drawerBytes = [27, 112, 0, 25, 250, 27, 112, 1, 25, 250];
 
-  const psContent = `
+  const psContent = buildWritePrinterPS1(printerName, drawerBytes, 'CashDrawer');
+
+  try {
+    const result = runPS1(psContent, 'drawer_');
+    return res.json({ ok: true, result: result.trim() });
+  } catch (err) {
+    const msg = err.stderr?.toString() || err.message;
+    console.error('[open-drawer]', msg);
+    return res.status(500).json({ ok: false, error: msg });
+  }
+}
+
+// ─── Script PowerShell générique : WritePrinter ───────────────────────────────
+export function buildWritePrinterPS1(printerName, bytes, docName = 'Receipt') {
+  return `
 Add-Type -TypeDefinition @'
 using System;
 using System.Runtime.InteropServices;
@@ -53,11 +65,11 @@ $ok = [RawPrint]::OpenPrinterA("${printerName}", [ref]$h, [IntPtr]::Zero)
 if (-not $ok) { Write-Error "Impossible d'ouvrir l'imprimante : ${printerName}"; exit 1 }
 $doc = New-Object RawPrint+DOCINFOA
 $doc.cbSize = [System.Runtime.InteropServices.Marshal]::SizeOf($doc)
-$doc.pDocName  = "CashDrawer"
+$doc.pDocName  = "${docName}"
 $doc.pDataType = "RAW"
 [RawPrint]::StartDocPrinterA($h, 1, [ref]$doc) | Out-Null
 [RawPrint]::StartPagePrinter($h) | Out-Null
-$bytes = [byte[]](${drawerBytes.join(',')})
+$bytes = [byte[]](${bytes.join(',')})
 $ptr = [System.Runtime.InteropServices.Marshal]::AllocHGlobal($bytes.Length)
 [System.Runtime.InteropServices.Marshal]::Copy($bytes, 0, $ptr, $bytes.Length)
 $w = 0
@@ -68,20 +80,4 @@ $w = 0
 [RawPrint]::ClosePrinter($h)    | Out-Null
 Write-Output "sent:$w"
 `;
-
-  const psFile = join(tmpdir(), `drawer_${Date.now()}.ps1`);
-  try {
-    writeFileSync(psFile, psContent, 'utf8');
-    const result = execSync(
-      `powershell -NonInteractive -ExecutionPolicy Bypass -File "${psFile}"`,
-      { timeout: 8000, encoding: 'utf8' }
-    );
-    return res.json({ ok: true, result: result.trim() });
-  } catch (err) {
-    const msg = err.stderr?.toString() || err.message;
-    console.error('[open-drawer]', msg);
-    return res.status(500).json({ ok: false, error: msg });
-  } finally {
-    try { unlinkSync(psFile); } catch { /* ignore */ }
-  }
 }
