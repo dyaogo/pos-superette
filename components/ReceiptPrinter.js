@@ -1,146 +1,394 @@
-import { Printer, Download, Share2, Zap, X } from 'lucide-react';
+import { Printer, Download, Share2, Zap, X, Settings, CheckCircle, AlertCircle } from 'lucide-react';
 import { useApp } from '../src/contexts/AppContext';
-import { useRef, useEffect, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 
-// ✨ Variable module-level : le port série persiste entre les montages/démontages
-// (pas de re-sélection à chaque nouvelle vente)
-let _drawerPort = null;
+// ═══════════════════════════════════════════════════════════════════════════════
+// PORT SÉRIE PARTAGÉ — imprimante thermique + tiroir-caisse
+// L'imprimante sur Haixun HX-K60 apparaît comme un port COM (USB-Série CH340/FTDI)
+// Le tiroir est branché sur le RJ11 de l'imprimante → même port, commande ESC/POS
+// ═══════════════════════════════════════════════════════════════════════════════
+let _printerPort = null;
 
+// Récupère la config sauvegardée (localStorage côté client uniquement)
+function getSavedConfig() {
+  if (typeof window === 'undefined') return { baudRate: 9600, paperWidth: 58, printMode: 'serial' };
+  return {
+    baudRate:   parseInt(localStorage.getItem('printer_baud_rate')  || '9600', 10),
+    paperWidth: parseInt(localStorage.getItem('printer_paper_width') || '58',   10),
+    printMode:  localStorage.getItem('printer_print_mode') || 'serial',
+  };
+}
+
+// ── Encodage Code Page 850 (Latin-1 / français) ──────────────────────────────
+// ESC t 0x02 → active CP850 sur l'imprimante, puis on envoie les octets CP850
+const CP850 = {
+  'Ç':0x80,'ü':0x81,'é':0x82,'â':0x83,'ä':0x84,'à':0x85,'å':0x86,'ç':0x87,
+  'ê':0x88,'ë':0x89,'è':0x8A,'ï':0x8B,'î':0x8C,'Ä':0x8E,'É':0x90,
+  'ô':0x93,'ö':0x94,'ò':0x95,'û':0x96,'ù':0x97,'Ö':0x99,'Ü':0x9A,
+  'á':0xA0,'í':0xA1,'ó':0xA2,'ú':0xA3,'ñ':0xA4,'Ñ':0xA5,
+};
+
+function encodeCP850(str) {
+  const bytes = [];
+  for (const ch of String(str)) {
+    if (CP850[ch] !== undefined) bytes.push(CP850[ch]);
+    else if (ch.charCodeAt(0) < 128) bytes.push(ch.charCodeAt(0));
+    else bytes.push(63); // '?' pour caractères inconnus
+  }
+  return bytes;
+}
+
+// ── Connexion / gestion du port série ────────────────────────────────────────
+async function ensurePortOpen(baudRate) {
+  // Port déjà ouvert et fonctionnel ?
+  if (_printerPort) {
+    try {
+      if (_printerPort.writable) return _printerPort;
+    } catch { /* port fermé */ }
+    _printerPort = null;
+  }
+
+  // Ports déjà autorisés par l'utilisateur (sans popup) ?
+  const granted = await navigator.serial.getPorts();
+  if (granted.length > 0) {
+    const port = granted[0];
+    try { await port.open({ baudRate }); } catch { /* déjà ouvert → OK */ }
+    _printerPort = port;
+    return port;
+  }
+
+  // Première utilisation → dialogue de sélection (geste utilisateur requis)
+  const port = await navigator.serial.requestPort();
+  await port.open({ baudRate });
+  _printerPort = port;
+  return port;
+}
+
+async function writeToPort(bytes, baudRate) {
+  const port = await ensurePortOpen(baudRate);
+  const writer = port.writable.getWriter();
+  try {
+    await writer.write(new Uint8Array(bytes));
+  } finally {
+    writer.releaseLock();
+  }
+}
+
+// ── Constantes ESC/POS ────────────────────────────────────────────────────────
+const ESC = 0x1B, GS = 0x1D, LF = 0x0A;
+
+const CMD = {
+  init:         [ESC, 0x40],           // Réinitialiser l'imprimante
+  cp850:        [ESC, 0x74, 0x02],     // Code Page 850 (français)
+  boldOn:       [ESC, 0x45, 0x01],
+  boldOff:      [ESC, 0x45, 0x00],
+  alignLeft:    [ESC, 0x61, 0x00],
+  alignCenter:  [ESC, 0x61, 0x01],
+  dblSize:      [GS,  0x21, 0x11],     // Double largeur + hauteur
+  dblHeight:    [GS,  0x21, 0x01],     // Double hauteur seule
+  normalSize:   [GS,  0x21, 0x00],
+  feed:         [LF, LF, LF],
+  cut:          [GS,  0x56, 0x41, 0x00], // Coupe papier complète
+  drawerPin2:   [ESC, 0x70, 0x00, 0x19, 0xFA], // Tiroir pin 2 (standard)
+  drawerPin5:   [ESC, 0x70, 0x01, 0x19, 0xFA], // Tiroir pin 5 (alternatif)
+};
+
+// ── Génération du ticket ESC/POS ─────────────────────────────────────────────
+// cols : 32 pour 58 mm, 42 pour 80 mm
+function buildESCPOS(sale, settings, cols = 32, openDrawer = true) {
+  const bytes = [];
+  const push  = (...b) => bytes.push(...b);
+  const flat  = (arr) => push(...arr);
+  const text  = (str) => push(...encodeCP850(str));
+  const line  = (str = '') => { text(str); push(LF); };
+
+  const divider = () => line('-'.repeat(cols));
+
+  const twoCol = (left, right) => {
+    const l = String(left), r = String(right);
+    const space = cols - l.length - r.length;
+    if (space >= 0) line(l + ' '.repeat(space) + r);
+    else            line(l.substring(0, cols - r.length - 1) + ' ' + r);
+  };
+
+  // ── En-tête ───────────────────────────────────────────────────────────────
+  flat(CMD.init);
+  flat(CMD.cp850);
+  flat(CMD.alignCenter);
+  flat(CMD.boldOn);
+  flat(CMD.dblSize);
+  line(settings.companyName || 'SUPERETTE');
+  flat(CMD.normalSize);
+  flat(CMD.boldOff);
+  line(`Recu N°: ${sale.receiptNumber || sale.id.substring(0, 8)}`);
+  line(new Date(sale.createdAt).toLocaleString('fr-FR'));
+  flat(CMD.alignLeft);
+  divider();
+
+  // ── Articles ──────────────────────────────────────────────────────────────
+  (sale.items || []).forEach(item => {
+    const name    = item.productName || item.product?.name || '';
+    const qtyStr  = `  ${item.quantity} x ${Number(item.unitPrice).toLocaleString()}`;
+    const totStr  = `${(item.quantity * item.unitPrice).toLocaleString()} ${settings.currency}`;
+    flat(CMD.boldOn);
+    line(name.substring(0, cols));
+    flat(CMD.boldOff);
+    twoCol(qtyStr, totStr);
+  });
+  divider();
+
+  // ── Totaux ────────────────────────────────────────────────────────────────
+  const taxRate      = settings.taxRate ?? 0;
+  const taxMult      = taxRate > 0 ? (1 + taxRate / 100) : 1;
+  const subtotal     = taxRate === 0 ? sale.total : Math.round((sale.total / taxMult) * 100) / 100;
+  const tax          = Math.round((sale.total - subtotal) * 100) / 100;
+
+  if (taxRate > 0) {
+    twoCol('Sous-total:', `${subtotal.toFixed(0)} ${settings.currency}`);
+    twoCol(`TVA ${taxRate}%:`, `${tax.toFixed(0)} ${settings.currency}`);
+  }
+
+  flat(CMD.boldOn);
+  flat(CMD.dblHeight);
+  twoCol('TOTAL:', `${Number(sale.total).toLocaleString()} ${settings.currency}`);
+  flat(CMD.normalSize);
+  flat(CMD.boldOff);
+  push(LF);
+
+  // ── Paiement ──────────────────────────────────────────────────────────────
+  const payLabel = { cash: 'Especes', card: 'Carte', mobile: 'Mobile Money' }[sale.paymentMethod]
+    || (sale.paymentMethod || 'Especes');
+  twoCol('Paiement:', payLabel);
+
+  if (sale.paymentMethod === 'cash' && sale.cashReceived) {
+    twoCol('Recu:', `${Number(sale.cashReceived).toLocaleString()} ${settings.currency}`);
+    const change = sale.cashReceived - sale.total;
+    if (change > 0) twoCol('Monnaie:', `${Number(change).toLocaleString()} ${settings.currency}`);
+  }
+
+  // ── Caissier ──────────────────────────────────────────────────────────────
+  if (sale.cashier) twoCol('Caissier:', sale.cashier);
+  divider();
+
+  // ── Pied de page ──────────────────────────────────────────────────────────
+  flat(CMD.alignCenter);
+  line(settings.receiptFooter || 'Merci de votre visite !');
+  flat(CMD.alignLeft);
+
+  // ── Avance + coupe + tiroir-caisse ────────────────────────────────────────
+  flat(CMD.feed);
+  flat(CMD.cut);
+  if (openDrawer) flat(CMD.drawerPin2); // tiroir branché sur RJ11 de l'imprimante
+
+  return bytes;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// COMPOSANT PRINCIPAL
+// ═══════════════════════════════════════════════════════════════════════════════
 export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
   const { currentStore } = useApp();
   const iframeRef = useRef(null);
+  const cfg = getSavedConfig();
 
-  // ✅ FIX: ?? au lieu de || pour que 0% TVA soit valide
+  const [baudRate,    setBaudRate]    = useState(cfg.baudRate);
+  const [paperWidth,  setPaperWidth]  = useState(cfg.paperWidth);
+  const [printMode,   setPrintMode]   = useState(cfg.printMode); // 'serial' | 'dialog'
+  const [portStatus,  setPortStatus]  = useState('idle');        // 'idle' | 'ok' | 'error'
+  const [showSettings, setShowSettings] = useState(false);
+  const [statusMsg,   setStatusMsg]   = useState('');
+
   const settings = {
-    companyName: currentStore?.name || 'SUPERETTE',
-    currency: currentStore?.currency || 'FCFA',
-    taxRate: currentStore?.taxRate ?? 0,
-    receiptFooter: 'Merci de votre visite !',
+    companyName:   currentStore?.name       || 'SUPERETTE',
+    currency:      currentStore?.currency   || 'FCFA',
+    taxRate:       currentStore?.taxRate    ?? 0,
+    receiptFooter: currentStore?.receiptFooter || 'Merci de votre visite !',
   };
 
-  // ✨ Impression via iframe caché — compatible Windows + Android Chrome
-  const printReceipt = useCallback(() => {
+  const cols = paperWidth >= 80 ? 42 : 32;
+
+  // Sauvegarder la config dans localStorage à chaque changement
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    localStorage.setItem('printer_baud_rate',   baudRate);
+    localStorage.setItem('printer_paper_width', paperWidth);
+    localStorage.setItem('printer_print_mode',  printMode);
+  }, [baudRate, paperWidth, printMode]);
+
+  // ── Impression ESC/POS via port série (mode recommandé pour Haixun HX-K60) ─
+  const printViaSerial = useCallback(async (alsoOpenDrawer = true) => {
+    if (!('serial' in navigator)) {
+      setPortStatus('error');
+      setStatusMsg('Web Serial non disponible — utilisez Chrome ou Edge');
+      return false;
+    }
+    try {
+      setPortStatus('idle');
+      setStatusMsg('Connexion à l\'imprimante…');
+      const bytes = buildESCPOS(sale, settings, cols, alsoOpenDrawer);
+      await writeToPort(bytes, baudRate);
+      setPortStatus('ok');
+      setStatusMsg('Ticket imprimé ✓');
+      return true;
+    } catch (err) {
+      if (err.name === 'NotFoundError') {
+        // L'utilisateur a annulé le dialogue
+        setPortStatus('idle');
+        setStatusMsg('Sélection annulée');
+      } else {
+        setPortStatus('error');
+        setStatusMsg(`Erreur: ${err.message}`);
+        console.error('Erreur ESC/POS:', err);
+        _printerPort = null;
+      }
+      return false;
+    }
+  }, [sale, settings, cols, baudRate]);
+
+  // ── Impression via dialogue du navigateur (fallback) ──────────────────────
+  const printViaDialog = useCallback(() => {
     const iframe = iframeRef.current;
     if (!iframe) return;
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
     if (!doc) return;
-
     doc.open();
-    doc.write(generateReceiptHTML(sale, settings));
+    doc.write(generateReceiptHTML(sale, settings, paperWidth));
     doc.close();
-
-    // Déclencher l'impression une fois le contenu chargé
     iframe.onload = () => {
       try {
         iframe.contentWindow?.focus();
         iframe.contentWindow?.print();
+        setStatusMsg('Dialogue d\'impression ouvert');
       } catch (err) {
-        console.error('Erreur impression iframe:', err);
+        console.error('Erreur impression:', err);
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sale]);
+  }, [sale, settings, paperWidth]);
 
-  // Auto-impression après une vente (si prop autoPrint=true)
+  // ── Bouton "Imprimer" : choisit la méthode selon printMode ───────────────
+  const handlePrint = () => {
+    if (printMode === 'serial') printViaSerial(false); // coupe sans tiroir
+    else printViaDialog();
+  };
+
+  // ── Auto-impression après une vente ──────────────────────────────────────
   useEffect(() => {
     if (!autoPrint) return;
-    const timer = setTimeout(() => printReceipt(), 600);
+    const timer = setTimeout(async () => {
+      if (printMode === 'serial') {
+        // Tenter en silencieux (port déjà accordé)
+        const ok = await printViaSerial(false);
+        if (!ok) printViaDialog(); // fallback si port non configuré
+      } else {
+        printViaDialog();
+      }
+    }, 600);
     return () => clearTimeout(timer);
-  }, [autoPrint, printReceipt]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoPrint]);
 
-  // ──────────────────────────────────────────────────────────────
-  // Tiroir-caisse via Web Serial API (Chrome sur Windows / Linux / Mac)
-  // ──────────────────────────────────────────────────────────────
+  // ── Tiroir-caisse seul (commande directe via imprimante) ──────────────────
   const openCashDrawer = async () => {
     if (!('serial' in navigator)) {
       alert(
         'Web Serial API non disponible.\n' +
-        'Assurez-vous d\'utiliser Chrome ou Edge sur ce PC.\n' +
-        'Allez dans chrome://flags et activez "Experimental Web Platform features" si nécessaire.'
+        'Utilisez Chrome ou Edge sur ce PC.\n' +
+        'Le tiroir est branché sur le port RJ11 de l\'imprimante thermique.\n' +
+        'Le même port COM doit être sélectionné pour l\'imprimante et le tiroir.'
       );
       return;
     }
-
     try {
-      // Étape 1 : Réutiliser le port déjà ouvert (persisté entre les ventes)
-      if (_drawerPort && _drawerPort.writable) {
-        await sendDrawerPulse(_drawerPort);
-        return;
-      }
-
-      // Étape 2 : Tenter de récupérer un port déjà autorisé (sans popup)
-      const grantedPorts = await navigator.serial.getPorts();
-      if (grantedPorts.length > 0) {
-        const port = grantedPorts[0];
-        try {
-          await port.open({ baudRate: 9600 });
-          _drawerPort = port;
-          await sendDrawerPulse(_drawerPort);
-          return;
-        } catch {
-          // Port déjà ouvert par une autre instance → on l'utilise tel quel
-          _drawerPort = port;
-          await sendDrawerPulse(_drawerPort);
-          return;
-        }
-      }
-
-      // Étape 3 : Première utilisation → afficher la popup de sélection (une seule fois)
-      const port = await navigator.serial.requestPort();
-      await port.open({ baudRate: 9600 });
-      _drawerPort = port;
-      await sendDrawerPulse(_drawerPort);
-
+      setPortStatus('idle');
+      setStatusMsg('Ouverture du tiroir…');
+      // Envoyer drawerPin2 puis drawerPin5 (essai des deux broches)
+      await writeToPort([...CMD.drawerPin2], baudRate);
+      // Petit délai puis essayer aussi pin 5 (certains tiroirs Haixun)
+      await new Promise(r => setTimeout(r, 200));
+      await writeToPort([...CMD.drawerPin5], baudRate);
+      setPortStatus('ok');
+      setStatusMsg('Commande tiroir envoyée ✓');
     } catch (err) {
       if (err.name !== 'NotFoundError') {
-        console.error('Erreur ouverture tiroir-caisse:', err);
-        alert(`Erreur tiroir-caisse : ${err.message}`);
+        setPortStatus('error');
+        setStatusMsg(`Erreur tiroir: ${err.message}`);
+        console.error('Erreur tiroir-caisse:', err);
+        _printerPort = null;
+      } else {
+        setPortStatus('idle');
+        setStatusMsg('Sélection annulée');
       }
-      _drawerPort = null;
     }
   };
 
-  // Envoie la commande ESC/POS pour déclencher le tiroir
-  const sendDrawerPulse = async (port) => {
-    const writer = port.writable.getWriter();
-    // ESC p 0 25 250 — pulse sur pin 2 du connecteur RJ11
-    await writer.write(new Uint8Array([0x1B, 0x70, 0x00, 0x19, 0xFA]));
-    writer.releaseLock();
+  // ── Tester la connexion (envoi d'un caractère nul + son de bip) ───────────
+  const testConnection = async () => {
+    if (!('serial' in navigator)) return;
+    try {
+      setPortStatus('idle');
+      setStatusMsg('Test en cours…');
+      // Initialisation + bip sonore (BEL = 0x07) + "Test OK" + saut de ligne
+      const testBytes = [
+        ...CMD.init, ...CMD.cp850,
+        ...CMD.alignCenter,
+        0x07,  // BEL (bip si supporté)
+        ...encodeCP850('=== TEST IMPRIMANTE ==='), LF,
+        ...encodeCP850(`Baud: ${baudRate}  Largeur: ${paperWidth}mm`), LF,
+        ...encodeCP850('Connexion etablie !'), LF,
+        LF, LF,
+      ];
+      await writeToPort(testBytes, baudRate);
+      setPortStatus('ok');
+      setStatusMsg(`Port connecté (${baudRate} baud) ✓`);
+    } catch (err) {
+      if (err.name !== 'NotFoundError') {
+        setPortStatus('error');
+        setStatusMsg(`Échec: ${err.message}`);
+        _printerPort = null;
+      }
+    }
   };
 
-  // ──────────────────────────────────────────────────────────────
+  // ── Déconnexion du port ───────────────────────────────────────────────────
+  const disconnectPort = async () => {
+    if (_printerPort) {
+      try { await _printerPort.close(); } catch {}
+      _printerPort = null;
+    }
+    setPortStatus('idle');
+    setStatusMsg('Port déconnecté');
+  };
 
+  // ── Téléchargement HTML du reçu ───────────────────────────────────────────
   const downloadReceipt = () => {
-    const receiptHTML = generateReceiptHTML(sale, settings);
-    const blob = new Blob([receiptHTML], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `recu_${sale.receiptNumber || sale.id}.html`;
+    const html  = generateReceiptHTML(sale, settings, paperWidth);
+    const blob  = new Blob([html], { type: 'text/html' });
+    const url   = URL.createObjectURL(blob);
+    const a     = document.createElement('a');
+    a.href      = url;
+    a.download  = `recu_${sale.receiptNumber || sale.id}.html`;
     a.click();
     URL.revokeObjectURL(url);
   };
 
+  // ── Partage SMS / WhatsApp ────────────────────────────────────────────────
   const shareReceipt = async () => {
     const text = generateReceiptText(sale, settings);
     if (navigator.share) {
-      try {
-        await navigator.share({
-          title: `Reçu ${sale.receiptNumber || sale.id}`,
-          text,
-        });
-      } catch {
-        // Partage annulé par l'utilisateur
-      }
+      try { await navigator.share({ title: `Reçu ${sale.receiptNumber || sale.id}`, text }); }
+      catch { /* annulé */ }
     } else {
       await navigator.clipboard.writeText(text);
       alert('Reçu copié dans le presse-papier');
     }
   };
 
-  // Style commun des boutons (touch-friendly pour terminal POS)
-  const btnStyle = (bg, outline = false) => ({
-    padding: '14px 16px',
+  // ── Indicateur de statut ──────────────────────────────────────────────────
+  const statusColor = { ok: '#10b981', error: '#ef4444', idle: '#6b7280' }[portStatus];
+
+  // ── Styles boutons ────────────────────────────────────────────────────────
+  const btn = (bg, outline = false) => ({
+    padding: '13px 16px',
     background: outline ? 'transparent' : bg,
     color: outline ? bg : 'white',
     border: outline ? `2px solid ${bg}` : 'none',
@@ -153,99 +401,205 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     fontSize: '15px',
     fontWeight: '600',
     width: '100%',
-    minHeight: '52px',
+    minHeight: '50px',
   });
+
+  const selectStyle = {
+    padding: '8px 10px',
+    borderRadius: '8px',
+    border: '1px solid var(--color-border, #d1d5db)',
+    background: 'var(--color-surface)',
+    color: 'var(--color-text)',
+    fontSize: '13px',
+    flex: 1,
+  };
 
   return (
     <>
-      {/* iframe caché — reçoit le HTML du reçu pour impression */}
+      {/* iframe caché pour impression via dialogue navigateur (fallback) */}
       <iframe
         ref={iframeRef}
         title="receipt-print"
-        style={{
-          position: 'fixed',
-          top: '-9999px',
-          left: '-9999px',
-          width: '1px',
-          height: '1px',
-          border: 'none',
-        }}
+        style={{ position: 'fixed', top: '-9999px', left: '-9999px', width: '1px', height: '1px', border: 'none' }}
       />
 
       <div style={{
-        position: 'fixed',
-        top: 0, left: 0, right: 0, bottom: 0,
+        position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
         background: 'rgba(0,0,0,0.55)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
         zIndex: 2000,
       }}>
         <div style={{
           background: 'var(--color-surface)',
           borderRadius: '14px',
           padding: '24px',
-          width: '380px',
+          width: '400px',
           maxWidth: '95vw',
-          maxHeight: '92vh',
+          maxHeight: '94vh',
           overflow: 'auto',
         }}>
-          {/* En-tête */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '16px',
-          }}>
+          {/* ── En-tête ─────────────────────────────────────────────────── */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
             <h2 style={{ margin: 0, fontSize: '18px' }}>Options d'impression</h2>
-            <button
-              onClick={onClose}
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '4px',
-                color: 'var(--color-text-secondary)',
-                display: 'flex',
-              }}
-            >
-              <X size={22} />
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={() => setShowSettings(s => !s)}
+                title="Configurer l'imprimante"
+                style={{ background: showSettings ? '#3b82f6' : 'transparent', color: showSettings ? 'white' : 'var(--color-text-secondary)', border: 'none', cursor: 'pointer', padding: '4px 8px', borderRadius: '6px', display: 'flex' }}
+              >
+                <Settings size={20} />
+              </button>
+              <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', color: 'var(--color-text-secondary)', display: 'flex' }}>
+                <X size={22} />
+              </button>
+            </div>
           </div>
 
-          {/* Prévisualisation du reçu */}
+          {/* ── Panneau de configuration ─────────────────────────────────── */}
+          {showSettings && (
+            <div style={{
+              background: 'var(--color-surface-hover, #f3f4f6)',
+              borderRadius: '10px',
+              padding: '14px',
+              marginBottom: '14px',
+              fontSize: '13px',
+            }}>
+              <div style={{ fontWeight: '700', marginBottom: '10px', color: '#3b82f6' }}>
+                ⚙️ Configuration imprimante (Haixun HX-K60)
+              </div>
+
+              {/* Mode d'impression */}
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Mode d'impression</label>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <button
+                  onClick={() => setPrintMode('serial')}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                    background: printMode === 'serial' ? '#3b82f6' : 'transparent',
+                    color: printMode === 'serial' ? 'white' : 'var(--color-text)',
+                    border: '2px solid #3b82f6',
+                  }}
+                >
+                  ESC/POS Serial ★
+                </button>
+                <button
+                  onClick={() => setPrintMode('dialog')}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                    background: printMode === 'dialog' ? '#6b7280' : 'transparent',
+                    color: printMode === 'dialog' ? 'white' : 'var(--color-text)',
+                    border: '2px solid #6b7280',
+                  }}
+                >
+                  Dialogue Windows
+                </button>
+              </div>
+
+              {/* Vitesse baud */}
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>
+                Vitesse (baud rate)
+              </label>
+              <select value={baudRate} onChange={e => setBaudRate(Number(e.target.value))} style={{ ...selectStyle, marginBottom: '10px', width: '100%' }}>
+                {[9600, 19200, 38400, 57600, 115200].map(r => (
+                  <option key={r} value={r}>{r} baud{r === 9600 ? ' (défaut)' : ''}</option>
+                ))}
+              </select>
+
+              {/* Largeur papier */}
+              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>
+                Largeur du papier
+              </label>
+              <select value={paperWidth} onChange={e => setPaperWidth(Number(e.target.value))} style={{ ...selectStyle, marginBottom: '12px', width: '100%' }}>
+                <option value={58}>58 mm (standard caisse)</option>
+                <option value={80}>80 mm (grand format)</option>
+              </select>
+
+              {/* Boutons test / déconnexion */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button onClick={testConnection} style={{
+                  flex: 1, padding: '8px', borderRadius: '8px', background: '#8b5cf6',
+                  color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px',
+                }}>
+                  Tester connexion
+                </button>
+                <button onClick={disconnectPort} style={{
+                  flex: 1, padding: '8px', borderRadius: '8px', background: 'transparent',
+                  color: '#ef4444', border: '2px solid #ef4444', cursor: 'pointer', fontWeight: '600', fontSize: '13px',
+                }}>
+                  Déconnecter
+                </button>
+              </div>
+
+              {/* Aide */}
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280', lineHeight: '1.5' }}>
+                <strong>Comment configurer :</strong><br />
+                1. Cliquer <em>Imprimer via ESC/POS</em> → sélectionner le port COM de l'imprimante<br />
+                2. Le tiroir-caisse (RJ11 de l'imprimante) utilisera le même port<br />
+                3. Si le port COM n'apparaît pas : installer le pilote USB-Série (CH340 ou FTDI)
+              </div>
+            </div>
+          )}
+
+          {/* ── Statut de connexion ──────────────────────────────────────── */}
+          {statusMsg && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              padding: '8px 12px', borderRadius: '8px',
+              background: portStatus === 'ok' ? '#d1fae5' : portStatus === 'error' ? '#fee2e2' : '#f3f4f6',
+              color: statusColor,
+              marginBottom: '12px',
+              fontSize: '13px', fontWeight: '600',
+            }}>
+              {portStatus === 'ok'    && <CheckCircle size={16} />}
+              {portStatus === 'error' && <AlertCircle size={16} />}
+              {statusMsg}
+            </div>
+          )}
+
+          {/* ── Prévisualisation du reçu ─────────────────────────────────── */}
           <div style={{
-            background: 'var(--color-surface-hover)',
-            padding: '16px',
+            background: 'var(--color-surface-hover, #f9fafb)',
+            padding: '14px',
             borderRadius: '10px',
-            marginBottom: '20px',
+            marginBottom: '16px',
             fontFamily: 'monospace',
-            fontSize: '12px',
-            maxHeight: '280px',
+            fontSize: '11px',
+            maxHeight: '220px',
             overflow: 'auto',
           }}>
             <div dangerouslySetInnerHTML={{ __html: generateReceiptPreview(sale, settings) }} />
           </div>
 
-          {/* Boutons d'action */}
+          {/* ── Boutons d'action ─────────────────────────────────────────── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            <button onClick={printReceipt} style={btnStyle('#3b82f6')}>
-              <Printer size={20} /> Imprimer (58mm)
+
+            {/* Bouton d'impression (principal) */}
+            <button onClick={handlePrint} style={btn('#3b82f6')}>
+              <Printer size={20} />
+              {printMode === 'serial' ? 'Imprimer via ESC/POS (port série)' : 'Imprimer (dialogue Windows)'}
             </button>
 
-            <button onClick={openCashDrawer} style={btnStyle('#f59e0b')}>
+            {/* Tiroir-caisse — via le port de l'imprimante */}
+            <button onClick={openCashDrawer} style={btn('#f59e0b')}>
               <Zap size={20} /> Ouvrir le tiroir-caisse
             </button>
 
-            <button onClick={downloadReceipt} style={btnStyle('#10b981')}>
-              <Download size={20} /> Télécharger le reçu
+            {/* Imprimer + ouvrir tiroir en même commande */}
+            {printMode === 'serial' && (
+              <button onClick={() => printViaSerial(true)} style={btn('#059669')}>
+                <Printer size={18} /><Zap size={18} /> Imprimer + Ouvrir tiroir
+              </button>
+            )}
+
+            <button onClick={downloadReceipt} style={btn('#10b981')}>
+              <Download size={20} /> Télécharger le reçu (.html)
             </button>
 
-            <button onClick={shareReceipt} style={btnStyle('#8b5cf6')}>
+            <button onClick={shareReceipt} style={btn('#8b5cf6')}>
               <Share2 size={20} /> Partager (SMS / WhatsApp)
             </button>
 
-            <button onClick={onClose} style={btnStyle('#6b7280', true)}>
+            <button onClick={onClose} style={btn('#6b7280', true)}>
               Fermer
             </button>
           </div>
@@ -255,15 +609,14 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
   );
 }
 
-// ─── Génération HTML du reçu pour impression 58mm ─────────────────────────────
-
-function generateReceiptHTML(sale, settings) {
-  // ✅ FIX: Calculer sous-total et TVA depuis le taux réel du magasin
+// ═══════════════════════════════════════════════════════════════════════════════
+// Génération HTML pour impression via dialogue navigateur (fallback)
+// ═══════════════════════════════════════════════════════════════════════════════
+function generateReceiptHTML(sale, settings, paperWidth = 58) {
+  const mmWidth = `${paperWidth}mm`;
   const taxRate = settings.taxRate ?? 0;
-  const taxMultiplier = taxRate > 0 ? (1 + taxRate / 100) : 1;
-  const subtotal = taxRate === 0
-    ? sale.total
-    : Math.round((sale.total / taxMultiplier) * 100) / 100;
+  const taxMult = taxRate > 0 ? (1 + taxRate / 100) : 1;
+  const subtotal = taxRate === 0 ? sale.total : Math.round((sale.total / taxMult) * 100) / 100;
   const tax = Math.round((sale.total - subtotal) * 100) / 100;
 
   return `<!DOCTYPE html>
@@ -273,107 +626,87 @@ function generateReceiptHTML(sale, settings) {
   <title>Reçu ${sale.receiptNumber || sale.id}</title>
   <style>
     @media print {
-      @page { margin: 0; size: 58mm auto; }
+      @page { margin: 0; size: ${mmWidth} auto; }
       body { margin: 0; padding: 3mm 4mm; }
     }
     body {
       font-family: 'Courier New', monospace;
       font-size: 10px;
-      width: 58mm;
+      width: ${mmWidth};
       margin: 0 auto;
       padding: 3mm 4mm;
     }
     .center { text-align: center; }
     .bold   { font-weight: bold; }
+    .right  { text-align: right; }
+    .small  { font-size: 9px; }
     .line   { border-top: 1px dashed #000; margin: 6px 0; }
     table   { width: 100%; border-collapse: collapse; }
     td      { padding: 1px 0; }
-    .right  { text-align: right; }
-    .small  { font-size: 9px; }
   </style>
 </head>
 <body>
   <div class="center bold" style="font-size:13px; margin-bottom:6px;">
     ${settings.companyName || 'SUPERETTE'}
   </div>
-  <div class="center small" style="margin-bottom:6px;">
-    Reçu N° ${sale.receiptNumber || sale.id.substring(0, 8)}
-  </div>
+  <div class="center small">Reçu N° ${sale.receiptNumber || sale.id.substring(0, 8)}</div>
   <div class="line"></div>
-  <div class="small" style="margin:6px 0;">
+  <div class="small" style="margin:4px 0;">
     ${new Date(sale.createdAt).toLocaleString('fr-FR')}<br>
     Caissier: ${sale.cashier || 'Admin'}
   </div>
   <div class="line"></div>
   <table>
     ${(sale.items || []).map(item => `
+    <tr><td colspan="2" class="bold">${item.productName || item.product?.name || ''}</td></tr>
     <tr>
-      <td colspan="2" style="font-weight:bold;">${item.productName || item.product?.name || ''}</td>
-    </tr>
-    <tr>
-      <td class="small">${item.quantity} x ${Number(item.unitPrice).toLocaleString()}</td>
+      <td class="small">${item.quantity} × ${Number(item.unitPrice).toLocaleString()}</td>
       <td class="right bold">${(item.quantity * item.unitPrice).toLocaleString()} ${settings.currency}</td>
     </tr>`).join('')}
   </table>
   <div class="line"></div>
   <table>
     ${taxRate > 0 ? `
-    <tr class="small">
-      <td>Sous-total:</td>
-      <td class="right">${subtotal.toFixed(0)} ${settings.currency}</td>
-    </tr>
-    <tr class="small">
-      <td>TVA (${taxRate}%):</td>
-      <td class="right">${tax.toFixed(0)} ${settings.currency}</td>
-    </tr>` : ''}
+    <tr class="small"><td>Sous-total:</td><td class="right">${subtotal.toFixed(0)} ${settings.currency}</td></tr>
+    <tr class="small"><td>TVA (${taxRate}%):</td><td class="right">${tax.toFixed(0)} ${settings.currency}</td></tr>
+    ` : ''}
     <tr class="bold" style="font-size:12px;">
       <td>TOTAL:</td>
       <td class="right">${Number(sale.total).toLocaleString()} ${settings.currency}</td>
     </tr>
   </table>
   <div class="line"></div>
-  <div class="small">
-    Paiement: ${
-      sale.paymentMethod === 'cash'   ? 'Espèces' :
-      sale.paymentMethod === 'card'   ? 'Carte'   :
-      sale.paymentMethod === 'mobile' ? 'Mobile Money' :
-      (sale.paymentMethod || 'Espèces')
-    }
-  </div>
+  <div class="small">Paiement: ${
+    sale.paymentMethod === 'cash'   ? 'Espèces' :
+    sale.paymentMethod === 'card'   ? 'Carte'   :
+    sale.paymentMethod === 'mobile' ? 'Mobile Money' :
+    (sale.paymentMethod || 'Espèces')
+  }</div>
   <div class="line"></div>
-  <div class="center small" style="margin-top:8px;">
-    ${settings.receiptFooter || 'Merci de votre visite !'}
-  </div>
+  <div class="center small" style="margin-top:8px;">${settings.receiptFooter || 'Merci de votre visite !'}</div>
 </body>
 </html>`;
 }
 
-// ─── Prévisualisation dans le modal ───────────────────────────────────────────
-
+// ── Prévisualisation dans le modal ────────────────────────────────────────────
 function generateReceiptPreview(sale, settings) {
-  const taxRate = settings.taxRate ?? 0;
-  const taxMultiplier = taxRate > 0 ? (1 + taxRate / 100) : 1;
-  const subtotal = taxRate === 0
-    ? sale.total
-    : Math.round((sale.total / taxMultiplier) * 100) / 100;
-  const tax = Math.round((sale.total - subtotal) * 100) / 100;
+  const taxRate  = settings.taxRate ?? 0;
+  const taxMult  = taxRate > 0 ? (1 + taxRate / 100) : 1;
+  const subtotal = taxRate === 0 ? sale.total : Math.round((sale.total / taxMult) * 100) / 100;
+  const tax      = Math.round((sale.total - subtotal) * 100) / 100;
 
   return `
-<div style="text-align:center;font-weight:bold;margin-bottom:8px;">
-  ${settings.companyName || 'SUPERETTE'}
-</div>
-<div style="text-align:center;margin-bottom:8px;">
-  Reçu N° ${sale.receiptNumber || sale.id.substring(0, 8)}
-</div>
-<div style="border-top:1px dashed #999;margin:8px 0;"></div>
-<div style="margin-bottom:6px;">${new Date(sale.createdAt).toLocaleString('fr-FR')}</div>
-<div style="border-top:1px dashed #999;margin:8px 0;"></div>
+<div style="text-align:center;font-weight:bold;margin-bottom:6px;">${settings.companyName || 'SUPERETTE'}</div>
+<div style="text-align:center;margin-bottom:6px;">Reçu N° ${sale.receiptNumber || sale.id.substring(0, 8)}</div>
+<div style="border-top:1px dashed #999;margin:6px 0;"></div>
+<div>${new Date(sale.createdAt).toLocaleString('fr-FR')}</div>
+<div style="border-top:1px dashed #999;margin:6px 0;"></div>
 ${(sale.items || []).map(item => `
 <div style="display:flex;justify-content:space-between;margin-bottom:2px;">
   <span>${item.productName || item.product?.name || ''}</span>
   <span>${item.quantity} × ${Number(item.unitPrice).toLocaleString()}</span>
 </div>`).join('')}
-<div style="border-top:1px dashed #999;margin:8px 0;"></div>
+<div style="border-top:1px dashed #999;margin:6px 0;"></div>
 ${taxRate > 0 ? `
 <div style="display:flex;justify-content:space-between;font-size:11px;">
   <span>Sous-total</span><span>${subtotal.toFixed(0)} ${settings.currency}</span>
@@ -382,38 +715,34 @@ ${taxRate > 0 ? `
   <span>TVA ${taxRate}%</span><span>${tax.toFixed(0)} ${settings.currency}</span>
 </div>` : ''}
 <div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:4px;">
-  <span>TOTAL</span>
-  <span>${Number(sale.total).toLocaleString()} ${settings.currency}</span>
+  <span>TOTAL</span><span>${Number(sale.total).toLocaleString()} ${settings.currency}</span>
 </div>
-<div style="border-top:1px dashed #999;margin:8px 0;"></div>
+<div style="border-top:1px dashed #999;margin:6px 0;"></div>
 <div style="text-align:center;">${settings.receiptFooter || 'Merci de votre visite !'}</div>`;
 }
 
-// ─── Texte pour partage SMS / WhatsApp ────────────────────────────────────────
-
+// ── Texte pour partage SMS / WhatsApp ────────────────────────────────────────
 function generateReceiptText(sale, settings) {
-  const taxRate = settings.taxRate ?? 0;
-  const taxMultiplier = taxRate > 0 ? (1 + taxRate / 100) : 1;
-  const subtotal = taxRate === 0
-    ? sale.total
-    : Math.round((sale.total / taxMultiplier) * 100) / 100;
-  const tax = Math.round((sale.total - subtotal) * 100) / 100;
+  const taxRate  = settings.taxRate ?? 0;
+  const taxMult  = taxRate > 0 ? (1 + taxRate / 100) : 1;
+  const subtotal = taxRate === 0 ? sale.total : Math.round((sale.total / taxMult) * 100) / 100;
+  const tax      = Math.round((sale.total - subtotal) * 100) / 100;
 
-  const lines = [
-    '━━━━━━━━━━━━━━━━━━━━',
+  return [
+    '════════════════════',
     settings.companyName || 'SUPERETTE',
-    '━━━━━━━━━━━━━━━━━━━━',
+    '════════════════════',
     '',
     `Reçu N° ${sale.receiptNumber || sale.id.substring(0, 8)}`,
     `Date: ${new Date(sale.createdAt).toLocaleString('fr-FR')}`,
     '',
-    '━━━━━━━━━━━━━━━━━━━━',
+    '════════════════════',
     ...(sale.items || []).map(item =>
       `${item.productName || item.product?.name}\n` +
       `${item.quantity} x ${Number(item.unitPrice).toLocaleString()} = ` +
       `${(item.quantity * item.unitPrice).toLocaleString()} ${settings.currency}`
     ),
-    '━━━━━━━━━━━━━━━━━━━━',
+    '════════════════════',
     ...(taxRate > 0 ? [
       `Sous-total : ${subtotal.toFixed(0)} ${settings.currency}`,
       `TVA ${taxRate}%  : ${tax.toFixed(0)} ${settings.currency}`,
@@ -427,9 +756,7 @@ function generateReceiptText(sale, settings) {
       (sale.paymentMethod || 'Espèces')
     }`,
     '',
-    '━━━━━━━━━━━━━━━━━━━━',
+    '════════════════════',
     settings.receiptFooter || 'Merci de votre visite !',
-  ];
-
-  return lines.join('\n');
+  ].join('\n');
 }
