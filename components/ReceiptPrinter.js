@@ -384,38 +384,59 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoPrint]);
 
-  // ── Tiroir-caisse seul (commande directe via imprimante) ──────────────────
-  const openCashDrawer = async () => {
-    if (!('serial' in navigator)) {
-      alert(
-        'Web Serial API non disponible.\n' +
-        'Utilisez Chrome ou Edge sur ce PC.\n' +
-        'Le tiroir est branché sur le port RJ11 de l\'imprimante thermique.\n' +
-        'Le même port COM doit être sélectionné pour l\'imprimante et le tiroir.'
-      );
-      return;
-    }
+  // ── Tiroir-caisse via API serveur (mode dialogue / LPT1 / Windows printer) ─
+  const openDrawerViaAPI = useCallback(async () => {
     try {
       setPortStatus('idle');
       setStatusMsg('Ouverture du tiroir…');
-      // Envoyer drawerPin2 puis drawerPin5 (essai des deux broches)
-      await writeToPort([...CMD.drawerPin2], baudRate);
-      // Petit délai puis essayer aussi pin 5 (certains tiroirs Haixun)
-      await new Promise(r => setTimeout(r, 200));
-      await writeToPort([...CMD.drawerPin5], baudRate);
-      setPortStatus('ok');
-      setStatusMsg('Commande tiroir envoyée ✓');
-    } catch (err) {
-      if (err.name !== 'NotFoundError') {
-        setPortStatus('error');
-        setStatusMsg(`Erreur tiroir: ${err.message}`);
-        console.error('Erreur tiroir-caisse:', err);
-        _printerPort = null;
+      const printerName = localStorage.getItem('printer_windows_name') || 'POS58';
+      const resp = await fetch('/api/printer/open-drawer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerName }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        setPortStatus('ok');
+        setStatusMsg('Tiroir ouvert ✓');
       } else {
+        setPortStatus('error');
+        setStatusMsg(`Erreur tiroir: ${data.error || 'inconnue'}`);
+        console.error('[tiroir API]', data.error);
+      }
+    } catch (err) {
+      setPortStatus('error');
+      setStatusMsg(`Erreur tiroir: ${err.message}`);
+      console.error('[tiroir API]', err);
+    }
+  }, []);
+
+  // ── Tiroir-caisse seul (port série si disponible, sinon API serveur) ───────
+  const openCashDrawer = async () => {
+    // Mode série (Web Serial API) disponible et configuré → commande ESC/POS directe
+    if ('serial' in navigator && printMode === 'serial') {
+      try {
         setPortStatus('idle');
-        setStatusMsg('Sélection annulée');
+        setStatusMsg('Ouverture du tiroir…');
+        await writeToPort([...CMD.drawerPin2], baudRate);
+        await new Promise(r => setTimeout(r, 200));
+        await writeToPort([...CMD.drawerPin5], baudRate);
+        setPortStatus('ok');
+        setStatusMsg('Commande tiroir envoyée ✓');
+        return;
+      } catch (err) {
+        if (err.name === 'NotFoundError') {
+          setPortStatus('idle');
+          setStatusMsg('Sélection annulée');
+          return;
+        }
+        // En cas d'erreur série, on bascule sur l'API
+        _printerPort = null;
+        console.warn('Port série indisponible, bascule sur API:', err.message);
       }
     }
+    // Mode dialogue ou série indisponible → API serveur (Windows WritePrinter)
+    await openDrawerViaAPI();
   };
 
   // ── Tester la connexion (imprime une ligne de test) ───────────────────────
@@ -786,8 +807,12 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
             </button>
 
             {/* Imprimer + ouvrir tiroir en même commande */}
-            {printMode === 'serial' && (
+            {printMode === 'serial' ? (
               <button onClick={() => printViaSerial(true)} style={btn('#059669')}>
+                <Printer size={18} /><Zap size={18} /> Imprimer + Ouvrir tiroir
+              </button>
+            ) : (
+              <button onClick={async () => { printViaDialog(); await openDrawerViaAPI(); }} style={btn('#059669')}>
                 <Printer size={18} /><Zap size={18} /> Imprimer + Ouvrir tiroir
               </button>
             )}
