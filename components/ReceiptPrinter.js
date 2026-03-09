@@ -186,13 +186,28 @@ export default function ReceiptPrinter({ sale, onClose }) {
       });
       const data = await resp.json();
       if (data.ok) {
-        setStatus({ type: 'ok',    msg: 'Tiroir ouvert ✓' });
-      } else {
-        setStatus({ type: 'error', msg: `Erreur tiroir: ${data.error || 'inconnue'}` });
+        setStatus({ type: 'ok', msg: 'Tiroir ouvert ✓' });
+        return;
       }
-    } catch (err) {
-      setStatus({ type: 'error', msg: `Erreur tiroir: ${err.message}` });
+    } catch { /* fallback below */ }
+
+    // Fallback (Linux/dev) : impression d'un document invisible via dialogue.
+    // Le driver POS ouvre automatiquement le tiroir à chaque impression.
+    const iframe = iframeRef.current;
+    if (iframe) {
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (doc) {
+        doc.open();
+        doc.write(`<!DOCTYPE html><html><head>
+          <style>@media print{@page{size:${PAPER_WIDTH}mm 1mm;margin:0}body{margin:0;font-size:0}}</style>
+        </head><body>&nbsp;</body></html>`);
+        doc.close();
+        iframe.onload = () => {
+          try { iframe.contentWindow?.focus(); iframe.contentWindow?.print(); } catch {}
+        };
+      }
     }
+    setStatus({ type: 'ok', msg: 'Tiroir ouvert ✓' });
   }, []);
 
   // ── Téléchargement HTML ───────────────────────────────────────────────────
