@@ -20,7 +20,7 @@ import {
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
-import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable, testDisplayFormat, testDisplayBaud } from "../lib/customerDisplay";
+import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable } from "../lib/customerDisplay";
 
 export default function POSPage() {
   const {
@@ -62,7 +62,6 @@ export default function POSPage() {
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
   const [displayTestStatus, setDisplayTestStatus] = useState(null); // null | 'testing' | 'ok' | 'err'
-  const [showDisplayDiag, setShowDisplayDiag] = useState(false);
 
   // 📺 Afficheur client — mise à jour automatique quand le panier change
   useEffect(() => {
@@ -716,115 +715,37 @@ export default function POSPage() {
     <div style={{ display: "flex", height: "calc(100vh - 70px)" }}>
       {/* Colonne gauche - Produits */}
       <div style={{ flex: 2, padding: "20px", overflow: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showDisplayDiag ? "10px" : "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <h1 style={{ margin: 0 }}>Point de Vente</h1>
           {isDisplayAvailable() && (
             <button
-              onClick={() => setShowDisplayDiag(v => !v)}
-              style={{
-                padding: "6px 14px", fontSize: "12px", fontWeight: "600",
-                borderRadius: "8px", border: "1.5px solid var(--color-border)",
-                background: showDisplayDiag ? "var(--color-primary)" : "var(--color-surface)",
-                color: showDisplayDiag ? "white" : "var(--color-text-muted)",
-                cursor: "pointer",
-              }}
-            >
-              📺 Afficheur
-            </button>
-          )}
-        </div>
-
-        {/* Panneau diagnostic afficheur */}
-        {isDisplayAvailable() && showDisplayDiag && (
-          <div style={{
-            marginBottom: "16px", padding: "12px 16px",
-            background: "var(--color-surface)", border: "1.5px solid var(--color-border)",
-            borderRadius: "10px", fontSize: "12px",
-          }}>
-            {/* Section baud rate */}
-            <div style={{ fontWeight: "700", color: "var(--color-text-muted)", marginBottom: "8px" }}>
-              ÉTAPE 1 — Tester la vitesse (baud rate) · envoie "1500\r" à chaque fois
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "14px" }}>
-              {[1200, 2400, 4800, 9600, 19200, 38400, 115200].map(baud => (
-                <button key={baud} onClick={async () => {
-                  setDisplayTestStatus('testing');
-                  try {
-                    await testDisplayBaud(baud);
-                    setDisplayTestStatus('ok_b' + baud);
-                    setTimeout(() => setDisplayTestStatus(null), 3000);
-                  } catch (e) {
-                    setDisplayTestStatus('err');
-                    setTimeout(() => setDisplayTestStatus(null), 3000);
-                  }
-                }} style={{
-                  padding: "5px 10px", fontWeight: "600", borderRadius: "6px", cursor: "pointer",
-                  border: "1.5px solid " + (displayTestStatus === 'ok_b' + baud ? "var(--color-success)" : "var(--color-border)"),
-                  background: displayTestStatus === 'ok_b' + baud ? "rgba(16,185,129,0.12)" : "var(--color-bg)",
-                  color: displayTestStatus === 'ok_b' + baud ? "var(--color-success)" : "var(--color-text-primary)",
-                }}>
-                  {baud}
-                </button>
-              ))}
-            </div>
-
-            {/* Section format */}
-            <div style={{ fontWeight: "700", color: "var(--color-text-muted)", marginBottom: "8px" }}>
-              ÉTAPE 2 — Tester le format (une fois le bon baud rate trouvé)
-            </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
-              {[
-                { mode: 0, label: '"1500"' },
-                { mode: 1, label: '"00001500"' },
-                { mode: 2, label: '"1500\\r"' },
-                { mode: 3, label: '"00001500\\r"' },
-                { mode: 4, label: 'STX "1500" ETX' },
-                { mode: 5, label: 'STX "00001500" ETX' },
-              ].map(({ mode, label }) => (
-                <button key={mode} onClick={async () => {
-                  setDisplayTestStatus('testing');
-                  try {
-                    await testDisplayFormat(1500, mode);
-                    setDisplayTestStatus('ok_f' + mode);
-                    setTimeout(() => setDisplayTestStatus(null), 2000);
-                  } catch {
-                    setDisplayTestStatus('err');
-                    setTimeout(() => setDisplayTestStatus(null), 3000);
-                  }
-                }} style={{
-                  padding: "5px 10px", fontWeight: "600", borderRadius: "6px", cursor: "pointer",
-                  border: "1.5px solid " + (displayTestStatus === 'ok_f' + mode ? "var(--color-success)" : "var(--color-border)"),
-                  background: displayTestStatus === 'ok_f' + mode ? "rgba(16,185,129,0.12)" : "var(--color-bg)",
-                  color: displayTestStatus === 'ok_f' + mode ? "var(--color-success)" : "var(--color-text-primary)",
-                }}>
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ color: "var(--color-text-muted)" }}>
-                {displayTestStatus === 'testing' && '⏳ Envoi en cours…'}
-                {displayTestStatus && displayTestStatus.startsWith('ok') && '✅ Envoyé — "1500" est-il lisible sur l\'afficheur ?'}
-                {displayTestStatus === 'err' && '❌ Erreur — le port est peut-être fermé, essaie "Changer port"'}
-                {!displayTestStatus && 'Commence par tester chaque baud rate — arrête-toi dès que 1500 s\'affiche'}
-              </span>
-              <button onClick={async () => {
+              title="Sélectionner ou rechanger le port COM de l'afficheur (COM2)"
+              onClick={async () => {
                 setDisplayTestStatus('testing');
                 try {
                   const p = await selectDisplayPort();
-                  if (p) { setDisplayTestStatus(null); } else setDisplayTestStatus(null);
-                } catch { setDisplayTestStatus('err'); setTimeout(() => setDisplayTestStatus(null), 3000); }
-              }} style={{
-                padding: "5px 10px", fontWeight: "600", borderRadius: "6px", cursor: "pointer",
-                border: "1.5px solid var(--color-primary)", background: "transparent", color: "var(--color-primary)",
-                whiteSpace: "nowrap", marginLeft: "12px",
-              }}>
-                🔌 Changer port
-              </button>
-            </div>
-          </div>
-        )}
+                  if (!p) { setDisplayTestStatus(null); return; }
+                  await displayIdle();
+                  setDisplayTestStatus('ok');
+                  setTimeout(() => setDisplayTestStatus(null), 3000);
+                } catch {
+                  setDisplayTestStatus('err');
+                  setTimeout(() => setDisplayTestStatus(null), 4000);
+                }
+              }}
+              style={{
+                padding: "6px 14px", fontSize: "12px", fontWeight: "600",
+                borderRadius: "8px",
+                border: "1.5px solid " + (displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-border)"),
+                background: displayTestStatus === 'ok' ? "rgba(16,185,129,0.1)" : displayTestStatus === 'err' ? "rgba(239,68,68,0.1)" : "var(--color-surface)",
+                color: displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-text-muted)",
+                cursor: displayTestStatus === 'testing' ? "wait" : "pointer",
+              }}
+            >
+              {displayTestStatus === 'testing' ? '⏳…' : displayTestStatus === 'ok' ? '✅ Afficheur OK' : displayTestStatus === 'err' ? '❌ Erreur' : '📺 Afficheur'}
+            </button>
+          )}
+        </div>
 
         {/* Indicateur de session — compact */}
         {!cashSession ? (
