@@ -10,8 +10,9 @@ const PRINTER_NAME = () =>
 const PAPER_WIDTH = 58;
 const COLS        = 32;
 
-// Agent local Windows (printer-agent/start.bat sur le PC de caisse)
-const AGENT_URL   = 'http://127.0.0.1:6543';
+// Routes API Next.js → PowerShell WritePrinter (mode direct, sans dialogue)
+const API_PRINT   = '/api/printer/print-escpos';
+const API_DRAWER  = '/api/printer/open-drawer';
 
 // ── Encodage Code Page 850 (latin / français) ─────────────────────────────────
 const CP850 = {
@@ -131,12 +132,12 @@ export default function ReceiptPrinter({ sale, onClose }) {
     receiptFooter: currentStore?.receiptFooter || 'Merci de votre visite !',
   };
 
-  // ── Impression directe via agent Windows ─────────────────────────────────
+  // ── Impression directe via API Next.js (PowerShell WritePrinter) ──────────
   const print = useCallback(async (alsoOpenDrawer = false) => {
     setStatus({ type: 'idle', msg: 'Impression en cours…' });
     try {
       const bytes = buildESCPOS(sale, settings, alsoOpenDrawer);
-      const resp  = await fetch(`${AGENT_URL}/print`, {
+      const resp  = await fetch(API_PRINT, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ printerName: PRINTER_NAME(), bytes }),
@@ -145,10 +146,10 @@ export default function ReceiptPrinter({ sale, onClose }) {
       if (data.ok) {
         setStatus({ type: 'ok', msg: 'Ticket imprimé ✓' + (alsoOpenDrawer ? ' + tiroir ouvert ✓' : '') });
       } else {
-        setStatus({ type: 'error', msg: `Erreur: ${data.error || 'inconnue'}` });
+        setStatus({ type: 'error', msg: `Erreur impression: ${data.error || 'inconnue'}` });
       }
     } catch (err) {
-      setStatus({ type: 'error', msg: `Agent introuvable — démarrez printer-agent/start.bat (${err.message})` });
+      setStatus({ type: 'error', msg: `Erreur impression: ${err.message}` });
     }
   }, [sale, settings]);
 
@@ -156,7 +157,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
   const openDrawer = useCallback(async () => {
     setStatus({ type: 'idle', msg: 'Ouverture du tiroir…' });
     try {
-      const resp = await fetch(`${AGENT_URL}/drawer`, {
+      const resp = await fetch(API_DRAWER, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ printerName: PRINTER_NAME() }),
@@ -168,7 +169,7 @@ export default function ReceiptPrinter({ sale, onClose }) {
         setStatus({ type: 'error', msg: `Erreur tiroir: ${data.error || 'inconnue'}` });
       }
     } catch (err) {
-      setStatus({ type: 'error', msg: `Agent introuvable — démarrez printer-agent/start.bat` });
+      setStatus({ type: 'error', msg: `Erreur tiroir: ${err.message}` });
     }
   }, []);
 

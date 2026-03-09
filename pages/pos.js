@@ -20,7 +20,7 @@ import {
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
-import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable } from "../lib/customerDisplay";
+import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange } from "../lib/customerDisplay";
 
 export default function POSPage() {
   const {
@@ -61,7 +61,6 @@ export default function POSPage() {
 
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
-  const [displayTestStatus, setDisplayTestStatus] = useState(null); // null | 'testing' | 'ok' | 'err'
 
   // 📺 Afficheur client — mise à jour automatique quand le panier change
   useEffect(() => {
@@ -717,34 +716,6 @@ export default function POSPage() {
       <div style={{ flex: 2, padding: "20px", overflow: "auto" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
           <h1 style={{ margin: 0 }}>Point de Vente</h1>
-          {isDisplayAvailable() && (
-            <button
-              title="Sélectionner ou rechanger le port COM de l'afficheur (COM2)"
-              onClick={async () => {
-                setDisplayTestStatus('testing');
-                try {
-                  const p = await selectDisplayPort();
-                  if (!p) { setDisplayTestStatus(null); return; }
-                  await displayIdle();
-                  setDisplayTestStatus('ok');
-                  setTimeout(() => setDisplayTestStatus(null), 3000);
-                } catch {
-                  setDisplayTestStatus('err');
-                  setTimeout(() => setDisplayTestStatus(null), 4000);
-                }
-              }}
-              style={{
-                padding: "6px 14px", fontSize: "12px", fontWeight: "600",
-                borderRadius: "8px",
-                border: "1.5px solid " + (displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-border)"),
-                background: displayTestStatus === 'ok' ? "rgba(16,185,129,0.1)" : displayTestStatus === 'err' ? "rgba(239,68,68,0.1)" : "var(--color-surface)",
-                color: displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-text-muted)",
-                cursor: displayTestStatus === 'testing' ? "wait" : "pointer",
-              }}
-            >
-              {displayTestStatus === 'testing' ? '⏳…' : displayTestStatus === 'ok' ? '✅ Afficheur OK' : displayTestStatus === 'err' ? '❌ Erreur' : '📺 Afficheur'}
-            </button>
-          )}
         </div>
 
         {/* Indicateur de session — compact */}
