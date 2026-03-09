@@ -20,6 +20,7 @@ import {
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
+import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange } from "../lib/customerDisplay";
 
 export default function POSPage() {
   const {
@@ -60,6 +61,18 @@ export default function POSPage() {
 
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
+
+  // 📺 Afficheur client — mise à jour automatique quand le panier change
+  useEffect(() => {
+    if (cart.length === 0) {
+      displayIdle(currentStore?.name || 'SUPERETTE').catch(() => {});
+    } else {
+      const units = cart.reduce((s, i) => s + i.quantity, 0);
+      const total = cart.reduce((s, i) => s + i.sellingPrice * i.quantity, 0);
+      displayTotal(units, total, currentStore?.currency || 'FCFA').catch(() => {});
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cart]);
 
   const getTopProducts = () => {
     const productSales = {};
@@ -193,6 +206,9 @@ export default function POSPage() {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
 
+    // 📺 Afficheur : nom du produit + prix unitaire
+    displayItem(product.name, product.sellingPrice, currentStore?.currency || 'FCFA').catch(() => {});
+
     // Toast removed for better fluidity
     const button = document.getElementById(`product-${product.id}`);
     if (button) {
@@ -291,6 +307,13 @@ export default function POSPage() {
     setLastSale(optimisticSale);
     setShowReceipt(true);
     addSaleOptimistic(optimisticSale); // Ajouter à l'historique local
+
+    // 📺 Afficheur client : monnaie à rendre ou remerciement
+    if (saleData.change > 0) {
+      displayChange(saleData.change, currentStore?.currency || 'FCFA').catch(() => {});
+    } else {
+      displayThankYou(saleData.total, currentStore?.currency || 'FCFA').catch(() => {});
+    }
 
     // 🚀 OPTIMISTIC UI - Mettre à jour les stocks immédiatement
     const stockUpdates = cart.map((item) => ({
