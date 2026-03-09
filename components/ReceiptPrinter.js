@@ -258,7 +258,7 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
 
   const [baudRate,    setBaudRate]    = useState(cfg.baudRate);
   const [paperWidth,  setPaperWidth]  = useState(cfg.paperWidth);
-  const [printMode,   setPrintMode]   = useState(cfg.printMode); // 'serial' | 'dialog'
+  const [printMode,   setPrintMode]   = useState(cfg.printMode); // 'serial' | 'dialog' | 'windows'
   const [portStatus,  setPortStatus]  = useState('idle');        // 'idle' | 'ok' | 'error'
   const [showSettings, setShowSettings] = useState(false);
   const [statusMsg,   setStatusMsg]   = useState('');
@@ -362,9 +362,41 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     };
   }, [sale, settings, paperWidth]);
 
+  // ── Impression ESC/POS via API Windows (mode 'windows' — WritePrinter) ───
+  const printViaWindowsESCPOS = useCallback(async (alsoOpenDrawer = true) => {
+    try {
+      setPortStatus('idle');
+      setStatusMsg('Envoi ESC/POS à l\'imprimante Windows…');
+      const printerName = localStorage.getItem('printer_windows_name') || 'POS58';
+      const bytes = buildESCPOS(sale, settings, cols, alsoOpenDrawer);
+      const resp = await fetch('/api/printer/print-escpos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ printerName, bytes }),
+      });
+      const data = await resp.json();
+      if (data.ok) {
+        setPortStatus('ok');
+        setStatusMsg('Ticket imprimé ✓' + (alsoOpenDrawer ? ' + tiroir ouvert ✓' : ''));
+        return true;
+      } else {
+        setPortStatus('error');
+        setStatusMsg(`Erreur impression: ${data.error || 'inconnue'}`);
+        console.error('[print-escpos]', data.error);
+        return false;
+      }
+    } catch (err) {
+      setPortStatus('error');
+      setStatusMsg(`Erreur impression: ${err.message}`);
+      console.error('[print-escpos]', err);
+      return false;
+    }
+  }, [sale, settings, cols]);
+
   // ── Bouton "Imprimer" : choisit la méthode selon printMode ───────────────
   const handlePrint = () => {
-    if (printMode === 'serial') printViaSerial(false); // coupe sans tiroir
+    if (printMode === 'serial')  printViaSerial(false);
+    else if (printMode === 'windows') printViaWindowsESCPOS(false);
     else printViaDialog();
   };
 
@@ -373,9 +405,11 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     if (!autoPrint) return;
     const timer = setTimeout(async () => {
       if (printMode === 'serial') {
-        // Tenter en silencieux (port déjà accordé)
         const ok = await printViaSerial(false);
-        if (!ok) printViaDialog(); // fallback si port non configuré
+        if (!ok) printViaDialog();
+      } else if (printMode === 'windows') {
+        const ok = await printViaWindowsESCPOS(false);
+        if (!ok) printViaDialog();
       } else {
         printViaDialog();
       }
@@ -651,28 +685,39 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
 
               {/* Mode d'impression — toujours visible */}
               <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Mode d'impression</label>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '14px' }}>
+                <button
+                  onClick={() => setPrintMode('windows')}
+                  style={{
+                    padding: '9px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                    background: printMode === 'windows' ? '#059669' : 'transparent',
+                    color: printMode === 'windows' ? 'white' : 'var(--color-text)',
+                    border: '2px solid #059669', textAlign: 'left',
+                  }}
+                >
+                  🖨️ ESC/POS via imprimante Windows ★ <span style={{ fontSize: '10px', opacity: 0.85 }}>(recommandé — LPT1/USB, tiroir inclus)</span>
+                </button>
                 <button
                   onClick={() => setPrintMode('dialog')}
                   style={{
-                    flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                    padding: '9px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
                     background: printMode === 'dialog' ? '#3b82f6' : 'transparent',
                     color: printMode === 'dialog' ? 'white' : 'var(--color-text)',
-                    border: '2px solid #3b82f6',
+                    border: '2px solid #3b82f6', textAlign: 'left',
                   }}
                 >
-                  Dialogue Windows ★
+                  🗔 Dialogue Windows <span style={{ fontSize: '10px', opacity: 0.85 }}>(impression HTML, tiroir séparé)</span>
                 </button>
                 <button
                   onClick={() => setPrintMode('serial')}
                   style={{
-                    flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                    padding: '9px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
                     background: printMode === 'serial' ? '#6b7280' : 'transparent',
                     color: printMode === 'serial' ? 'white' : 'var(--color-text)',
-                    border: '2px solid #6b7280',
+                    border: '2px solid #6b7280', textAlign: 'left',
                   }}
                 >
-                  ESC/POS Série
+                  📡 ESC/POS port série <span style={{ fontSize: '10px', opacity: 0.85 }}>(COM1/COM2 via Web Serial)</span>
                 </button>
               </div>
 
@@ -685,11 +730,11 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
                 <option value={80}>80 mm (grand format)</option>
               </select>
 
-              {/* ── Options spécifiques au mode DIALOGUE ── */}
-              {printMode === 'dialog' && (
+              {/* ── Options communes aux modes WINDOWS et DIALOGUE ── */}
+              {(printMode === 'windows' || printMode === 'dialog') && (
                 <>
                   <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>
-                    Nom de l'imprimante Windows (pour le tiroir)
+                    Nom de l'imprimante Windows
                   </label>
                   <input
                     type="text"
@@ -699,13 +744,22 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
                         localStorage.setItem('printer_windows_name', e.target.value.trim() || 'POS58');
                     }}
                     placeholder="POS58"
-                    style={{ ...selectStyle, marginBottom: '12px', width: '100%' }}
+                    style={{ ...selectStyle, marginBottom: '10px', width: '100%' }}
                   />
-                  <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: '1.6', background: '#eff6ff', padding: '8px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
-                    <strong>Mode Dialogue Windows actif</strong><br />
-                    L'impression passe par le dialogue Windows (Ctrl+P).<br />
-                    Le tiroir-caisse s'ouvre via l'API serveur → l'imprimante doit être installée dans Windows sous le nom indiqué ci-dessus.
-                  </div>
+                  {printMode === 'windows' && (
+                    <div style={{ fontSize: '11px', color: '#065f46', lineHeight: '1.6', background: '#d1fae5', padding: '8px', borderRadius: '6px', border: '1px solid #6ee7b7', marginBottom: '4px' }}>
+                      <strong>Mode ESC/POS Windows actif</strong><br />
+                      Les commandes ESC/POS sont envoyées directement à l'imprimante Windows (LPT1/USB) via l'API serveur.<br />
+                      Formatage thermique natif, coupe-papier et tiroir-caisse inclus dans le même envoi.
+                    </div>
+                  )}
+                  {printMode === 'dialog' && (
+                    <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: '1.6', background: '#eff6ff', padding: '8px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                      <strong>Mode Dialogue Windows actif</strong><br />
+                      L'impression passe par le dialogue Windows (Ctrl+P) — format HTML.<br />
+                      Le tiroir s'ouvre via l'API serveur avec le nom d'imprimante ci-dessus.
+                    </div>
+                  )}
                 </>
               )}
 
@@ -816,10 +870,12 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
             {/* Bouton d'impression (principal) */}
             <button onClick={handlePrint} style={btn('#3b82f6')}>
               <Printer size={20} />
-              {printMode === 'serial' ? 'Imprimer via ESC/POS (port série)' : 'Imprimer (dialogue Windows)'}
+              {printMode === 'serial'  ? 'Imprimer ESC/POS (port série)'  :
+               printMode === 'windows' ? 'Imprimer ESC/POS (Windows/LPT1)' :
+                                         'Imprimer (dialogue Windows)'}
             </button>
 
-            {/* Tiroir-caisse — via le port de l'imprimante */}
+            {/* Tiroir-caisse seul */}
             <button onClick={openCashDrawer} style={btn('#f59e0b')}>
               <Zap size={20} /> Ouvrir le tiroir-caisse
             </button>
@@ -827,6 +883,10 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
             {/* Imprimer + ouvrir tiroir en même commande */}
             {printMode === 'serial' ? (
               <button onClick={() => printViaSerial(true)} style={btn('#059669')}>
+                <Printer size={18} /><Zap size={18} /> Imprimer + Ouvrir tiroir
+              </button>
+            ) : printMode === 'windows' ? (
+              <button onClick={() => printViaWindowsESCPOS(true)} style={btn('#059669')}>
                 <Printer size={18} /><Zap size={18} /> Imprimer + Ouvrir tiroir
               </button>
             ) : (
