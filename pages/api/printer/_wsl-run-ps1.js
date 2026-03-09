@@ -1,42 +1,69 @@
 /**
- * Lance un script PowerShell depuis WSL (ou Linux + powershell.exe disponible).
+ * Lance un script PowerShell de façon compatible avec les trois environnements :
  *
- * WSL expose powershell.exe mais :
- *  - la commande est  powershell.exe  (pas  powershell)
- *  - le fichier .ps1 doit être dans un chemin Windows ; on utilise
- *    C:\Windows\Temp\ (accessible en WSL via /mnt/c/Windows/Temp/)
- *  - le chemin Linux est converti en chemin Windows avec `wslpath -w`
+ *  ┌─────────────┬──────────────────────────────────────────────────────────┐
+ *  │ Windows     │ powershell.exe, tmpdir() donne déjà un chemin Windows   │
+ *  │ WSL         │ powershell.exe, /mnt/c/Windows/Temp + wslpath -w        │
+ *  │ Linux natif │ erreur explicite (pas de PowerShell disponible)          │
+ *  └─────────────┴──────────────────────────────────────────────────────────┘
  */
-import { execSync } from 'child_process';
-import { writeFileSync, unlinkSync, existsSync, mkdirSync } from 'fs';
-import { join } from 'path';
+import { execSync }                  from 'child_process';
+import { writeFileSync, unlinkSync } from 'fs';
+import { join }                      from 'path';
+import { tmpdir }                    from 'os';
 
-// Répertoire Windows Temp accessible depuis WSL
-const WIN_TEMP_LINUX = '/mnt/c/Windows/Temp';
+function detectEnv() {
+  if (process.platform === 'win32') return 'windows';
+  try {
+    const v = require('fs').readFileSync('/proc/version', 'utf8').toLowerCase();
+    if (v.includes('microsoft') || v.includes('wsl')) return 'wsl';
+  } catch { /* ignore */ }
+  return 'linux';
+}
 
 export function runPS1(psContent, filePrefix = 'ps_') {
-  const fileName  = `${filePrefix}${Date.now()}.ps1`;
-  const linuxPath = join(WIN_TEMP_LINUX, fileName);
+  const env = detectEnv();
 
-  // S'assurer que le répertoire existe (montage WSL)
-  if (!existsSync(WIN_TEMP_LINUX)) {
+  if (env === 'linux') {
     throw new Error(
-      'Impossible d\'accéder à /mnt/c/Windows/Temp — ' +
-      'vérifiez que WSL est bien configuré et que le lecteur C: est monté.'
+      'PowerShell non disponible sur ce système Linux. ' +
+      'Cette fonctionnalité requiert Windows ou WSL. ' +
+      'En mode développement Linux, utilisez le mode "Dialogue Windows" ou "Port série".'
     );
   }
-  mkdirSync(WIN_TEMP_LINUX, { recursive: true }); // no-op si déjà existant
 
+  const fileName = `${filePrefix}${Date.now()}.ps1`;
+
+  if (env === 'windows') {
+    // Windows natif : tmpdir() renvoie déjà un chemin Windows (ex. C:\Windows\Temp)
+    const psFile = join(tmpdir(), fileName);
+    writeFileSync(psFile, psContent, 'utf8');
+    try {
+      return execSync(
+        `powershell.exe -NonInteractive -ExecutionPolicy Bypass -File "${psFile}"`,
+        { timeout: 15000, encoding: 'utf8' }
+      );
+    } finally {
+      try { unlinkSync(psFile); } catch { /* ignore */ }
+    }
+  }
+
+  // WSL : écrire dans /mnt/c/Windows/Temp, convertir le chemin avec wslpath
+  const WSL_TEMP = '/mnt/c/Windows/Temp';
+  const linuxPath = join(WSL_TEMP, fileName);
+  if (!require('fs').existsSync('/mnt/c')) {
+    throw new Error(
+      'WSL détecté mais le lecteur C: n\'est pas monté sur /mnt/c. ' +
+      'Vérifiez /etc/wsl.conf ou montez le disque manuellement.'
+    );
+  }
   writeFileSync(linuxPath, psContent, 'utf8');
-
   let winPath;
   try {
     winPath = execSync(`wslpath -w "${linuxPath}"`, { encoding: 'utf8' }).trim();
   } catch {
-    // Si wslpath n'est pas disponible (environnement non-WSL), utiliser le chemin tel quel
-    winPath = linuxPath;
+    winPath = `C:\\Windows\\Temp\\${fileName}`;
   }
-
   try {
     return execSync(
       `powershell.exe -NonInteractive -ExecutionPolicy Bypass -File "${winPath}"`,
