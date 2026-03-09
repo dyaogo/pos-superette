@@ -11,11 +11,11 @@ let _printerPort = null;
 
 // Récupère la config sauvegardée (localStorage côté client uniquement)
 function getSavedConfig() {
-  if (typeof window === 'undefined') return { baudRate: 9600, paperWidth: 58, printMode: 'serial' };
+  if (typeof window === 'undefined') return { baudRate: 9600, paperWidth: 58, printMode: 'dialog' };
   return {
     baudRate:   parseInt(localStorage.getItem('printer_baud_rate')  || '9600', 10),
     paperWidth: parseInt(localStorage.getItem('printer_paper_width') || '58',   10),
-    printMode:  localStorage.getItem('printer_print_mode') || 'serial',
+    printMode:  localStorage.getItem('printer_print_mode') || 'dialog',
   };
 }
 
@@ -646,68 +646,37 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
               fontSize: '13px',
             }}>
               <div style={{ fontWeight: '700', marginBottom: '10px', color: '#3b82f6' }}>
-                ⚙️ Configuration imprimante (Haixun HX-K60)
+                ⚙️ Configuration imprimante
               </div>
 
-              {/* Port actuel */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px',
-                padding: '8px 10px', borderRadius: '8px',
-                background: portName ? '#d1fae5' : '#fef3c7',
-                border: `1px solid ${portName ? '#6ee7b7' : '#fcd34d'}`,
-              }}>
-                <span style={{ fontSize: '16px' }}>{portName ? '🟢' : '🔴'}</span>
-                <div style={{ flex: 1, fontSize: '12px' }}>
-                  <div style={{ fontWeight: '700' }}>Port imprimante</div>
-                  <div style={{ color: '#6b7280' }}>{portName || 'Non configuré — cliquer "Sélectionner le port"'}</div>
-                </div>
-              </div>
-              <button onClick={handleSelectPort} style={{
-                width: '100%', padding: '9px', borderRadius: '8px',
-                background: '#3b82f6', color: 'white', border: 'none',
-                cursor: 'pointer', fontWeight: '700', fontSize: '13px', marginBottom: '12px',
-              }}>
-                {portName ? '🔄 Changer de port' : '🔌 Sélectionner le port imprimante'}
-              </button>
-
-              {/* Mode d'impression */}
-              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600' }}>Mode d'impression</label>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
-                <button
-                  onClick={() => setPrintMode('serial')}
-                  style={{
-                    flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
-                    background: printMode === 'serial' ? '#3b82f6' : 'transparent',
-                    color: printMode === 'serial' ? 'white' : 'var(--color-text)',
-                    border: '2px solid #3b82f6',
-                  }}
-                >
-                  ESC/POS Serial ★
-                </button>
+              {/* Mode d'impression — toujours visible */}
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Mode d'impression</label>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
                 <button
                   onClick={() => setPrintMode('dialog')}
                   style={{
                     flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
-                    background: printMode === 'dialog' ? '#6b7280' : 'transparent',
+                    background: printMode === 'dialog' ? '#3b82f6' : 'transparent',
                     color: printMode === 'dialog' ? 'white' : 'var(--color-text)',
+                    border: '2px solid #3b82f6',
+                  }}
+                >
+                  Dialogue Windows ★
+                </button>
+                <button
+                  onClick={() => setPrintMode('serial')}
+                  style={{
+                    flex: 1, padding: '8px', borderRadius: '8px', cursor: 'pointer', fontSize: '12px', fontWeight: '600',
+                    background: printMode === 'serial' ? '#6b7280' : 'transparent',
+                    color: printMode === 'serial' ? 'white' : 'var(--color-text)',
                     border: '2px solid #6b7280',
                   }}
                 >
-                  Dialogue Windows
+                  ESC/POS Série
                 </button>
               </div>
 
-              {/* Vitesse baud */}
-              <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>
-                Vitesse (baud rate)
-              </label>
-              <select value={baudRate} onChange={e => setBaudRate(Number(e.target.value))} style={{ ...selectStyle, marginBottom: '10px', width: '100%' }}>
-                {[9600, 19200, 38400, 57600, 115200].map(r => (
-                  <option key={r} value={r}>{r} baud{r === 9600 ? ' (défaut)' : ''}</option>
-                ))}
-              </select>
-
-              {/* Largeur papier */}
+              {/* Largeur papier — toujours visible */}
               <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>
                 Largeur du papier
               </label>
@@ -716,49 +685,98 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
                 <option value={80}>80 mm (grand format)</option>
               </select>
 
-              {/* Boutons diagnostic */}
-              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Diagnostic</label>
-              <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
-                <button onClick={testConnection} style={{
-                  flex: 1, padding: '8px', borderRadius: '8px', background: '#8b5cf6',
-                  color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
-                }}>
-                  Test ESC/POS
-                </button>
-                <button onClick={rawTest} style={{
-                  flex: 1, padding: '8px', borderRadius: '8px', background: '#0891b2',
-                  color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
-                }}>
-                  Test texte brut
-                </button>
-              </div>
-              <button
-                onClick={scanBaudRate}
-                disabled={scanning}
-                style={{
-                  width: '100%', padding: '8px', borderRadius: '8px', marginBottom: '6px',
-                  background: scanning ? '#6b7280' : '#f59e0b',
-                  color: 'white', border: 'none', cursor: scanning ? 'wait' : 'pointer',
-                  fontWeight: '600', fontSize: '12px',
-                }}
-              >
-                {scanning ? '⏳ Scan en cours…' : '🔍 Scanner le baud rate (9600→19200→38400→115200)'}
-              </button>
-              <button onClick={disconnectPort} style={{
-                width: '100%', padding: '7px', borderRadius: '8px', background: 'transparent',
-                color: '#ef4444', border: '2px solid #ef4444', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
-              }}>
-                Déconnecter / Réinitialiser
-              </button>
+              {/* ── Options spécifiques au mode DIALOGUE ── */}
+              {printMode === 'dialog' && (
+                <>
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>
+                    Nom de l'imprimante Windows (pour le tiroir)
+                  </label>
+                  <input
+                    type="text"
+                    defaultValue={typeof window !== 'undefined' ? (localStorage.getItem('printer_windows_name') || 'POS58') : 'POS58'}
+                    onBlur={e => {
+                      if (typeof window !== 'undefined')
+                        localStorage.setItem('printer_windows_name', e.target.value.trim() || 'POS58');
+                    }}
+                    placeholder="POS58"
+                    style={{ ...selectStyle, marginBottom: '12px', width: '100%' }}
+                  />
+                  <div style={{ fontSize: '11px', color: '#6b7280', lineHeight: '1.6', background: '#eff6ff', padding: '8px', borderRadius: '6px', border: '1px solid #bfdbfe' }}>
+                    <strong>Mode Dialogue Windows actif</strong><br />
+                    L'impression passe par le dialogue Windows (Ctrl+P).<br />
+                    Le tiroir-caisse s'ouvre via l'API serveur → l'imprimante doit être installée dans Windows sous le nom indiqué ci-dessus.
+                  </div>
+                </>
+              )}
 
-              {/* Aide contextuelle */}
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280', lineHeight: '1.6', background: '#fffbeb', padding: '8px', borderRadius: '6px', border: '1px solid #fcd34d' }}>
-                <strong>Guide dépannage COM1/COM2 :</strong><br />
-                1. Sélectionner le port → choisir <strong>COM1</strong><br />
-                2. Cliquer <strong>"Test texte brut"</strong> → si rien ne s'imprime → essayer <strong>COM2</strong><br />
-                3. Si un texte illisible s'imprime → cliquer <strong>"Scanner le baud rate"</strong><br />
-                4. Si RIEN ne s'imprime sur aucun port → l'imprimante est probablement <strong>USB Printer</strong> (non-série) → utiliser le <strong>Mode Dialogue Windows</strong> à la place
-              </div>
+              {/* ── Options spécifiques au mode SÉRIE ── */}
+              {printMode === 'serial' && (
+                <>
+                  {/* Port actuel */}
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px',
+                    padding: '8px 10px', borderRadius: '8px',
+                    background: portName ? '#d1fae5' : '#fef3c7',
+                    border: `1px solid ${portName ? '#6ee7b7' : '#fcd34d'}`,
+                  }}>
+                    <span style={{ fontSize: '16px' }}>{portName ? '🟢' : '🔴'}</span>
+                    <div style={{ flex: 1, fontSize: '12px' }}>
+                      <div style={{ fontWeight: '700' }}>Port COM</div>
+                      <div style={{ color: '#6b7280' }}>{portName || 'Non configuré'}</div>
+                    </div>
+                  </div>
+                  <button onClick={handleSelectPort} style={{
+                    width: '100%', padding: '9px', borderRadius: '8px',
+                    background: '#3b82f6', color: 'white', border: 'none',
+                    cursor: 'pointer', fontWeight: '700', fontSize: '13px', marginBottom: '10px',
+                  }}>
+                    {portName ? '🔄 Changer de port' : '🔌 Sélectionner le port COM'}
+                  </button>
+
+                  {/* Vitesse baud */}
+                  <label style={{ display: 'block', marginBottom: '4px', fontWeight: '600' }}>Vitesse (baud rate)</label>
+                  <select value={baudRate} onChange={e => setBaudRate(Number(e.target.value))} style={{ ...selectStyle, marginBottom: '10px', width: '100%' }}>
+                    {[9600, 19200, 38400, 57600, 115200].map(r => (
+                      <option key={r} value={r}>{r} baud{r === 9600 ? ' (défaut)' : ''}</option>
+                    ))}
+                  </select>
+
+                  {/* Boutons diagnostic */}
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Diagnostic</label>
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
+                    <button onClick={testConnection} style={{
+                      flex: 1, padding: '8px', borderRadius: '8px', background: '#8b5cf6',
+                      color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
+                    }}>
+                      Test ESC/POS
+                    </button>
+                    <button onClick={rawTest} style={{
+                      flex: 1, padding: '8px', borderRadius: '8px', background: '#0891b2',
+                      color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
+                    }}>
+                      Test texte brut
+                    </button>
+                  </div>
+                  <button
+                    onClick={scanBaudRate}
+                    disabled={scanning}
+                    style={{
+                      width: '100%', padding: '8px', borderRadius: '8px', marginBottom: '6px',
+                      background: scanning ? '#6b7280' : '#f59e0b',
+                      color: 'white', border: 'none', cursor: scanning ? 'wait' : 'pointer',
+                      fontWeight: '600', fontSize: '12px',
+                    }}
+                  >
+                    {scanning ? '⏳ Scan en cours…' : '🔍 Scanner le baud rate'}
+                  </button>
+                  <button onClick={disconnectPort} style={{
+                    width: '100%', padding: '7px', borderRadius: '8px', background: 'transparent',
+                    color: '#ef4444', border: '2px solid #ef4444', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
+                  }}>
+                    Déconnecter / Réinitialiser
+                  </button>
+                </>
+              )}
             </div>
           )}
 
