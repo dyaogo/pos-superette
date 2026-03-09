@@ -20,7 +20,7 @@ import {
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
-import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable } from "../lib/customerDisplay";
+import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange, selectDisplayPort, isDisplayAvailable, testDisplayFormat } from "../lib/customerDisplay";
 
 export default function POSPage() {
   const {
@@ -62,6 +62,7 @@ export default function POSPage() {
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
   const [displayTestStatus, setDisplayTestStatus] = useState(null); // null | 'testing' | 'ok' | 'err'
+  const [showDisplayDiag, setShowDisplayDiag] = useState(false);
 
   // 📺 Afficheur client — mise à jour automatique quand le panier change
   useEffect(() => {
@@ -715,41 +716,95 @@ export default function POSPage() {
     <div style={{ display: "flex", height: "calc(100vh - 70px)" }}>
       {/* Colonne gauche - Produits */}
       <div style={{ flex: 2, padding: "20px", overflow: "auto" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: showDisplayDiag ? "10px" : "20px" }}>
           <h1 style={{ margin: 0 }}>Point de Vente</h1>
           {isDisplayAvailable() && (
             <button
-              title="Sélectionner le port de l'afficheur client et envoyer un message de test"
-              onClick={async () => {
-                setDisplayTestStatus('testing');
-                try {
-                  const portName = await selectDisplayPort();
-                  if (!portName) { setDisplayTestStatus(null); return; }
-                  await displayIdle(currentStore?.name || 'SUPERETTE');
-                  setDisplayTestStatus('ok');
-                  setTimeout(() => setDisplayTestStatus(null), 3000);
-                } catch (e) {
-                  console.error('Afficheur test:', e);
-                  setDisplayTestStatus('err');
-                  setTimeout(() => setDisplayTestStatus(null), 4000);
-                }
-              }}
+              onClick={() => setShowDisplayDiag(v => !v)}
               style={{
-                padding: "6px 14px",
-                fontSize: "12px",
-                fontWeight: "600",
-                borderRadius: "8px",
-                border: "1.5px solid " + (displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-border)"),
-                background: displayTestStatus === 'ok' ? "rgba(16,185,129,0.1)" : displayTestStatus === 'err' ? "rgba(239,68,68,0.1)" : "var(--color-surface)",
-                color: displayTestStatus === 'ok' ? "var(--color-success)" : displayTestStatus === 'err' ? "var(--color-danger)" : "var(--color-text-muted)",
-                cursor: displayTestStatus === 'testing' ? "wait" : "pointer",
-                transition: "all 0.2s",
+                padding: "6px 14px", fontSize: "12px", fontWeight: "600",
+                borderRadius: "8px", border: "1.5px solid var(--color-border)",
+                background: showDisplayDiag ? "var(--color-primary)" : "var(--color-surface)",
+                color: showDisplayDiag ? "white" : "var(--color-text-muted)",
+                cursor: "pointer",
               }}
             >
-              {displayTestStatus === 'testing' ? '⏳ Connexion…' : displayTestStatus === 'ok' ? '✅ Afficheur OK' : displayTestStatus === 'err' ? '❌ Échec' : '📺 Tester l\'afficheur'}
+              📺 Afficheur
             </button>
           )}
         </div>
+
+        {/* Panneau diagnostic afficheur */}
+        {isDisplayAvailable() && showDisplayDiag && (
+          <div style={{
+            marginBottom: "16px", padding: "12px 16px",
+            background: "var(--color-surface)", border: "1.5px solid var(--color-border)",
+            borderRadius: "10px",
+          }}>
+            <div style={{ fontSize: "12px", fontWeight: "700", color: "var(--color-text-muted)", marginBottom: "10px" }}>
+              DIAGNOSTIC AFFICHEUR — envoyer 1500 en différents formats
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+              {[
+                { mode: 0, label: '0 — "1500"' },
+                { mode: 1, label: '1 — "00001500"' },
+                { mode: 2, label: '2 — "1500\\r"' },
+                { mode: 3, label: '3 — "00001500\\r"' },
+                { mode: 4, label: '4 — STX "1500" ETX' },
+                { mode: 5, label: '5 — STX "00001500" ETX' },
+              ].map(({ mode, label }) => (
+                <button
+                  key={mode}
+                  onClick={async () => {
+                    setDisplayTestStatus('testing');
+                    try {
+                      await testDisplayFormat(1500, mode);
+                      setDisplayTestStatus('ok_' + mode);
+                      setTimeout(() => setDisplayTestStatus(null), 2000);
+                    } catch (e) {
+                      setDisplayTestStatus('err');
+                      setTimeout(() => setDisplayTestStatus(null), 3000);
+                    }
+                  }}
+                  style={{
+                    padding: "5px 10px", fontSize: "11px", fontWeight: "600",
+                    borderRadius: "6px", cursor: "pointer",
+                    border: "1.5px solid " + (displayTestStatus === 'ok_' + mode ? "var(--color-success)" : "var(--color-border)"),
+                    background: displayTestStatus === 'ok_' + mode ? "rgba(16,185,129,0.12)" : "var(--color-bg)",
+                    color: displayTestStatus === 'ok_' + mode ? "var(--color-success)" : "var(--color-text-primary)",
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                onClick={async () => {
+                  setDisplayTestStatus('testing');
+                  try {
+                    const p = await selectDisplayPort();
+                    if (p) { setDisplayTestStatus('ok'); setTimeout(() => setDisplayTestStatus(null), 2000); }
+                    else setDisplayTestStatus(null);
+                  } catch { setDisplayTestStatus('err'); setTimeout(() => setDisplayTestStatus(null), 3000); }
+                }}
+                style={{
+                  padding: "5px 10px", fontSize: "11px", fontWeight: "600",
+                  borderRadius: "6px", cursor: "pointer",
+                  border: "1.5px solid var(--color-primary)",
+                  background: "transparent", color: "var(--color-primary)",
+                  marginLeft: "auto",
+                }}
+              >
+                🔌 Changer port
+              </button>
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "8px" }}>
+              {displayTestStatus === 'testing' && '⏳ Envoi…'}
+              {displayTestStatus && displayTestStatus.startsWith('ok') && '✅ Envoyé — regarde l\'afficheur, est-ce que 1500 est lisible ?'}
+              {displayTestStatus === 'err' && '❌ Erreur — vérifie le port COM2'}
+              {!displayTestStatus && 'Clique sur un format → si 1500 s\'affiche lisiblement, c\'est le bon !'}
+            </div>
+          </div>
+        )}
 
         {/* Indicateur de session — compact */}
         {!cashSession ? (
