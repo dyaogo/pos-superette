@@ -66,6 +66,15 @@ function clearSavedPort() {
   localStorage.removeItem('printer_port_info');
 }
 
+// Paramètres série standard pour imprimantes thermiques (8N1)
+const SERIAL_PARAMS = (baudRate) => ({
+  baudRate,
+  dataBits: 8,
+  stopBits: 1,
+  parity: 'none',
+  flowControl: 'none',
+});
+
 async function ensurePortOpen(baudRate) {
   // Port déjà ouvert dans cette session et fonctionnel ?
   if (_printerPort) {
@@ -77,17 +86,16 @@ async function ensurePortOpen(baudRate) {
 
   // Essayer de retrouver le port EXPLICITEMENT sauvegardé
   const savedInfo = getSavedPortInfo();
-  if (savedInfo) {
+  if (savedInfo && savedInfo.usbVendorId != null) {
+    // Port USB-Série identifiable par vendorId/productId
     const granted = await navigator.serial.getPorts();
     for (const port of granted) {
       const info = port.getInfo ? port.getInfo() : {};
-      // Comparer vendorId + productId
       if (info.usbVendorId === savedInfo.usbVendorId &&
           info.usbProductId === savedInfo.usbProductId) {
         try {
-          await port.open({ baudRate });
+          await port.open(SERIAL_PARAMS(baudRate));
         } catch (err) {
-          // "already open" est OK ; toute autre erreur remonte
           if (!err.message?.toLowerCase().includes('already open') &&
               !err.message?.toLowerCase().includes('already been opened')) {
             throw err;
@@ -97,13 +105,13 @@ async function ensurePortOpen(baudRate) {
         return port;
       }
     }
-    // Port sauvegardé introuvable (débranché ?) → on demande de rechoisir
     clearSavedPort();
   }
-
-  // Aucun port configuré → popup de sélection (nécessite un geste utilisateur)
+  // Ports COM natifs (COM1/COM2) ou premier choix → popup obligatoire
+  // (les ports natifs n'ont pas de usbVendorId, impossible de les distinguer
+  // entre eux par getInfo() — l'utilisateur doit sélectionner à chaque session)
   const port = await navigator.serial.requestPort();
-  await port.open({ baudRate });
+  await port.open(SERIAL_PARAMS(baudRate));
   savePortInfo(port);
   _printerPort = port;
   return port;
@@ -115,7 +123,7 @@ async function selectPortExplicitly(baudRate) {
   if (_printerPort && _printerPort !== port) {
     try { await _printerPort.close(); } catch {}
   }
-  await port.open({ baudRate });
+  await port.open(SERIAL_PARAMS(baudRate));
   savePortInfo(port);
   _printerPort = port;
   return port;
@@ -439,6 +447,66 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
     }
   };
 
+  // ── Test texte brut (sans ESC/POS) ───────────────────────────────────────
+  // Si rien ne s'imprime avec le test normal, ce test envoie du texte ASCII pur.
+  // Si CELA s'imprime → connexion OK, problème de commandes ESC/POS seulement.
+  // Si RIEN → mauvais port ou mauvais baud rate.
+  const rawTest = async () => {
+    if (!('serial' in navigator)) return;
+    try {
+      setPortStatus('idle');
+      setStatusMsg('Envoi texte brut…');
+      const raw = [
+        0x0A,
+        ...encodeCP850('--- TEST BRUT ---'), 0x0A,
+        ...encodeCP850(`Port actuel  baud: ${baudRate}`), 0x0A,
+        ...encodeCP850('Si ce texte s imprime,'), 0x0A,
+        ...encodeCP850('la connexion serie fonctionne.'), 0x0A,
+        0x0A, 0x0A, 0x0A,
+      ];
+      await writeToPort(raw, baudRate);
+      setPortStatus('ok');
+      setStatusMsg('Texte brut envoyé — quelque chose s\'est-il imprimé ?');
+    } catch (err) {
+      if (err.name === 'NotFoundError') { setPortStatus('idle'); setStatusMsg('Sélection annulée'); }
+      else { setPortStatus('error'); setStatusMsg(`Échec: ${err.message}`); _printerPort = null; }
+    }
+  };
+
+  // ── Scan automatique du baud rate ──────────────────────────────────────────
+  // Essaie 9600 → 19200 → 38400 → 115200 en envoyant du texte brut à chaque fois.
+  // L'utilisateur confirme le baud rate qui produit un texte lisible.
+  const [scanning, setScanning] = useState(false);
+  const scanBaudRate = async () => {
+    if (!('serial' in navigator)) return;
+    const rates = [9600, 19200, 38400, 115200];
+    setScanning(true);
+    for (const rate of rates) {
+      setStatusMsg(`Test baud rate : ${rate}…`);
+      try {
+        // Fermer et réouvrir le port avec le nouveau baud rate
+        if (_printerPort) { try { await _printerPort.close(); } catch {} _printerPort = null; }
+        const port = await ensurePortOpen(rate);
+        const testLine = [
+          0x0A,
+          ...encodeCP850(`BAUD RATE: ${rate}`), 0x0A,
+          ...encodeCP850('Lisible? Confirmer ci-dessous'), 0x0A,
+          0x0A, 0x0A,
+        ];
+        const writer = port.writable.getWriter();
+        await writer.write(new Uint8Array(testLine));
+        writer.releaseLock();
+        // Délai pour laisser l'impression se faire
+        await new Promise(r => setTimeout(r, 1500));
+      } catch (err) {
+        if (err.name === 'NotFoundError') break;
+        // Erreur → essayer le prochain
+      }
+    }
+    setScanning(false);
+    setStatusMsg('Scan terminé — regardez ce qui s\'est imprimé et sélectionnez le bon baud rate ci-dessus');
+  };
+
   // ── Déconnexion du port ───────────────────────────────────────────────────
   const disconnectPort = async () => {
     if (_printerPort) {
@@ -627,29 +695,48 @@ export default function ReceiptPrinter({ sale, onClose, autoPrint = false }) {
                 <option value={80}>80 mm (grand format)</option>
               </select>
 
-              {/* Boutons test / déconnexion */}
-              <div style={{ display: 'flex', gap: '8px' }}>
+              {/* Boutons diagnostic */}
+              <label style={{ display: 'block', marginBottom: '6px', fontWeight: '600' }}>Diagnostic</label>
+              <div style={{ display: 'flex', gap: '6px', marginBottom: '6px' }}>
                 <button onClick={testConnection} style={{
                   flex: 1, padding: '8px', borderRadius: '8px', background: '#8b5cf6',
-                  color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '13px',
+                  color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
                 }}>
-                  Tester connexion
+                  Test ESC/POS
                 </button>
-                <button onClick={disconnectPort} style={{
-                  flex: 1, padding: '8px', borderRadius: '8px', background: 'transparent',
-                  color: '#ef4444', border: '2px solid #ef4444', cursor: 'pointer', fontWeight: '600', fontSize: '13px',
+                <button onClick={rawTest} style={{
+                  flex: 1, padding: '8px', borderRadius: '8px', background: '#0891b2',
+                  color: 'white', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
                 }}>
-                  Déconnecter
+                  Test texte brut
                 </button>
               </div>
+              <button
+                onClick={scanBaudRate}
+                disabled={scanning}
+                style={{
+                  width: '100%', padding: '8px', borderRadius: '8px', marginBottom: '6px',
+                  background: scanning ? '#6b7280' : '#f59e0b',
+                  color: 'white', border: 'none', cursor: scanning ? 'wait' : 'pointer',
+                  fontWeight: '600', fontSize: '12px',
+                }}
+              >
+                {scanning ? '⏳ Scan en cours…' : '🔍 Scanner le baud rate (9600→19200→38400→115200)'}
+              </button>
+              <button onClick={disconnectPort} style={{
+                width: '100%', padding: '7px', borderRadius: '8px', background: 'transparent',
+                color: '#ef4444', border: '2px solid #ef4444', cursor: 'pointer', fontWeight: '600', fontSize: '12px',
+              }}>
+                Déconnecter / Réinitialiser
+              </button>
 
-              {/* Aide */}
-              <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280', lineHeight: '1.6' }}>
-                <strong>Mise en route :</strong><br />
-                1. Cliquer <strong>"Sélectionner le port imprimante"</strong> ci-dessus<br />
-                2. Choisir le port COM de l'imprimante dans le popup (ex. COM3)<br />
-                3. Cliquer <strong>"Tester connexion"</strong> → un texte doit s'imprimer<br />
-                4. Si aucun port COM n'apparaît : installer le pilote <strong>CH340</strong> ou <strong>FTDI</strong>
+              {/* Aide contextuelle */}
+              <div style={{ marginTop: '10px', fontSize: '11px', color: '#6b7280', lineHeight: '1.6', background: '#fffbeb', padding: '8px', borderRadius: '6px', border: '1px solid #fcd34d' }}>
+                <strong>Guide dépannage COM1/COM2 :</strong><br />
+                1. Sélectionner le port → choisir <strong>COM1</strong><br />
+                2. Cliquer <strong>"Test texte brut"</strong> → si rien ne s'imprime → essayer <strong>COM2</strong><br />
+                3. Si un texte illisible s'imprime → cliquer <strong>"Scanner le baud rate"</strong><br />
+                4. Si RIEN ne s'imprime sur aucun port → l'imprimante est probablement <strong>USB Printer</strong> (non-série) → utiliser le <strong>Mode Dialogue Windows</strong> à la place
               </div>
             </div>
           )}
