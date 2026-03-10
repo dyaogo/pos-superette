@@ -74,14 +74,17 @@ export default function POSPage() {
   }, [cart]);
 
   // 📺 Afficheur — monnaie à rendre pendant la saisie du montant reçu
+  // Note: on recalcule le total depuis `cart` pour éviter une référence à
+  // `total` (déclaré plus bas dans le composant → TDZ si utilisé ici).
   useEffect(() => {
     if (paymentMethod !== 'cash' || !cashReceived) return;
+    const cartTotal = cart.reduce((s, i) => s + i.sellingPrice * i.quantity, 0);
     const received = parseFloat(cashReceived);
-    if (isNaN(received) || received < total) return;
-    const change = received - total;
+    if (isNaN(received) || received < cartTotal) return;
+    const change = received - cartTotal;
     displayChange(change, currentStore?.currency || 'FCFA').catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cashReceived, paymentMethod, total]);
+  }, [cashReceived, paymentMethod, cart]);
 
   const getTopProducts = () => {
     const productSales = {};
