@@ -20,7 +20,7 @@ import {
 import ReceiptPrinter from "../components/ReceiptPrinter";
 import Toast from "../components/Toast";
 import NumericKeypad from "../components/NumericKeypad";
-import { displayIdle, displayItem, displayTotal, displayThankYou, displayChange } from "../lib/customerDisplay";
+import { displayIdle, displayTotal, displayThankYou, displayChange } from "../lib/customerDisplay";
 
 export default function POSPage() {
   const {
@@ -62,17 +62,26 @@ export default function POSPage() {
   const [scanBuffer, setScanBuffer] = useState("");
   const [lastKeyTime, setLastKeyTime] = useState(Date.now());
 
-  // 📺 Afficheur client — mise à jour automatique quand le panier change
+  // 📺 Afficheur — total du panier (mis à jour à chaque changement de panier)
   useEffect(() => {
     if (cart.length === 0) {
       displayIdle(currentStore?.name || 'SUPERETTE').catch(() => {});
     } else {
-      const units = cart.reduce((s, i) => s + i.quantity, 0);
-      const total = cart.reduce((s, i) => s + i.sellingPrice * i.quantity, 0);
-      displayTotal(units, total, currentStore?.currency || 'FCFA').catch(() => {});
+      const cartTotal = cart.reduce((s, i) => s + i.sellingPrice * i.quantity, 0);
+      displayTotal(cart.reduce((s, i) => s + i.quantity, 0), cartTotal, currentStore?.currency || 'FCFA').catch(() => {});
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart]);
+
+  // 📺 Afficheur — monnaie à rendre pendant la saisie du montant reçu
+  useEffect(() => {
+    if (paymentMethod !== 'cash' || !cashReceived) return;
+    const received = parseFloat(cashReceived);
+    if (isNaN(received) || received < total) return;
+    const change = received - total;
+    displayChange(change, currentStore?.currency || 'FCFA').catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cashReceived, paymentMethod, total]);
 
   const getTopProducts = () => {
     const productSales = {};
@@ -206,9 +215,6 @@ export default function POSPage() {
       setCart([...cart, { ...product, quantity: 1 }]);
     }
 
-    // 📺 Afficheur : nom du produit + prix unitaire
-    displayItem(product.name, product.sellingPrice, currentStore?.currency || 'FCFA').catch(() => {});
-
     // Toast removed for better fluidity
     const button = document.getElementById(`product-${product.id}`);
     if (button) {
@@ -248,10 +254,10 @@ export default function POSPage() {
   const completeSale = async () => {
     if (cart.length === 0 || !cashSession) return;
 
+    // Bloquer si espèces : montant non saisi OU insuffisant
     if (
       paymentMethod === "cash" &&
-      cashReceived &&
-      parseFloat(cashReceived) < total
+      (!cashReceived || parseFloat(cashReceived) < total)
     ) {
       return;
     }
@@ -279,7 +285,7 @@ export default function POSPage() {
       receiptNumber: `REC${Date.now()}`,
       items: cart.map((item) => ({
         productId: item.id,
-        name: item.name,
+        productName: item.name,
         quantity: item.quantity,
         unitPrice: item.sellingPrice,
         total: item.sellingPrice * item.quantity,
@@ -1664,6 +1670,20 @@ export default function POSPage() {
                 </div>
               </div>
 
+              {/* Montant non encore saisi → invite */}
+              {!cashReceived && (
+                <div style={{
+                  marginTop: "10px", padding: "10px 12px",
+                  background: "rgba(245, 158, 11, 0.08)",
+                  border: "1.5px dashed var(--color-warning, #f59e0b)",
+                  borderRadius: "8px", fontSize: "13px",
+                  color: "var(--color-text-muted)",
+                }}>
+                  ⚠️ Saisir le montant remis par le client pour valider
+                </div>
+              )}
+
+              {/* Montant suffisant → monnaie à rendre */}
               {cashReceived && parseFloat(cashReceived) >= total && (
                 <div
                   style={{
@@ -1678,7 +1698,7 @@ export default function POSPage() {
                   }}
                 >
                   <span style={{ fontWeight: "500", fontSize: "14px" }}>
-                    💰 Rendu à rendre:
+                    💰 Monnaie à rendre :
                   </span>
                   <span
                     style={{
@@ -1949,8 +1969,7 @@ export default function POSPage() {
               isProcessingSale ||
               !cashSession ||
               (paymentMethod === "cash" &&
-                cashReceived &&
-                parseFloat(cashReceived) < total)
+                (!cashReceived || parseFloat(cashReceived) < total))
             }
             className="validate-sale-btn"
             style={{

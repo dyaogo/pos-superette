@@ -99,10 +99,16 @@ function buildESCPOS(sale, settings, openDrawer = false) {
   const payLabel = { cash: 'Especes', card: 'Carte', mobile: 'Mobile Money' }[sale.paymentMethod]
     || (sale.paymentMethod || 'Especes');
   twoCol('Paiement:', payLabel);
-  if (sale.paymentMethod === 'cash' && sale.cashReceived) {
-    twoCol('Recu:', `${Number(sale.cashReceived).toLocaleString()} ${settings.currency}`);
-    const change = sale.cashReceived - sale.total;
-    if (change > 0) twoCol('Monnaie:', `${Number(change).toLocaleString()} ${settings.currency}`);
+  if (sale.paymentMethod === 'cash') {
+    if (sale.cashReceived) {
+      twoCol('Recu:', `${Number(sale.cashReceived).toLocaleString()} ${settings.currency}`);
+    }
+    const change = sale.change ?? (sale.cashReceived ? sale.cashReceived - sale.total : 0);
+    if (change > 0) {
+      flat(CMD.boldOn);
+      twoCol('Monnaie rendue:', `${Number(change).toLocaleString()} ${settings.currency}`);
+      flat(CMD.boldOff);
+    }
   }
   if (sale.cashier) twoCol('Caissier:', sale.cashier);
   divider();
@@ -397,12 +403,18 @@ function generateReceiptHTML(sale, settings) {
     </tr>
   </table>
   <div class="line"></div>
-  <div class="small">Paiement: ${
-    sale.paymentMethod === 'cash'   ? 'Espèces' :
-    sale.paymentMethod === 'card'   ? 'Carte'   :
-    sale.paymentMethod === 'mobile' ? 'Mobile Money' :
-    (sale.paymentMethod || 'Espèces')
-  }</div>
+  <table>
+    <tr class="small"><td>Paiement:</td><td class="right">${
+      sale.paymentMethod === 'cash'   ? 'Espèces' :
+      sale.paymentMethod === 'card'   ? 'Carte'   :
+      sale.paymentMethod === 'mobile' ? 'Mobile Money' :
+      (sale.paymentMethod || 'Espèces')
+    }</td></tr>
+    ${sale.paymentMethod === 'cash' && sale.cashReceived ? `
+    <tr class="small"><td>Reçu:</td><td class="right">${Number(sale.cashReceived).toLocaleString()} ${settings.currency}</td></tr>` : ''}
+    ${sale.paymentMethod === 'cash' && (sale.change ?? 0) > 0 ? `
+    <tr class="bold"><td>Monnaie rendue:</td><td class="right" style="color:#059669;">${Number(sale.change).toLocaleString()} ${settings.currency}</td></tr>` : ''}
+  </table>
   <div class="line"></div>
   <div class="center small" style="margin-top:8px;">${settings.receiptFooter || 'Merci de votre visite !'}</div>
 </body>
@@ -438,6 +450,22 @@ ${taxRate > 0 ? `
 <div style="display:flex;justify-content:space-between;font-weight:bold;margin-top:4px;">
   <span>TOTAL</span><span>${Number(sale.total).toLocaleString()} ${settings.currency}</span>
 </div>
+<div style="display:flex;justify-content:space-between;font-size:11px;">
+  <span>Paiement</span><span>${
+    sale.paymentMethod === 'cash'   ? 'Espèces' :
+    sale.paymentMethod === 'card'   ? 'Carte'   :
+    sale.paymentMethod === 'mobile' ? 'Mobile Money' :
+    (sale.paymentMethod || 'Espèces')
+  }</span>
+</div>
+${sale.paymentMethod === 'cash' && sale.cashReceived ? `
+<div style="display:flex;justify-content:space-between;font-size:11px;">
+  <span>Reçu</span><span>${Number(sale.cashReceived).toLocaleString()} ${settings.currency}</span>
+</div>` : ''}
+${sale.paymentMethod === 'cash' && (sale.change ?? 0) > 0 ? `
+<div style="display:flex;justify-content:space-between;font-size:11px;font-weight:bold;color:#059669;">
+  <span>Monnaie rendue</span><span>${Number(sale.change).toLocaleString()} ${settings.currency}</span>
+</div>` : ''}
 <div style="border-top:1px dashed #999;margin:6px 0;"></div>
 <div style="text-align:center;">${settings.receiptFooter || 'Merci de votre visite !'}</div>`;
 }
@@ -476,6 +504,12 @@ function generateReceiptText(sale, settings) {
       sale.paymentMethod === 'mobile' ? 'Mobile Money' :
       (sale.paymentMethod || 'Espèces')
     }`,
+    ...(sale.paymentMethod === 'cash' && sale.cashReceived ? [
+      `Reçu     : ${Number(sale.cashReceived).toLocaleString()} ${settings.currency}`,
+    ] : []),
+    ...((sale.paymentMethod === 'cash' && (sale.change ?? 0) > 0) ? [
+      `Monnaie  : ${Number(sale.change).toLocaleString()} ${settings.currency}`,
+    ] : []),
     '',
     '════════════════════',
     settings.receiptFooter || 'Merci de votre visite !',
