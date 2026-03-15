@@ -356,10 +356,16 @@ export function AppProvider({ children }) {
         await loadData();
         return { success: true };
       }
-      return { success: false };
+      // Propager le message d'erreur de l'API (ex. code-barres en doublon)
+      try {
+        const data = await res.json();
+        return { success: false, error: data.error || 'Erreur lors de la création' };
+      } catch {
+        return { success: false, error: 'Erreur lors de la création' };
+      }
     } catch (error) {
       console.error('Erreur ajout produit:', error);
-      return { success: false };
+      return { success: false, error: error.message };
     }
   };
 
@@ -375,9 +381,15 @@ export function AppProvider({ children }) {
         await loadData();
         return { success: true };
       }
-      return { success: false };
+      // Propager le message d'erreur de l'API (ex. code-barres en doublon)
+      try {
+        const data = await res.json();
+        return { success: false, error: data.error || 'Erreur lors de la modification' };
+      } catch {
+        return { success: false, error: 'Erreur lors de la modification' };
+      }
     } catch (error) {
-      return { success: false };
+      return { success: false, error: error.message };
     }
   };
 

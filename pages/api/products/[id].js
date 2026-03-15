@@ -63,6 +63,22 @@ export default async function handler(req, res) {
           .json({ error: "La catégorie ne peut pas être vide" });
       }
 
+      // Vérifier l'unicité du code-barres dans ce magasin (en excluant ce produit)
+      if (updateData.barcode) {
+        const duplicate = await prisma.product.findFirst({
+          where: {
+            storeId: existingProduct.storeId,
+            barcode: updateData.barcode,
+            NOT: { id }
+          }
+        });
+        if (duplicate) {
+          return res.status(409).json({
+            error: `Code-barres "${updateData.barcode}" déjà utilisé par le produit "${duplicate.name}"`
+          });
+        }
+      }
+
       // Mettre à jour le produit
       const product = await prisma.product.update({
         where: { id },

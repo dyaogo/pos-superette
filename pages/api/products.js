@@ -89,6 +89,18 @@ async function handler(req, res) {
       storeId = store.id;
     }
 
+    // Vérifier l'unicité du code-barres dans ce magasin
+    if (barcode) {
+      const duplicate = await prisma.product.findFirst({
+        where: { storeId, barcode }
+      });
+      if (duplicate) {
+        return res.status(409).json({
+          error: `Code-barres "${barcode}" déjà utilisé par le produit "${duplicate.name}"`
+        });
+      }
+    }
+
     // Créer le produit avec l'image (données déjà validées par Zod)
     const product = await prisma.product.create({
       data: {

@@ -78,10 +78,18 @@ function InventoryPage() {
     };
 
     if (editingProduct) {
-      await updateProduct(editingProduct.id, productData);
+      const result = await updateProduct(editingProduct.id, productData);
+      if (!result.success) {
+        alert(result.error || 'Erreur lors de la modification');
+        return;
+      }
       setEditingProduct(null);
     } else {
-      await addProduct(productData);
+      const result = await addProduct(productData);
+      if (!result.success) {
+        alert(result.error || 'Erreur lors de la création');
+        return;
+      }
       setShowAddModal(false);
     }
   };
@@ -791,6 +799,8 @@ function ProductModal({ title, product, onClose, onSubmit }) {
               type="text"
               name="barcode"
               defaultValue={product?.barcode}
+              placeholder="Ex: 5449000000996 — pointer ici et scanner"
+              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
               style={{
                 width: "100%",
                 padding: "10px",
@@ -800,6 +810,9 @@ function ProductModal({ title, product, onClose, onSubmit }) {
                 color: "var(--color-text-primary)",
               }}
             />
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--color-text-secondary)" }}>
+              📷 Pointez ici et scannez — le code s'insère automatiquement
+            </p>
           </div>
 
           <div
