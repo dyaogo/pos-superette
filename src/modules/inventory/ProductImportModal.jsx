@@ -23,7 +23,7 @@ const ProductImportModal = ({ isOpen, onClose }) => {
   const isDark = appSettings?.darkMode;
 
   // Headers pour le template et validation
-  const baseHeaders = ['sku', 'name', 'category', 'price', 'costPrice', 'minStock', 'maxStock', 'supplier'];
+  const baseHeaders = ['sku', 'name', 'category', 'barcode', 'price', 'costPrice', 'minStock', 'maxStock', 'supplier'];
   const stockHeaders = stores.map(s => `stock_${s.code}`);
   const HEADERS = [...baseHeaders, ...stockHeaders];
 
@@ -42,25 +42,27 @@ const ProductImportModal = ({ isOpen, onClose }) => {
       const exampleData = [
         HEADERS, // Headers
         [
-          'SKU001', 
-          'Coca-Cola 33cl', 
-          'Boissons', 
-          '500', 
-          '300', 
-          '10', 
-          '100', 
+          'SKU001',
+          'Coca-Cola 33cl',
+          'Boissons',
+          '5449000000996', // code-barres
+          '500',
+          '300',
+          '10',
+          '100',
           'Coca-Cola Company',
           '45', // stock pour premier magasin
           '25'  // stock pour deuxième magasin
         ],
         [
-          'SKU002', 
-          'Pain de mie', 
-          'Alimentaire', 
-          '800', 
-          '600', 
-          '5', 
-          '50', 
+          'SKU002',
+          'Pain de mie',
+          'Alimentaire',
+          '1234567890128', // code-barres
+          '800',
+          '600',
+          '5',
+          '50',
           'Boulangerie Martin',
           '20',
           '15'
@@ -74,6 +76,7 @@ const ProductImportModal = ({ isOpen, onClose }) => {
         { wch: 12 }, // SKU
         { wch: 25 }, // Name
         { wch: 15 }, // Category
+        { wch: 18 }, // Barcode
         { wch: 10 }, // Price
         { wch: 10 }, // Cost Price
         { wch: 10 }, // Min Stock
@@ -97,6 +100,7 @@ const ProductImportModal = ({ isOpen, onClose }) => {
         [''],
         ['Colonnes optionnelles:'],
         ['- category: Catégorie du produit'],
+        ['- barcode: Code-barres du produit (scanner ou saisie manuelle)'],
         ['- minStock: Stock minimum'],
         ['- maxStock: Stock maximum'],
         ['- supplier: Fournisseur'],
@@ -290,7 +294,7 @@ const ProductImportModal = ({ isOpen, onClose }) => {
             minStock: parseInt(row.minStock) || 5,
             maxStock: parseInt(row.maxStock) || 100,
             supplier: row.supplier || '',
-            barcode: `${Date.now()}${Math.floor(Math.random() * 1000)}`
+            barcode: row.barcode ? row.barcode.toString().trim() : null
           };
 
           // Stock pour le magasin actuel

@@ -464,6 +464,30 @@ const EditModal = ({ product, onClose, onSave, appSettings }) => {
             </div>
           </div>
 
+          {/* Code-barres */}
+          <div style={{ marginBottom: '16px' }}>
+            <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+              Code-barres
+            </label>
+            <input
+              type="text"
+              value={formData.barcode}
+              onChange={(e) => setFormData(prev => ({ ...prev, barcode: e.target.value }))}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+              placeholder="Ex: 5449000000996 — pointer ici et scanner"
+              style={{
+                width: '100%',
+                padding: '8px 12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '14px'
+              }}
+            />
+            <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
+              📷 Pointez ici et scannez — le code s'insère automatiquement
+            </p>
+          </div>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div>
               <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
@@ -1884,6 +1908,30 @@ if (success) {
                  }}
                />
              </div>
+           </div>
+
+           {/* Code-barres */}
+           <div style={{ marginBottom: '16px' }}>
+             <label style={{ display: 'block', marginBottom: '4px', fontSize: '14px', fontWeight: '500' }}>
+               Code-barres
+             </label>
+             <input
+               type="text"
+               value={newProduct.barcode}
+               onChange={(e) => setNewProduct(prev => ({ ...prev, barcode: e.target.value }))}
+               onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+               placeholder="Ex: 5449000000996 — pointer ici et scanner"
+               style={{
+                 width: '100%',
+                 padding: '8px 12px',
+                 border: '1px solid #d1d5db',
+                 borderRadius: '6px',
+                 fontSize: '14px'
+               }}
+             />
+             <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#6b7280' }}>
+               📷 Pointez ici et scannez — le code s'insère automatiquement
+             </p>
            </div>
 
            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
